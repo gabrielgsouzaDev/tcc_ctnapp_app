@@ -263,7 +263,7 @@ export default function GuardianDashboard() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-            <h1 className="text-2xl font-bold tracking-tight font-headline">Painel do Responsável</h1>
+            <h1 className="text-2xl font-bold tracking-tight font-headline">Dashboard</h1>
             <p className="text-muted-foreground">Acompanhe os gastos, pedidos e saldos.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-2">
@@ -279,15 +279,25 @@ export default function GuardianDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Gasto</CardTitle>
+                  <CardTitle className="text-sm font-medium">Pedidos no Mês</CardTitle>
                   <ShoppingBasket className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
+                  <div className="text-2xl font-bold">{dashboardMetrics.totalOrders}</div>
+                  <p className="text-xs text-muted-foreground">Total de pedidos realizados este mês</p>
+              </CardContent>
+          </Card>
+           <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Gasto</CardTitle>
+                  <ArrowDown className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
                   <div className="text-2xl font-bold">R$ {dashboardMetrics.totalSpent.toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">Total de {dashboardMetrics.totalOrders} pedidos este mês</p>
+                  <p className="text-xs text-muted-foreground">Total gasto em pedidos este mês</p>
               </CardContent>
           </Card>
           <Card>
@@ -302,7 +312,7 @@ export default function GuardianDashboard() {
           </Card>
           <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Saldo</CardTitle>
+                  <CardTitle className="text-sm font-medium">Saldo Combinado</CardTitle>
                   <Wallet className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -317,7 +327,7 @@ export default function GuardianDashboard() {
       <Card>
         <CardHeader>
             <CardTitle>Alunos Vinculados</CardTitle>
-            <CardDescription>Consulte o saldo individual e recarregue.</CardDescription>
+            <CardDescription>Consulte o saldo individual e inicie uma recarga.</CardDescription>
         </CardHeader>
         <CardContent>
             <Accordion 
@@ -329,24 +339,26 @@ export default function GuardianDashboard() {
             >
                 {guardianProfile.students.map((student: Student) => (
                     <AccordionItem value={student.id} key={student.id} className="border-b-0 rounded-lg bg-background">
-                        <AccordionTrigger className="p-4">
+                        <AccordionTrigger className="p-4 hover:no-underline">
                             <div className="flex items-center gap-4">
-                                <User className="h-5 w-5" />
+                                <User className="h-5 w-5 text-primary" />
                                 <span className="font-medium">{student.name}</span>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
                            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t gap-4">
                              <div className="flex items-center justify-between w-full sm:w-auto">
-                                  <span className="text-muted-foreground">Saldo Atual</span>
+                                  <span className="text-muted-foreground">Saldo Atual:</span>
                                   <span className="font-bold text-lg text-primary flex items-center gap-2">
                                     <Wallet className="h-5 w-5"/>
                                     R$ {student.balance.toFixed(2)}
                                   </span>
                              </div>
-                            <Button className="w-full sm:w-auto">
-                                <CreditCard className="mr-2 h-4 w-4" /> Recarregar Saldo
-                            </Button>
+                             <Link href="/guardian/recharge" className='w-full sm:w-auto'>
+                                <Button className="w-full sm:w-auto">
+                                    <CreditCard className="mr-2 h-4 w-4" /> Recarregar Saldo
+                                </Button>
+                             </Link>
                            </div>
                         </AccordionContent>
                     </AccordionItem>
@@ -356,25 +368,26 @@ export default function GuardianDashboard() {
       </Card>
       
       <Tabs defaultValue="orders">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <TabsList>
-                <TabsTrigger value="orders">Histórico de Pedidos</TabsTrigger>
-                <TabsTrigger value="transactions">Histórico de Transações</TabsTrigger>
-            </TabsList>
-             <div className="relative flex-1 md:max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                    placeholder="Buscar por ID do pedido..."
-                    className="pl-10 w-full bg-background"
-                    value={searchTermHistory}
-                    onChange={(e) => setSearchTermHistory(e.target.value)}
-                />
+        <Card className="bg-card-foreground/5">
+        <CardHeader className="p-4 border-b rounded-t-lg">
+             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <TabsList className="grid w-full grid-cols-2 md:w-auto">
+                    <TabsTrigger value="orders">Histórico de Pedidos</TabsTrigger>
+                    <TabsTrigger value="transactions">Histórico de Transações</TabsTrigger>
+                </TabsList>
+                <div className="relative flex-1 md:grow-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Buscar por ID do pedido..."
+                        className="pl-10 w-full bg-background"
+                        value={searchTermHistory}
+                        onChange={(e) => setSearchTermHistory(e.target.value)}
+                    />
+                </div>
             </div>
-        </div>
-
-        <TabsContent value="orders">
-            <Card>
-                <CardContent className="p-0">
+        </CardHeader>
+        <CardContent className="p-0">
+            <TabsContent value="orders" className="m-0">
                 <div className="overflow-x-auto">
                     <Table>
                     <TableHeader>
@@ -382,7 +395,7 @@ export default function GuardianDashboard() {
                         <TableHead className="p-4">Pedido</TableHead>
                         <TableHead className="p-4">Aluno</TableHead>
                         <TableHead className="p-4">Data</TableHead>
-                        <TableHead className="p-4">Itens</TableHead>
+                        <TableHead className="p-4 hidden sm:table-cell">Itens</TableHead>
                         <TableHead className="p-4">Status</TableHead>
                         <TableHead className="text-right p-4">Total</TableHead>
                         </TableRow>
@@ -398,7 +411,7 @@ export default function GuardianDashboard() {
                                 <TableCell className="font-medium">{order.id}</TableCell>
                                 <TableCell>{studentsMap.get(order.studentId)?.name || 'N/A'}</TableCell>
                                 <TableCell>{new Date(order.date).toLocaleDateString('pt-BR')}</TableCell>
-                                <TableCell>
+                                <TableCell className="hidden sm:table-cell">
                                 <div className="flex -space-x-4">
                                     {order.items.slice(0, 3).map((item, index) => (
                                         <Image 
@@ -446,12 +459,8 @@ export default function GuardianDashboard() {
                         </div>
                     )}
                 </div>
-                </CardContent>
-            </Card>
-        </TabsContent>
-        <TabsContent value="transactions">
-            <Card>
-                 <CardContent className="p-0">
+            </TabsContent>
+            <TabsContent value="transactions" className="m-0">
                     <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
@@ -500,9 +509,9 @@ export default function GuardianDashboard() {
                             <p>Nenhuma transação encontrada para os filtros selecionados.</p>
                         </div>
                     )}
-                </CardContent>
-            </Card>
-        </TabsContent>
+            </TabsContent>
+        </CardContent>
+        </Card>
       </Tabs>
     </div>
   );

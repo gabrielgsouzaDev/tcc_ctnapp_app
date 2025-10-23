@@ -2,6 +2,7 @@
 "use client";
 
 import {
+  CreditCard,
   Home,
   LogOut,
   PanelLeft,
@@ -117,7 +118,7 @@ export function AppLayout({
   const guardianNavItems: NavItem[] = [
     {
       href: "/guardian/dashboard",
-      label: "Início",
+      label: "Dashboard",
       icon: <Home />,
       active: pathname === "/guardian/dashboard",
     },
@@ -126,6 +127,12 @@ export function AppLayout({
       label: "Fazer Pedido",
       icon: <ShoppingCart />,
       active: pathname === "/guardian/order",
+    },
+    {
+      href: "/guardian/recharge",
+      label: "Recarregar",
+      icon: <CreditCard />,
+      active: pathname === "/guardian/recharge",
     }
   ];
   
