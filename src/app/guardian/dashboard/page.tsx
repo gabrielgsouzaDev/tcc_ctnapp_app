@@ -157,7 +157,7 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
 export default function GuardianDashboard() {
   const { toast } = useToast();
   const [activeStudentAccordion, setActiveStudentAccordion] = useState<string | undefined>(guardianProfile.students[0]?.id);
-  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('date-desc');
   const [searchTermHistory, setSearchTermHistory] = useState('');
   const [isClient, setIsClient] = useState(false);
@@ -180,8 +180,8 @@ export default function GuardianDashboard() {
     let processedOrders = [...orderHistory];
     
     // Filter by student
-    if (selectedStudentIds.length > 0) {
-      processedOrders = processedOrders.filter(o => selectedStudentIds.includes(o.studentId));
+    if (selectedStudentId !== 'all') {
+      processedOrders = processedOrders.filter(o => selectedStudentId === o.studentId);
     }
 
     // Filter by search term
@@ -194,7 +194,7 @@ export default function GuardianDashboard() {
     // Sort
     processedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return processedOrders;
-  }, [isClient, searchTermHistory, selectedStudentIds]);
+  }, [isClient, searchTermHistory, selectedStudentId]);
 
    const filteredTransactions = useMemo(() => {
     if (!isClient) return [];
@@ -209,15 +209,15 @@ export default function GuardianDashboard() {
     }));
     
     let studentFilteredTxs = mockStudentTransactions;
-    if (selectedStudentIds.length > 0) {
-      studentFilteredTxs = mockStudentTransactions.filter(t => selectedStudentIds.includes(t.studentId));
+    if (selectedStudentId !== 'all') {
+      studentFilteredTxs = mockStudentTransactions.filter(t => selectedStudentId === t.studentId);
     }
 
     // Sort
     studentFilteredTxs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return studentFilteredTxs;
-  }, [isClient, selectedStudentIds]);
+  }, [isClient, selectedStudentId]);
 
   const dashboardMetrics = useMemo(() => {
     const now = new Date();
@@ -238,13 +238,18 @@ export default function GuardianDashboard() {
     const totalDeposits = transactionsInMonth
       .filter(tx => tx.type === 'credit')
       .reduce((acc, tx) => acc + tx.amount, 0);
+    
+    const combinedBalance = selectedStudentId === 'all' 
+      ? guardianProfile.students.reduce((acc, s) => acc + s.balance, 0)
+      : studentsMap.get(selectedStudentId)?.balance || 0;
 
     return {
       totalOrders: ordersInMonth.length,
       totalSpent,
       totalDeposits,
+      combinedBalance
     }
-  }, [filteredOrders, filteredTransactions]);
+  }, [filteredOrders, filteredTransactions, selectedStudentId, studentsMap]);
 
   const handleRepeatOrder = (items: OrderItem[]) => {
       console.log("Adding items to cart for repeat order:", items);
@@ -261,13 +266,13 @@ export default function GuardianDashboard() {
             <h1 className="text-2xl font-bold tracking-tight font-headline">Painel do Responsável</h1>
             <p className="text-muted-foreground">Acompanhe os gastos, pedidos e saldos.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-center gap-2">
             <StudentFilter
               students={guardianProfile.students}
-              selectedStudentIds={selectedStudentIds}
-              onSelectionChange={setSelectedStudentIds}
+              selectedStudentId={selectedStudentId}
+              onSelectionChange={setSelectedStudentId}
             />
-             <Button variant="outline">
+             <Button variant="outline" className="w-full sm:w-auto">
                 <Calendar className="mr-2 h-4 w-4" />
                 Este Mês
             </Button>
@@ -297,12 +302,14 @@ export default function GuardianDashboard() {
           </Card>
           <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Saldo Combinado</CardTitle>
+                  <CardTitle className="text-sm font-medium">Saldo</CardTitle>
                   <Wallet className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  <div className="text-2xl font-bold">R$ {guardianProfile.students.reduce((acc, s) => acc + s.balance, 0).toFixed(2)}</div>
-                   <p className="text-xs text-muted-foreground">Soma dos saldos de todos os alunos</p>
+                  <div className="text-2xl font-bold">R$ {dashboardMetrics.combinedBalance.toFixed(2)}</div>
+                   <p className="text-xs text-muted-foreground">
+                    {selectedStudentId === 'all' ? 'Soma de todos os alunos' : studentsMap.get(selectedStudentId)?.name}
+                   </p>
               </CardContent>
           </Card>
       </div>
