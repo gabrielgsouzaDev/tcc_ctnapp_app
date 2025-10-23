@@ -1,11 +1,12 @@
 
 'use client';
 
-import { Wallet, CreditCard, Repeat } from 'lucide-react';
+import { Wallet, CreditCard, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-import { studentProfile, transactionHistory, type Transaction } from '@/lib/data';
+import { type Transaction, type Student } from '@/lib/data';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -33,7 +34,6 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 type FilterTypeKey = 'all' | 'credit' | 'debit';
@@ -94,24 +94,45 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
 
 
 export default function StudentBalancePage() {
-    const router = useRouter();
     const { toast } = useToast();
+    const [studentProfile, setStudentProfile] = useState<Student | null>(null);
+    const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [filterType, setFilterType] = useState<FilterTypeKey>('all');
     const [filterOrigin, setFilterOrigin] = useState<FilterOriginKey>('all');
     const [rechargeAmount, setRechargeAmount] = useState('');
-    const [isClient, setIsClient] = useState(false);
     
     // For prototype purposes, we assume the student has permission to recharge.
-    // In a real app, this would be based on `student.hasGuardian` and `guardian.allowsRecharge`.
+    // In a real app, this would be based on a property from the student's profile.
     const canRecharge = true; 
 
     useEffect(() => {
-        setIsClient(true);
-    }, []);
+        const fetchData = async () => {
+            try {
+                setIsLoading(true);
+                const [profileRes, transactionsRes] = await Promise.all([
+                    api.get('/student/profile'),
+                    api.get('/transactions')
+                ]);
+                setStudentProfile(profileRes.data);
+                setTransactionHistory(transactionsRes.data);
+            } catch (error) {
+                console.error("Failed to fetch balance data:", error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Erro ao carregar dados',
+                    description: 'Não foi possível buscar as informações de saldo.'
+                })
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+    }, [toast]);
     
     const filteredHistory = useMemo(() => {
-        if (!isClient) return [];
         let processedTransactions = [...transactionHistory];
 
         if (filterType !== 'all') {
@@ -139,7 +160,7 @@ export default function StudentBalancePage() {
         }
 
         return processedTransactions;
-    }, [sortKey, filterType, filterOrigin, isClient]);
+    }, [sortKey, filterType, filterOrigin, transactionHistory]);
     
     const handleAmountSelect = (amount: number) => {
         setRechargeAmount(amount.toString());
@@ -148,6 +169,30 @@ export default function StudentBalancePage() {
     const amountValue = Number(rechargeAmount);
     const isButtonDisabled = !amountValue || amountValue <= 0;
 
+    if (isLoading || !studentProfile) {
+        return (
+             <div className="space-y-6 animate-pulse">
+                <div className="space-y-1">
+                    <div className="h-8 w-72 rounded bg-muted"></div>
+                    <div className="h-4 w-96 rounded bg-muted"></div>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-2">
+                    <Card className="h-36" />
+                    <Card className="h-60" />
+                </div>
+                
+                <Card>
+                    <CardHeader className="h-24" />
+                    <CardContent>
+                        <div className="space-y-4">
+                            {[...Array(5)].map((_, i) => <div key={i} className="h-12 w-full rounded bg-muted"></div>)}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">
@@ -206,7 +251,7 @@ export default function StudentBalancePage() {
                             </Button>
                             ))}
                         </div>
-                        <Link href={`/pix-payment?amount=${amountValue}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
+                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&targetType=student`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
                             <Button 
                                 className="w-full"
                                 disabled={isButtonDisabled}
@@ -284,7 +329,7 @@ export default function StudentBalancePage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {isClient && filteredHistory.map((transaction) => (
+                                {filteredHistory.map((transaction) => (
                                     <Dialog key={transaction.id}>
                                         <DialogTrigger asChild>
                                             <TableRow className="cursor-pointer">
@@ -316,24 +361,10 @@ export default function StudentBalancePage() {
                                         <TransactionDetailsDialog transaction={transaction} />
                                     </Dialog>
                                 ))}
-                                {!isClient && (
-                                    [...Array(4)].map((_, i) => (
-                                        <TableRow key={`skeleton-${i}`}>
-                                            <TableCell className="hidden sm:table-cell"><div className="h-4 bg-muted rounded w-3/4"></div></TableCell>
-                                            <TableCell>
-                                                <div className="space-y-1">
-                                                    <div className="h-4 bg-muted rounded w-1/2"></div>
-                                                    <div className="h-3 bg-muted rounded w-1/4 sm:hidden"></div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell><div className="h-4 bg-muted rounded w-1/4 ml-auto"></div></TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
                             </TableBody>
                         </Table>
                     </div>
-                    {isClient && filteredHistory.length === 0 && (
+                    {filteredHistory.length === 0 && (
                         <div className="text-center text-muted-foreground py-10">
                             <p>Nenhuma transação encontrada para os filtros selecionados.</p>
                         </div>
@@ -343,4 +374,3 @@ export default function StudentBalancePage() {
         </div>
     );
 }
-

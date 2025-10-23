@@ -1,8 +1,9 @@
+
 'use client';
 
-import { ShoppingCart, Trash2, Search, MinusCircle, PlusCircle, Heart, Check, Star } from 'lucide-react';
+import { ShoppingCart, Trash2, Search, MinusCircle, PlusCircle, Heart, Check, Star, Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { canteens, products, type Product } from '@/lib/data';
+import { type Product, type Canteen } from '@/lib/data';
+import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -60,14 +62,49 @@ type AddToCartState = {
 }
 
 export default function StudentDashboard() {
-  const [selectedCanteen, setSelectedCanteen] = useState(canteens[0].id);
+  const { toast } = useToast();
+  
+  const [products, setProducts] = useState<Product[]>([]);
+  const [canteens, setCanteens] = useState<Canteen[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [selectedCanteen, setSelectedCanteen] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
   const [favoriteCategory, setFavoriteCategory] = useState<Category>('Todos');
+
+   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [productsRes, canteensRes] = await Promise.all([
+          api.get('/products'),
+          api.get('/canteens'),
+        ]);
+
+        setProducts(productsRes.data);
+        setCanteens(canteensRes.data);
+
+        if (canteensRes.data.length > 0) {
+          setSelectedCanteen(canteensRes.data[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar cardápio",
+          description: "Não foi possível buscar os produtos e cantinas.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [toast]);
+
 
   const filteredProducts = useMemo(() => {
     return products
@@ -79,7 +116,7 @@ export default function StudentDashboard() {
         if (selectedCategory === 'Todos') return true;
         return p.category === selectedCategory;
       });
-  }, [selectedCanteen, searchTerm, selectedCategory]);
+  }, [selectedCanteen, searchTerm, selectedCategory, products]);
 
   const handleAddToCartVisuals = (product: Product) => {
     setAddToCartState(prev => ({ ...prev, [product.id]: 'added' }));
@@ -158,20 +195,36 @@ export default function StudentDashboard() {
     return products
       .filter(p => favorites.includes(p.id))
       .filter(p => favoriteCategory === 'Todos' || p.category === favoriteCategory);
-  }, [favorites, favoriteCategory]);
+  }, [favorites, favoriteCategory, products]);
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart
     .reduce((sum, item) => sum + item.product.price * item.quantity, 0)
     .toFixed(2);
   
-  const handleCheckout = () => {
-    if (cart.length > 0) {
-      toast({
-          title: "Pedido realizado com sucesso!",
-          description: "Você pode acompanhar o status em 'Meus Pedidos'.",
+  const handleCheckout = async () => {
+    if (cart.length === 0) {
+        toast({ variant: "destructive", title: "Carrinho vazio!" });
+        return;
+    }
+    
+    try {
+        await api.post('/orders', {
+            // studentId will be identified by the backend via token
+            items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })),
+            total: parseFloat(cartTotal),
+        });
+        toast({
+            title: "Pedido realizado com sucesso!",
+            description: `Você pode acompanhar o status em 'Meus Pedidos'.`,
+        });
+        setCart([]);
+    } catch (error: any) {
+         toast({
+          variant: "destructive",
+          title: "Erro ao finalizar pedido",
+          description: error.response?.data?.message || "Não foi possível completar o pedido. Tente novamente.",
       });
-      setCart([]);
     }
   }
 
@@ -180,6 +233,34 @@ export default function StudentDashboard() {
   }
 
   const categories: Category[] = ['Todos', 'Salgado', 'Doce', 'Bebida', 'Almoço'];
+  
+  if (isLoading) {
+    return (
+        <div className="space-y-6 animate-pulse">
+             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <div className="h-8 bg-muted rounded w-48"></div>
+                    <div className="h-4 bg-muted rounded w-64 mt-2"></div>
+                </div>
+                 <div className="flex items-center gap-2">
+                    <div className="h-10 bg-muted rounded w-[200px]"></div>
+                    <div className="h-10 w-10 bg-muted rounded-full"></div>
+                    <div className="h-10 w-10 bg-muted rounded-full"></div>
+                 </div>
+             </div>
+             <div className="space-y-4">
+                 <div className="h-10 bg-muted rounded w-full"></div>
+                 <div className="flex flex-wrap items-center gap-2">
+                    {[...Array(5)].map((_,i) => <div key={i} className="h-10 w-24 bg-muted rounded-md"></div>)}
+                 </div>
+             </div>
+             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {[...Array(8)].map((_, i) => <Card key={i} className="h-80" />)}
+             </div>
+        </div>
+    )
+  }
+
 
   return (
     <div className="space-y-6">
@@ -476,7 +557,7 @@ export default function StudentDashboard() {
           </Card>
         )})}
       </div>
-       {filteredProducts.length === 0 && (
+       {filteredProducts.length === 0 && !isLoading && (
         <div className="col-span-full text-center text-muted-foreground py-10">
           <p>Nenhum produto encontrado para os filtros selecionados.</p>
         </div>

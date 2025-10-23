@@ -3,7 +3,7 @@
 
 import Image from 'next/image';
 import { useMemo, useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +38,8 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { orderHistory, type Order, type OrderItem } from '@/lib/data';
+import { type Order, type OrderItem } from '@/lib/data';
+import api from '@/lib/api';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -144,43 +145,55 @@ export default function StudentOrdersPage() {
     const { toast } = useToast();
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [searchTerm, setSearchTerm] = useState('');
-    const [filteredHistory, setFilteredHistory] = useState<Order[]>([]);
-    const [isClient, setIsClient] = useState(false);
+    const [orderHistory, setOrderHistory] = useState<Order[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        setIsClient(true);
-    }, []);
-
-    useEffect(() => {
-        if (isClient) {
-            let processedOrders = [...orderHistory];
-
-            // 1. Filter by search term
-            if (searchTerm) {
-                processedOrders = processedOrders.filter(order => 
-                    order.id.toLowerCase().includes(searchTerm.toLowerCase())
-                );
+        const fetchOrders = async () => {
+            try {
+                setIsLoading(true);
+                const response = await api.get('/orders');
+                setOrderHistory(response.data);
+            } catch (error) {
+                console.error('Failed to fetch order history:', error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Erro ao buscar pedidos',
+                    description: 'Não foi possível carregar seu histórico de pedidos.'
+                })
+            } finally {
+                setIsLoading(false);
             }
+        };
+        fetchOrders();
+    }, [toast]);
 
-            // 2. Sort the filtered orders
-            switch (sortKey) {
-                case 'date-asc':
-                    processedOrders.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                    break;
-                case 'total-desc':
-                    processedOrders.sort((a, b) => b.total - a.total);
-                    break;
-                case 'total-asc':
-                    processedOrders.sort((a, b) => a.total - b.total);
-                    break;
-                case 'date-desc':
-                default:
-                    processedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                    break;
-            }
-            setFilteredHistory(processedOrders);
+    const filteredHistory = useMemo(() => {
+        let processedOrders = [...orderHistory];
+
+        if (searchTerm) {
+            processedOrders = processedOrders.filter(order => 
+                order.id.toLowerCase().includes(searchTerm.toLowerCase())
+            );
         }
-    }, [sortKey, isClient, searchTerm]);
+
+        switch (sortKey) {
+            case 'date-asc':
+                processedOrders.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                break;
+            case 'total-desc':
+                processedOrders.sort((a, b) => b.total - a.total);
+                break;
+            case 'total-asc':
+                processedOrders.sort((a, b) => a.total - b.total);
+                break;
+            case 'date-desc':
+            default:
+                processedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                break;
+        }
+        return processedOrders;
+    }, [sortKey, searchTerm, orderHistory]);
 
 
     const handleRepeatOrder = (items: OrderItem[]) => {
@@ -192,6 +205,51 @@ export default function StudentOrdersPage() {
             description: `${items.length} tipo(s) de item foram adicionados ao seu carrinho.`,
         });
     };
+    
+    if (isLoading) {
+        return (
+            <div className="space-y-6">
+                <div>
+                    <div className="h-8 bg-muted rounded w-48 animate-pulse"></div>
+                    <div className="h-4 bg-muted rounded w-64 mt-2 animate-pulse"></div>
+                </div>
+                <Card>
+                    <CardHeader className="p-4 md:p-6 rounded-t-lg">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-pulse">
+                            <div className="h-10 bg-muted rounded flex-1"></div>
+                            <div className="h-10 bg-muted rounded w-full md:w-[180px]"></div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                         <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Pedido</TableHead>
+                                        <TableHead>Data</TableHead>
+                                        <TableHead>Itens</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Total</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {[...Array(5)].map((_, i) => (
+                                        <TableRow key={`skeleton-row-${i}`} className="animate-pulse">
+                                            <TableCell><div className="h-4 bg-muted rounded w-20"></div></TableCell>
+                                            <TableCell><div className="h-4 bg-muted rounded w-24"></div></TableCell>
+                                            <TableCell><div className="h-8 w-20 bg-muted rounded-full"></div></TableCell>
+                                            <TableCell><div className="h-6 w-24 bg-muted rounded-full"></div></TableCell>
+                                            <TableCell className="text-right"><div className="h-4 bg-muted rounded w-16 ml-auto"></div></TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        )
+    }
 
   return (
     <div className="space-y-6">
@@ -229,7 +287,7 @@ export default function StudentOrdersPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="md:hidden space-y-4 p-4">
-              {isClient && filteredHistory.map((order) => (
+              {filteredHistory.map((order) => (
                   <Dialog key={`mobile-${order.id}`}>
                       <DialogTrigger asChild>
                           <Card className={cn("p-4", order.status === 'Pendente' && 'bg-yellow-50/50 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-600')}>
@@ -281,7 +339,7 @@ export default function StudentOrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isClient && filteredHistory.map((order) => (
+                {filteredHistory.map((order) => (
                   <Dialog key={order.id}>
                     <DialogTrigger asChild>
                        <TableRow className={cn(
@@ -322,27 +380,14 @@ export default function StudentOrdersPage() {
                 ))}
               </TableBody>
             </Table>
-             {!isClient && (
-                [...Array(3)].map((_, i) => (
-                    <TableRow key={`skeleton-${i}`} className="hidden md:table-row">
-                        <TableCell><div className="h-4 bg-muted rounded w-3/4"></div></TableCell>
-                        <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
-                        <TableCell><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
-                        <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
-                        <TableCell><div className="h-4 bg-muted rounded w-1/4 ml-auto"></div></TableCell>
-                    </TableRow>
-                ))
-            )}
           </div>
-          {isClient && filteredHistory.length === 0 && (
-                <div className="text-center text-muted-foreground py-10">
-                    <p>Nenhum pedido encontrado para a busca "{searchTerm}".</p>
-                </div>
-            )}
+          {filteredHistory.length === 0 && !isLoading && (
+            <div className="text-center text-muted-foreground py-10">
+                <p>Nenhum pedido encontrado para a busca "{searchTerm}".</p>
+            </div>
+           )}
         </CardContent>
       </Card>
     </div>
   );
 }
-
-    

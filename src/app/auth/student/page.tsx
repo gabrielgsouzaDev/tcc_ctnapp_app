@@ -8,12 +8,14 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/firebase';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -24,6 +26,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function StudentAuthPage() {
   const router = useRouter();
+  const auth = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,15 +35,23 @@ export default function StudentAuthPage() {
     defaultValues: { email: '', password: '' },
   });
 
-  const onLoginSubmit = (data: LoginFormValues) => {
+  const onLoginSubmit = async (data: LoginFormValues) => {
+    if (!auth) return;
     setIsSubmitting(true);
-    console.log('Login data:', data);
-    toast({ title: 'Processando login...' });
-    setTimeout(() => {
+    try {
+      await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
       router.push('/student/dashboard');
-      setIsSubmitting(false);
-    }, 1500);
+    } catch (error: any) {
+       console.error("Login failed:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Falha no login',
+        description: error.message || 'Ocorreu um erro ao tentar fazer login. Verifique suas credenciais.',
+      });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   return (
