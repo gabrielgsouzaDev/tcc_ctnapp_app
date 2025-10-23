@@ -203,8 +203,8 @@ export default function StudentOrdersPage() {
       </div>
 
       <Card>
-        <CardHeader className="bg-muted/50 border-b p-4 md:p-6 rounded-t-lg">
-            <div className="flex flex-col md:flex-row items-stretch gap-4">
+        <CardHeader className="bg-card-foreground/5 border-b p-4 md:p-6 rounded-t-lg">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
