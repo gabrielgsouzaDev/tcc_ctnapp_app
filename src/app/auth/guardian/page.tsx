@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -131,7 +132,7 @@ export default function GuardianAuthPage() {
               <CardHeader>
                 <CardTitle>Cadastro de Responsável</CardTitle>
                 <CardDescription>Crie sua conta para vincular a um aluno.</CardDescription>
-              </Header>
+              </CardHeader>
               <CardContent>
                 <Form {...signupForm}>
                   <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
@@ -197,6 +198,14 @@ export default function GuardianAuthPage() {
             </Card>
           </TabsContent>
         </Tabs>
+         <div className="mt-6 text-center">
+          <Button variant="link" asChild>
+            <Link href="/">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar ao Início
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

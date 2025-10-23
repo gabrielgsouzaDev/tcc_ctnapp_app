@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -93,11 +94,13 @@ export default function StudentAuthPage() {
             </Form>
           </CardContent>
         </Card>
-        <div className="mt-4 text-center text-sm">
-          Ainda não tem conta?{' '}
-          <Link href="/auth/guardian" className="underline">
-            Crie uma conta de Responsável
-          </Link>
+        <div className="mt-6 text-center">
+          <Button variant="link" asChild>
+            <Link href="/">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar ao Início
+            </Link>
+          </Button>
         </div>
       </div>
     </div>

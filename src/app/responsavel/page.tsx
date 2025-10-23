@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 
 // Esta página agora serve apenas como um redirecionamento temporário para a autenticação.
 export default function ResponsavelRedirectPage() {
-  const-router = useRouter();
+  const router = useRouter();
 
   useEffect(() => {
     router.replace('/auth/guardian');
