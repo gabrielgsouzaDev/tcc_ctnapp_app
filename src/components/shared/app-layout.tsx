@@ -132,7 +132,7 @@ export function AppLayout({
       href: "/guardian/recharge",
       label: "Recarregar",
       icon: <CreditCard />,
-      active: pathname === "/guardian/recharge",
+      active: pathname.startsWith("/guardian/recharge") || pathname.startsWith('/pix-payment'),
     }
   ];
   
@@ -145,9 +145,10 @@ export function AppLayout({
 
   const navItems = userType === "student" ? studentNavItems : guardianNavItems;
   const userName = userType === "student" ? studentProfile.name : guardianProfile.name;
-  const userBalance = userType === 'student' ? studentProfile.balance : 0; // Guardian balance not applicable directly
+  const userBalance = userType === 'student' ? studentProfile.balance : guardianProfile.balance;
   const userEmail =
     userType === "student" ? "joao.silva@aluno.com" : "maria.silva@resp.com";
+  const userBalanceLabel = userType === 'student' ? 'Meu Saldo' : 'Saldo Próprio';
 
   return (
     <SidebarProvider>
@@ -206,12 +207,13 @@ export function AppLayout({
               <PanelLeft />
             </SidebarTrigger>
             <div className="flex items-center gap-4">
-              {userType === "student" && (
-                 <Link href="/student/balance" className="flex items-center gap-2 text-sm font-semibold hover:text-primary transition-colors">
-                  <Wallet className="h-5 w-5 text-primary" />
-                  <span>Saldo: R$ {userBalance.toFixed(2)}</span>
-                </Link>
-              )}
+              <Link 
+                href={userType === 'student' ? '/student/balance' : '/guardian/recharge'} 
+                className="flex items-center gap-2 text-sm font-semibold hover:text-primary transition-colors"
+              >
+                <Wallet className="h-5 w-5 text-primary" />
+                <span>{userBalanceLabel}: R$ {userBalance.toFixed(2)}</span>
+              </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">

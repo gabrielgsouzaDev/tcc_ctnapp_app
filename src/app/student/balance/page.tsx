@@ -1,9 +1,11 @@
 
 'use client';
 
-import { Wallet, CreditCard } from 'lucide-react';
+import { Wallet, CreditCard, Repeat } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { studentProfile, transactionHistory, type Transaction } from '@/lib/data';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -35,7 +37,7 @@ import { Label } from '@/components/ui/label';
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 type FilterTypeKey = 'all' | 'credit' | 'debit';
-type FilterOriginKey = 'all' | 'Aluno' | 'Responsável' | 'Cantina';
+type FilterOriginKey = 'all' | 'Aluno' | 'Responsável' | 'Cantina' | 'PIX';
 
 const quickAmounts = [20, 50, 100];
 
@@ -92,6 +94,7 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
 
 
 export default function StudentBalancePage() {
+    const router = useRouter();
     const { toast } = useToast();
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [filterType, setFilterType] = useState<FilterTypeKey>('all');
@@ -137,27 +140,13 @@ export default function StudentBalancePage() {
 
         return processedTransactions;
     }, [sortKey, filterType, filterOrigin, isClient]);
-
-    const handleRecharge = () => {
-        const amountValue = Number(rechargeAmount);
-        if (amountValue > 0) {
-            toast({
-                title: "Recarga em processamento!",
-                description: `O valor de R$ ${amountValue.toFixed(2)} será adicionado em breve.`,
-            });
-            setRechargeAmount('');
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Valor inválido",
-                description: "Por favor, insira um valor positivo para a recarga.",
-            });
-        }
-    };
     
     const handleAmountSelect = (amount: number) => {
         setRechargeAmount(amount.toString());
     };
+    
+    const amountValue = Number(rechargeAmount);
+    const isButtonDisabled = !amountValue || amountValue <= 0;
 
 
     return (
@@ -191,7 +180,7 @@ export default function StudentBalancePage() {
                         Recarregar Saldo
                         </CardTitle>
                         <CardDescription>
-                        Adicione créditos para usar na cantina.
+                        Defina um valor e pague com PIX.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -217,13 +206,14 @@ export default function StudentBalancePage() {
                             </Button>
                             ))}
                         </div>
-                        <Button 
-                            className="w-full"
-                            onClick={handleRecharge} 
-                            disabled={!rechargeAmount || Number(rechargeAmount) <= 0}
-                        >
-                            Recarregar
-                        </Button>
+                        <Link href={`/pix-payment?amount=${amountValue}`} passHref className={cn(isButtonDisabled && 'pointer-events-none opacity-50')}>
+                            <Button 
+                                className="w-full"
+                                disabled={isButtonDisabled}
+                            >
+                                Pagar com PIX
+                            </Button>
+                        </Link>
                     </CardContent>
                 </Card>
                 ) : (
@@ -257,6 +247,7 @@ export default function StudentBalancePage() {
                                 <SelectItem value="Aluno">Aluno</SelectItem>
                                 <SelectItem value="Responsável">Responsável</SelectItem>
                                 <SelectItem value="Cantina">Cantina</SelectItem>
+                                <SelectItem value="PIX">PIX</SelectItem>
                             </SelectContent>
                         </Select>
                         <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterTypeKey)}>
@@ -353,4 +344,3 @@ export default function StudentBalancePage() {
     );
 }
 
-    

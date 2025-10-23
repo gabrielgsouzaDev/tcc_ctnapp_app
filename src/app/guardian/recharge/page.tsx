@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowRight, CheckCircle2, Circle, CreditCard, DollarSign, User, Wallet } from 'lucide-react';
+import { ArrowRight, CheckCircle2, CreditCard, DollarSign, Repeat, User, Wallet } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,18 @@ import { useToast } from '@/hooks/use-toast';
 import { guardianProfile, type Student } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import Link from 'next/link';
 
 const quickAmounts = [20, 50, 100];
 
@@ -23,39 +35,50 @@ export default function GuardianRechargePage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [guardianBalance] = useState(75.50); // Saldo fictício para o responsável
 
   const handleAmountSelect = (amount: number) => {
     setRechargeAmount(amount.toString());
   };
-
-  const handleRecharge = () => {
-    if (!selectedStudent || !rechargeAmount || Number(rechargeAmount) <= 0) {
+  
+  const handleInternalTransfer = () => {
+     if (!selectedStudent || !rechargeAmount || Number(rechargeAmount) <= 0) {
       toast({
         variant: 'destructive',
         title: 'Dados inválidos',
-        description: 'Por favor, selecione um aluno e insira um valor de recarga válido.',
+        description: 'Selecione um aluno e um valor para a transferência.',
+      });
+      return;
+    }
+
+    if (Number(rechargeAmount) > guardianBalance) {
+      toast({
+        variant: 'destructive',
+        title: 'Saldo insuficiente',
+        description: 'Seu saldo é insuficiente para realizar esta transferência.',
       });
       return;
     }
 
     setIsProcessing(true);
     toast({
-      title: 'Processando Recarga...',
-      description: `A recarga de R$${Number(rechargeAmount).toFixed(2)} para ${selectedStudent.name} está sendo processada.`,
+      title: 'Processando Transferência...',
+      description: `O valor de R$${Number(rechargeAmount).toFixed(2)} está sendo transferido para ${selectedStudent.name}.`,
     });
 
-    // Simulate payment processing
     setTimeout(() => {
       toast({
-        title: 'Recarga Concluída!',
-        description: `O saldo de ${selectedStudent.name} foi atualizado.`,
+        title: 'Transferência Concluída!',
+        description: `O saldo de ${selectedStudent.name} foi atualizado com sucesso.`,
       });
       router.push('/guardian/dashboard');
-    }, 2000);
-  };
+    }, 1500);
+  }
 
   const amountValue = Number(rechargeAmount);
   const isButtonDisabled = !selectedStudent || !amountValue || amountValue <= 0 || isProcessing;
+  const isTransferDisabled = isButtonDisabled || amountValue > guardianBalance;
+
 
   return (
     <div className="container mx-auto max-w-2xl space-y-8 px-4 py-6">
@@ -141,7 +164,7 @@ export default function GuardianRechargePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Wallet className="h-5 w-5" />
-            Resumo da Recarga
+            Resumo da Operação
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -150,29 +173,60 @@ export default function GuardianRechargePage() {
                 <span className="font-medium">{selectedStudent?.name || 'N/A'}</span>
             </div>
             <Separator />
-            <div className="flex items-center justify-between text-lg">
-                <span className="text-muted-foreground">Valor da Recarga:</span>
+            <div className="flex items-center justify-between text-xl">
+                <span className="font-semibold">Valor:</span>
                 <span className="font-bold text-primary">R$ {amountValue > 0 ? amountValue.toFixed(2) : '0.00'}</span>
-            </div>
-            <Separator />
-             <div className="flex items-center justify-between text-xl">
-                <span className="font-semibold">Total a Pagar:</span>
-                <span className="font-bold">R$ {amountValue > 0 ? amountValue.toFixed(2) : '0.00'}</span>
             </div>
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Button
-          size="lg"
-          onClick={handleRecharge}
-          disabled={isButtonDisabled}
-          className="w-full sm:w-auto"
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:justify-end">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              size="lg"
+              variant="outline"
+              disabled={isTransferDisabled}
+              className="w-full"
+            >
+              <Repeat className="mr-2 h-5 w-5" />
+              {isProcessing ? 'Processando...' : 'Transferir do seu Saldo'}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Transferência Interna</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Você está prestes a transferir <span className="font-bold">R$ {amountValue.toFixed(2)}</span> do seu saldo para <span className="font-bold">{selectedStudent?.name}</span>.
+                    Seu saldo restante será <span className="font-bold">R$ {(guardianBalance - amountValue).toFixed(2)}</span>.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleInternalTransfer}>Confirmar Transferência</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        <Link 
+            href={`/pix-payment?amount=${amountValue}&studentId=${selectedStudent?.id}`}
+            passHref
+            className={cn(isButtonDisabled && 'pointer-events-none opacity-50')}
         >
-          {isProcessing ? 'Processando...' : 'Ir para Pagamento'}
-          {!isProcessing && <ArrowRight className="ml-2 h-5 w-5" />}
-        </Button>
+            <Button
+                size="lg"
+                disabled={isButtonDisabled}
+                className="w-full"
+            >
+                {isProcessing ? 'Processando...' : 'Pagar com PIX'}
+                {!isProcessing && <CreditCard className="ml-2 h-5 w-5" />}
+            </Button>
+        </Link>
       </div>
+       <p className="text-xs text-center text-muted-foreground">
+          Seu saldo como responsável é de R$ {guardianBalance.toFixed(2)}.
+       </p>
     </div>
   );
 }
+

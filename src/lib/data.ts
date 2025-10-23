@@ -1,3 +1,4 @@
+
 import type { ImagePlaceholder } from './placeholder-images';
 import { PlaceHolderImages } from './placeholder-images';
 
@@ -41,7 +42,7 @@ export type Transaction = {
   description: string;
   amount: number;
   type: 'credit' | 'debit';
-  origin: 'Aluno' | 'Responsável' | 'Cantina';
+  origin: 'Aluno' | 'Responsável' | 'Cantina' | 'PIX';
 };
 
 export type Student = {
@@ -52,6 +53,7 @@ export type Student = {
 
 export type Guardian = {
     name: string;
+    balance: number;
     students: Student[];
 }
 
@@ -123,6 +125,7 @@ export const studentProfile = {
 
 export const guardianProfile: Guardian = {
   name: 'Maria Silva',
+  balance: 75.50,
   students: [
     {
       id: 'student1',
@@ -139,9 +142,10 @@ export const guardianProfile: Guardian = {
 
 export const transactionHistory: Transaction[] = [
     { id: 't1', date: new Date(new Date().setHours(new Date().getHours() - 1, 15, 22)).toISOString(), description: 'Compra Pedido #003', amount: 18.00, type: 'debit', origin: 'Cantina' },
-    { id: 't2', date: new Date('2024-07-29T10:05:10').toISOString(), description: 'Recarga via PIX', amount: 50.00, type: 'credit', origin: 'Responsável' },
-    { id: 't6', date: new Date('2024-07-28T14:20:05').toISOString(), description: 'Recarga via App', amount: 20.00, type: 'credit', origin: 'Aluno' },
+    { id: 't2', date: new Date('2024-07-29T10:05:10').toISOString(), description: 'Recarga via PIX', amount: 50.00, type: 'credit', origin: 'PIX' },
+    { id: 't6', date: new Date('2024-07-28T14:20:05').toISOString(), description: 'Repasse de Saldo', amount: 20.00, type: 'credit', origin: 'Responsável' },
     { id: 't3', date: new Date('2024-07-28T12:30:45').toISOString(), description: 'Compra Pedido #002', amount: 20.00, type: 'debit', origin: 'Cantina' },
     { id: 't4', date: new Date('2024-07-27T12:25:11').toISOString(), description: 'Compra Pedido #001', amount: 20.00, type: 'debit', origin: 'Cantina' },
-    { id: 't5', date: new Date('2024-07-26T09:00:00').toISOString(), description: 'Recarga via Cartão', amount: 30.00, type: 'credit', origin: 'Responsável' },
+    { id: 't5', date: new Date('2024-07-26T09:00:00').toISOString(), description: 'Recarga via PIX', amount: 30.00, type: 'credit', origin: 'PIX' },
 ];
+
