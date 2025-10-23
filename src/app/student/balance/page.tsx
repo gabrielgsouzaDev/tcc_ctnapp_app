@@ -180,7 +180,7 @@ export default function StudentBalancePage() {
                         Recarregar Saldo
                         </CardTitle>
                         <CardDescription>
-                        Defina um valor e pague com PIX.
+                        Defina um valor e pague com PIX para adicionar créditos à sua conta.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -206,7 +206,7 @@ export default function StudentBalancePage() {
                             </Button>
                             ))}
                         </div>
-                        <Link href={`/pix-payment?amount=${amountValue}`} passHref className={cn(isButtonDisabled && 'pointer-events-none opacity-50')}>
+                        <Link href={`/pix-payment?amount=${amountValue}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
                             <Button 
                                 className="w-full"
                                 disabled={isButtonDisabled}
