@@ -1,64 +1,24 @@
 
 "use client";
 
-import { CreditCard, User, Wallet, Search, ShoppingBasket, ShoppingCart, Trash2, MinusCircle, PlusCircle, Heart, Check, Star } from 'lucide-react';
+import { CreditCard, User, Wallet, Search, ShoppingBasket, ShoppingCart, Trash2, MinusCircle, PlusCircle, Heart, Check, Star, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { guardianProfile, canteens, products, type Product } from '@/lib/data';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 
+import { type Product, type Canteen, type Student } from '@/lib/data';
+import api from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 type Category = 'Todos' | 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
 type CartItem = {
@@ -69,23 +29,91 @@ type AddToCartState = {
   [productId: string]: 'idle' | 'added';
 }
 
-
 export default function GuardianOrderPage() {
   const { toast } = useToast();
+  
+  const [products, setProducts] = useState<Product[]>([]);
+  const [canteens, setCanteens] = useState<Canteen[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedCanteen, setSelectedCanteen] = useState(canteens[0].id);
+  const [selectedCanteen, setSelectedCanteen] = useState<string>('');
   const [searchTermProducts, setSearchTermProducts] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
-  const [studentForOrder, setStudentForOrder] = useState<string>(guardianProfile.students[0]?.id || '');
+  const [studentForOrder, setStudentForOrder] = useState<string>('');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [productsRes, canteensRes, profileRes] = await Promise.all([
+          api.get('/products'),
+          api.get('/canteens'),
+          api.get('/guardian/profile'),
+        ]);
+
+        setProducts(productsRes.data);
+        setCanteens(canteensRes.data);
+        setStudents(profileRes.data.students);
+
+        if (canteensRes.data.length > 0) {
+          setSelectedCanteen(canteensRes.data[0].id);
+        }
+        if (profileRes.data.students.length > 0) {
+          setStudentForOrder(profileRes.data.students[0].id);
+        }
+
+      } catch (error) {
+        console.error("Failed to fetch order page data:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar página",
+          description: "Não foi possível buscar os produtos e cantinas.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [toast]);
+
+  useEffect(() => {
+    // Check for items to repeat from local storage (e.g., from order history)
+    const itemsToRepeat = localStorage.getItem('cart-repeat');
+    if (itemsToRepeat) {
+      try {
+        const parsedItems: { product: Product; quantity: number }[] = JSON.parse(itemsToRepeat);
+        setCart(currentCart => {
+          const newCart = [...currentCart];
+          parsedItems.forEach(itemToRepeat => {
+            const existingItemIndex = newCart.findIndex(
+              cartItem => cartItem.product.id === itemToRepeat.product.id
+            );
+            if (existingItemIndex > -1) {
+              newCart[existingItemIndex].quantity += itemToRepeat.quantity;
+            } else {
+              newCart.push(itemToRepeat);
+            }
+          });
+          return newCart;
+        });
+      } catch (e) {
+        console.error("Failed to parse repeat items from storage", e);
+      } finally {
+        localStorage.removeItem('cart-repeat');
+      }
+    }
+  }, []);
 
   const studentsMap = useMemo(() => {
     const map = new Map<string, string>();
-    guardianProfile.students.forEach(student => {
+    students.forEach(student => {
       map.set(student.id, student.name);
     });
     return map;
-  }, []);
+  }, [students]);
 
   const filteredProducts = useMemo(() => {
     return products
@@ -97,7 +125,7 @@ export default function GuardianOrderPage() {
         if (selectedCategory === 'Todos') return true;
         return p.category === selectedCategory;
       });
-  }, [selectedCanteen, searchTermProducts, selectedCategory]);
+  }, [selectedCanteen, searchTermProducts, selectedCategory, products]);
 
   const handleAddToCartVisuals = (product: Product) => {
     setAddToCartState(prev => ({ ...prev, [product.id]: 'added' }));
@@ -150,19 +178,36 @@ export default function GuardianOrderPage() {
     .reduce((sum, item) => sum + item.product.price * item.quantity, 0)
     .toFixed(2);
   
-  const handleCheckout = () => {
-    if (cart.length > 0 && studentForOrder) {
-      const studentName = studentsMap.get(studentForOrder) || 'aluno';
-      toast({
-          title: "Pedido realizado com sucesso!",
-          description: `O pedido foi feito para ${studentName} e pode ser acompanhado no histórico.`,
-      });
-      setCart([]);
-    } else if (!studentForOrder) {
+  const handleCheckout = async () => {
+    if (cart.length === 0) {
+        toast({ variant: "destructive", title: "Carrinho vazio!" });
+        return;
+    }
+    if (!studentForOrder) {
        toast({
           variant: "destructive",
           title: "Selecione um aluno",
           description: "Você precisa escolher para qual aluno o pedido será feito.",
+      });
+      return;
+    }
+    
+    try {
+        await api.post('/orders', {
+            studentId: studentForOrder,
+            items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })),
+            total: parseFloat(cartTotal),
+        });
+        toast({
+            title: "Pedido realizado com sucesso!",
+            description: `O pedido foi feito para ${studentsMap.get(studentForOrder)} e pode ser acompanhado no histórico.`,
+        });
+        setCart([]);
+    } catch (error: any) {
+         toast({
+          variant: "destructive",
+          title: "Erro ao finalizar pedido",
+          description: error.response?.data?.message || "Não foi possível completar o pedido. Tente novamente.",
       });
     }
   }
@@ -172,6 +217,32 @@ export default function GuardianOrderPage() {
   }
 
   const categories: Category[] = ['Todos', 'Salgado', 'Doce', 'Bebida', 'Almoço'];
+
+  if (isLoading) {
+    return (
+        <div className="space-y-6">
+             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between animate-pulse">
+                <div>
+                    <div className="h-8 bg-muted rounded w-48"></div>
+                    <div className="h-4 bg-muted rounded w-64 mt-2"></div>
+                </div>
+                 <div className="flex items-center gap-2">
+                    <div className="h-10 bg-muted rounded w-[200px]"></div>
+                    <div className="h-10 w-10 bg-muted rounded-full"></div>
+                 </div>
+             </div>
+             <div className="space-y-4 animate-pulse">
+                 <div className="h-10 bg-muted rounded w-full"></div>
+                 <div className="flex flex-wrap items-center gap-2">
+                    {[...Array(5)].map((_,i) => <div key={i} className="h-10 w-24 bg-muted rounded-md"></div>)}
+                 </div>
+             </div>
+             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-pulse">
+                {[...Array(8)].map((_, i) => <Card key={i} className="h-80" />)}
+             </div>
+        </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -285,7 +356,7 @@ export default function GuardianOrderPage() {
                                   <SelectValue placeholder="Selecione o aluno" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {guardianProfile.students.map(student => (
+                                  {students.map(student => (
                                     <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
                                   ))}
                                 </SelectContent>
@@ -397,7 +468,7 @@ export default function GuardianOrderPage() {
           </Card>
         )})}
       </div>
-      {filteredProducts.length === 0 && (
+      {filteredProducts.length === 0 && !isLoading && (
         <div className="col-span-full text-center text-muted-foreground py-10">
           <p>Nenhum produto encontrado para os filtros selecionados.</p>
         </div>

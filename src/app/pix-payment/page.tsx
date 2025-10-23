@@ -5,7 +5,6 @@ import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { CheckCircle, Clock, Copy, Loader2, QrCode } from 'lucide-react';
-import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CopyButton } from '@/components/shared/copy-button';
 import { QRCode } from '@/components/shared/qr-code';
 import { Label } from '@/components/ui/label';
+import api from '@/lib/api';
 
 function PixPaymentContent() {
   const router = useRouter();
@@ -20,11 +20,38 @@ function PixPaymentContent() {
   const { toast } = useToast();
 
   const amount = searchParams.get('amount') || '0';
-  const studentId = searchParams.get('studentId'); // Pode ser nulo/vazio se o responsável estiver recarregando para si.
+  const targetId = searchParams.get('targetId');
+  const targetType = searchParams.get('targetType'); // 'student' or 'guardian'
 
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'confirmed'>('pending');
+  const [pixDetails, setPixDetails] = useState<{ qrCode: string; code: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const pixCode = '00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540550.005802BR5913NOME COMPLETO6009SAO PAULO62070503***6304E4A9';
+  useEffect(() => {
+    const generatePix = async () => {
+      if (!amount || Number(amount) <= 0 || !targetId || !targetType) {
+        toast({ variant: 'destructive', title: 'Dados inválidos para gerar PIX.' });
+        router.back();
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const response = await api.post('/pix/generate', {
+          amount: Number(amount),
+          targetId,
+          targetType,
+        });
+        setPixDetails(response.data);
+      } catch (error) {
+        console.error('Failed to generate PIX:', error);
+        toast({ variant: 'destructive', title: 'Erro ao gerar PIX', description: 'Não foi possível criar a cobrança PIX. Tente novamente.' });
+        router.back();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    generatePix();
+  }, [amount, targetId, targetType, router, toast]);
 
   const handleConfirmPayment = () => {
     setPaymentStatus('processing');
@@ -33,7 +60,8 @@ function PixPaymentContent() {
       description: 'Estamos verificando o status do seu pagamento PIX. Isso pode levar um instante.',
     });
 
-    // Simula a confirmação do pagamento após alguns segundos
+    // In a real application, this would be a webhook or polling mechanism.
+    // We simulate it here.
     setTimeout(() => {
       setPaymentStatus('confirmed');
       toast({
@@ -42,15 +70,20 @@ function PixPaymentContent() {
       });
     }, 3000);
 
-    // Redireciona o usuário após a confirmação
     setTimeout(() => {
-      // Se studentId existe e não está vazio, é um responsável recarregando para um aluno.
-      // Se está vazio, pode ser o responsável recarregando para si ou um aluno recarregando para si.
-      const isGuardianFlow = studentId !== null; // Se o param studentId existe, veio da tela do responsável.
-      const redirectPath = isGuardianFlow ? '/guardian/dashboard' : '/student/balance';
+      const redirectPath = targetType === 'guardian' ? '/guardian/dashboard' : '/student/dashboard';
       router.push(redirectPath);
     }, 5000);
   };
+  
+  if (isLoading) {
+    return (
+        <div className="flex flex-col items-center justify-center p-6">
+            <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+            <p className="text-muted-foreground">Gerando seu PIX...</p>
+        </div>
+    )
+  }
 
   if (paymentStatus === 'confirmed') {
     return (
@@ -58,6 +91,15 @@ function PixPaymentContent() {
         <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
         <h2 className="text-2xl font-bold">Pagamento Confirmado!</h2>
         <p className="text-muted-foreground">O saldo foi atualizado. Você será redirecionado em breve.</p>
+      </div>
+    )
+  }
+  
+  if (!pixDetails) {
+     return (
+      <div className="flex flex-col items-center justify-center text-center p-6">
+        <h2 className="text-xl font-bold text-destructive">Falha ao Gerar PIX</h2>
+        <p className="text-muted-foreground">Não foi possível obter os dados da cobrança.</p>
       </div>
     )
   }
@@ -75,7 +117,7 @@ function PixPaymentContent() {
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-6">
         <div className="rounded-lg border-4 border-primary p-2 bg-white">
-          <QRCode value={pixCode} />
+          <QRCode value={pixDetails.qrCode} />
         </div>
 
         <div className="w-full space-y-2">
@@ -84,10 +126,10 @@ function PixPaymentContent() {
             <input
               id="pix-code"
               readOnly
-              value={pixCode}
+              value={pixDetails.code}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 truncate"
             />
-            <CopyButton value={pixCode} />
+            <CopyButton value={pixDetails.code} />
           </div>
         </div>
 
@@ -123,7 +165,7 @@ export default function PixPaymentPage() {
     return (
         <div className="container mx-auto max-w-md space-y-8 px-4 py-12">
             <Card>
-                <Suspense fallback={<div>Carregando...</div>}>
+                <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
                     <PixPaymentContent />
                 </Suspense>
             </Card>

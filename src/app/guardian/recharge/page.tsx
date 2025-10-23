@@ -1,30 +1,21 @@
 
 'use client';
 
-import { useState } from 'react';
-import { ArrowRight, CheckCircle2, CreditCard, DollarSign, Repeat, User, Wallet } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowRight, CheckCircle2, CreditCard, DollarSign, Repeat, User, Wallet, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { guardianProfile, type Student } from '@/lib/data';
+import { type Student, type Guardian } from '@/lib/data';
+import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import Link from 'next/link';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 
 type RechargeTarget = {
@@ -40,25 +31,47 @@ export default function GuardianRechargePage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const [guardianProfile, setGuardianProfile] = useState<Guardian | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedTarget, setSelectedTarget] = useState<RechargeTarget | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const guardianAsTarget: RechargeTarget = {
+  useEffect(() => {
+    const fetchProfile = async () => {
+        try {
+            setIsLoading(true);
+            const response = await api.get('/guardian/profile');
+            setGuardianProfile(response.data);
+        } catch (error) {
+            console.error("Failed to fetch guardian profile", error);
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao carregar perfil',
+                description: 'Não foi possível buscar as informações do seu perfil.'
+            })
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    fetchProfile();
+  }, [toast]);
+
+
+  const guardianAsTarget: RechargeTarget | null = guardianProfile ? {
       id: 'guardian',
       name: guardianProfile.name,
       balance: guardianProfile.balance,
       isGuardian: true,
-  }
+  } : null;
 
-  const allTargets: RechargeTarget[] = [guardianAsTarget, ...guardianProfile.students];
-
+  const allTargets: RechargeTarget[] = guardianAsTarget && guardianProfile ? [guardianAsTarget, ...guardianProfile.students] : [];
 
   const handleAmountSelect = (amount: number) => {
     setRechargeAmount(amount.toString());
   };
   
-  const handleInternalTransfer = () => {
+  const handleInternalTransfer = async () => {
      if (!selectedTarget || selectedTarget.isGuardian || !rechargeAmount || Number(rechargeAmount) <= 0) {
       toast({
         variant: 'destructive',
@@ -68,7 +81,7 @@ export default function GuardianRechargePage() {
       return;
     }
 
-    if (Number(rechargeAmount) > guardianProfile.balance) {
+    if (!guardianProfile || Number(rechargeAmount) > guardianProfile.balance) {
       toast({
         variant: 'destructive',
         title: 'Saldo insuficiente',
@@ -78,24 +91,50 @@ export default function GuardianRechargePage() {
     }
 
     setIsProcessing(true);
-    toast({
-      title: 'Processando Transferência...',
-      description: `O valor de R$${Number(rechargeAmount).toFixed(2)} está sendo transferido para ${selectedTarget.name}.`,
-    });
+    try {
+        await api.post('/transactions/transfer', {
+            toStudentId: selectedTarget.id,
+            amount: Number(rechargeAmount),
+        });
 
-    setTimeout(() => {
-      toast({
-        title: 'Transferência Concluída!',
-        description: `O saldo de ${selectedTarget.name} foi atualizado com sucesso.`,
-      });
-      router.push('/guardian/dashboard');
-    }, 1500);
+        toast({
+          title: 'Transferência Concluída!',
+          description: `O saldo de ${selectedTarget.name} foi atualizado com sucesso.`,
+        });
+        router.push('/guardian/dashboard');
+    } catch(error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Erro na Transferência',
+            description: error.response?.data?.message || 'Não foi possível completar a transferência.'
+        });
+    } finally {
+        setIsProcessing(false);
+    }
   }
 
   const amountValue = Number(rechargeAmount);
   const isPixButtonDisabled = !selectedTarget || !amountValue || amountValue <= 0 || isProcessing;
-  const isTransferDisabled = isPixButtonDisabled || amountValue > guardianProfile.balance || selectedTarget?.isGuardian;
+  const isTransferDisabled = isPixButtonDisabled || (guardianProfile && amountValue > guardianProfile.balance) || selectedTarget?.isGuardian;
 
+  if (isLoading) {
+    return (
+        <div className="container mx-auto max-w-2xl space-y-8 px-4 py-6 animate-pulse">
+            <div className="h-10 bg-muted rounded w-1/2"></div>
+            <Card className="h-48" />
+            <Card className="h-48" />
+            <Card className="h-48" />
+        </div>
+    )
+  }
+  
+  if (!guardianProfile) {
+     return (
+        <div className="container mx-auto max-w-2xl space-y-8 px-4 py-6 text-center">
+            <p className="text-muted-foreground">Não foi possível carregar as informações.</p>
+        </div>
+     )
+  }
 
   return (
     <div className="container mx-auto max-w-2xl space-y-8 px-4 py-6">
@@ -207,7 +246,7 @@ export default function GuardianRechargePage() {
                   disabled={isTransferDisabled}
                   className="w-full"
                 >
-                  <Repeat className="mr-2 h-5 w-5" />
+                  {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin"/> : <Repeat className="mr-2 h-5 w-5" />}
                   {isProcessing ? 'Processando...' : 'Transferir do seu Saldo'}
                 </Button>
               </AlertDialogTrigger>
@@ -227,7 +266,7 @@ export default function GuardianRechargePage() {
             </AlertDialog>
 
             <Link 
-                href={`/pix-payment?amount=${amountValue}&studentId=${selectedTarget?.isGuardian ? '' : selectedTarget?.id}`}
+                href={`/pix-payment?amount=${amountValue}&targetId=${selectedTarget?.id}&targetType=${selectedTarget?.isGuardian ? 'guardian' : 'student'}`}
                 passHref
                 className={cn('w-full', isPixButtonDisabled && 'pointer-events-none opacity-50')}
             >
@@ -236,8 +275,8 @@ export default function GuardianRechargePage() {
                     disabled={isPixButtonDisabled}
                     className="w-full"
                 >
-                    {isProcessing ? 'Processando...' : 'Pagar com PIX'}
-                    {!isProcessing && <CreditCard className="ml-2 h-5 w-5" />}
+                    Pagar com PIX
+                    <CreditCard className="ml-2 h-5 w-5" />
                 </Button>
             </Link>
         </CardFooter>

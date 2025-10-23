@@ -1,14 +1,8 @@
 
 import type { ImagePlaceholder } from './placeholder-images';
-import { PlaceHolderImages } from './placeholder-images';
 
 // This file now only contains TYPE DEFINITIONS for our data models.
 // The actual data is fetched from the Laravel API.
-
-const images = PlaceHolderImages.reduce((acc, img) => {
-  acc[img.id] = img;
-  return acc;
-}, {} as Record<string, ImagePlaceholder>);
 
 export type Product = {
   id: string;

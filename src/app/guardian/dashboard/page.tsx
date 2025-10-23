@@ -5,60 +5,30 @@ import { CreditCard, User, Wallet, Search, ShoppingBasket, ArrowDown, ArrowUp, C
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { type Order, type OrderItem, type Student, type Transaction, type Guardian } from '@/lib/data';
-import api from '@/lib/api';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { StudentFilter } from '@/components/shared/student-filter';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+
+import api from '@/lib/api';
+import { type Order, type OrderItem, type Student, type Transaction, type Guardian } from '@/lib/data';
+import { StudentFilter } from '@/components/shared/student-filter';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/firebase';
+
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   const variant = {
@@ -157,6 +127,8 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
 
 export default function GuardianDashboard() {
   const { toast } = useToast();
+  const auth = useAuth();
+  const router = useRouter();
   
   const [guardianProfile, setGuardianProfile] = useState<Guardian | null>(null);
   const [orderHistory, setOrderHistory] = useState<Order[]>([]);
@@ -169,9 +141,16 @@ export default function GuardianDashboard() {
   const [date, setDate] = useState<Date>(new Date());
 
   useEffect(() => {
+    // Redirect if not logged in
+    if (!auth?.currentUser && process.env.NODE_ENV === 'production') {
+        router.replace('/auth/guardian');
+        return;
+    }
+      
     const fetchData = async () => {
       try {
         setIsLoading(true);
+        // Assuming your API returns data in { data: [...] } format
         const [profileRes, ordersRes, transactionsRes] = await Promise.all([
           api.get('/guardian/profile'),
           api.get('/orders'),
@@ -199,7 +178,7 @@ export default function GuardianDashboard() {
     };
 
     fetchData();
-  }, [toast]);
+  }, [toast, auth, router]);
 
 
   const studentsMap = useMemo(() => {
@@ -213,19 +192,16 @@ export default function GuardianDashboard() {
   const filteredOrders = useMemo(() => {
     let processedOrders = [...orderHistory];
     
-    // Filter by student
     if (selectedStudentId !== 'all') {
       processedOrders = processedOrders.filter(o => selectedStudentId === o.studentId);
     }
 
-    // Filter by search term
     if (searchTermHistory) {
       processedOrders = processedOrders.filter(order => 
         order.id.toLowerCase().includes(searchTermHistory.toLowerCase())
       );
     }
     
-    // Sort
     processedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return processedOrders;
   }, [searchTermHistory, selectedStudentId, orderHistory]);
@@ -233,15 +209,13 @@ export default function GuardianDashboard() {
    const filteredTransactions = useMemo(() => {
     let processedTransactions = [...transactionHistory];
     
-    let studentFilteredTxs = processedTransactions;
     if (selectedStudentId !== 'all') {
-      studentFilteredTxs = processedTransactions.filter(t => selectedStudentId === (t as any).studentId);
+      processedTransactions = processedTransactions.filter(t => selectedStudentId === (t as any).studentId);
     }
 
-    // Sort
-    studentFilteredTxs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    processedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    return studentFilteredTxs;
+    return processedTransactions;
   }, [selectedStudentId, transactionHistory]);
 
   const dashboardMetrics = useMemo(() => {
@@ -276,7 +250,9 @@ export default function GuardianDashboard() {
   }, [filteredOrders, filteredTransactions, selectedStudentId, studentsMap, date, guardianProfile]);
 
   const handleRepeatOrder = (items: OrderItem[]) => {
-      console.log("Adding items to cart for repeat order:", items);
+      // In a real app, this would likely update a global cart state (e.g., via Context or Zustand)
+      // and then navigate the user to the order page.
+      localStorage.setItem('cart-repeat', JSON.stringify(items));
       toast({
           title: "Itens no Carrinho!",
           description: `Itens adicionados ao seu carrinho. Vá para 'Fazer Pedido' para finalizar.`,
@@ -308,7 +284,10 @@ export default function GuardianDashboard() {
   if (!guardianProfile) {
     return (
         <div className="text-center py-10">
-            <p className="text-muted-foreground">Não foi possível carregar o perfil.</p>
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+            <p className="text-muted-foreground mt-4">Carregando perfil do responsável...</p>
+            <p className="text-sm text-muted-foreground mt-2">Se esta tela persistir, tente fazer o login novamente.</p>
+             <Button onClick={() => router.push('/auth/guardian')} variant="outline" className="mt-4">Voltar ao Login</Button>
         </div>
     );
   }
