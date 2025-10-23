@@ -43,11 +43,14 @@ export default function StudentAuthPage() {
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
       router.push('/student/dashboard');
     } catch (error: any) {
-       console.error("Login failed:", error);
+      let description = 'Ocorreu um erro inesperado. Tente novamente.';
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        description = 'E-mail ou senha inválidos. Por favor, tente novamente.';
+      }
       toast({
         variant: 'destructive',
         title: 'Falha no login',
-        description: error.message || 'Ocorreu um erro ao tentar fazer login. Verifique suas credenciais.',
+        description,
       });
     } finally {
         setIsSubmitting(false);

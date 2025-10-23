@@ -58,11 +58,14 @@ export default function GuardianAuthPage() {
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
       router.push('/guardian/dashboard');
     } catch (error: any) {
-      console.error("Login failed:", error);
+      let description = 'Ocorreu um erro inesperado. Tente novamente.';
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        description = 'E-mail ou senha inválidos. Por favor, tente novamente.';
+      }
       toast({
         variant: 'destructive',
         title: 'Falha no login',
-        description: error.message || 'Ocorreu um erro ao tentar fazer login. Verifique suas credenciais.',
+        description,
       });
     } finally {
       setIsSubmitting(false);
@@ -87,12 +90,16 @@ export default function GuardianAuthPage() {
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
       router.push('/guardian/dashboard');
     } catch (error: any) {
-      console.error("Signup failed:", error);
-      const errorMessage = error.response?.data?.message || error.message || 'Ocorreu um erro ao criar a conta.';
+      let description = 'Ocorreu um erro ao criar a conta.';
+      if (error.code === 'auth/email-already-in-use') {
+        description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
+      } else if (error.response?.data?.message) {
+        description = error.response.data.message;
+      }
       toast({
         variant: 'destructive',
         title: 'Falha no cadastro',
-        description: errorMessage,
+        description,
       });
     } finally {
       setIsSubmitting(false);
