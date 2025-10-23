@@ -42,6 +42,11 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -55,7 +60,9 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { StudentFilter } from '@/components/shared/student-filter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { format, subMonths } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
 
@@ -158,9 +165,9 @@ export default function GuardianDashboard() {
   const { toast } = useToast();
   const [activeStudentAccordion, setActiveStudentAccordion] = useState<string | undefined>(guardianProfile.students[0]?.id);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('all');
-  const [sortKey, setSortKey] = useState<SortKey>('date-desc');
   const [searchTermHistory, setSearchTermHistory] = useState('');
   const [isClient, setIsClient] = useState(false);
+  const [date, setDate] = useState<Date>(new Date());
   
   useEffect(() => {
       setIsClient(true);
@@ -220,18 +227,17 @@ export default function GuardianDashboard() {
   }, [isClient, selectedStudentId]);
 
   const dashboardMetrics = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+    const selectedMonth = date.getMonth();
+    const selectedYear = date.getFullYear();
 
     const ordersInMonth = filteredOrders.filter(order => {
         const orderDate = new Date(order.date);
-        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+        return orderDate.getMonth() === selectedMonth && orderDate.getFullYear() === selectedYear;
     });
 
     const transactionsInMonth = filteredTransactions.filter(tx => {
         const txDate = new Date(tx.date);
-        return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+        return txDate.getMonth() === selectedMonth && txDate.getFullYear() === selectedYear;
     });
     
     const totalSpent = ordersInMonth.reduce((acc, order) => acc + order.total, 0);
@@ -249,7 +255,7 @@ export default function GuardianDashboard() {
       totalDeposits,
       combinedBalance
     }
-  }, [filteredOrders, filteredTransactions, selectedStudentId, studentsMap]);
+  }, [filteredOrders, filteredTransactions, selectedStudentId, studentsMap, date]);
 
   const handleRepeatOrder = (items: OrderItem[]) => {
       console.log("Adding items to cart for repeat order:", items);
@@ -272,10 +278,48 @@ export default function GuardianDashboard() {
               selectedStudentId={selectedStudentId}
               onSelectionChange={setSelectedStudentId}
             />
-             <Button variant="outline" className="w-full sm:w-auto">
-                <Calendar className="mr-2 h-4 w-4" />
-                Este Mês
-            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full sm:w-auto justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {date ? format(date, "MMMM 'de' yyyy", { locale: ptBR }) : <span>Escolha um mês</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <CalendarComponent
+                  mode="single"
+                  selected={date}
+                  onSelect={(day) => day && setDate(day)}
+                  initialFocus
+                  captionLayout="dropdown-nav"
+                  fromYear={new Date().getFullYear() - 5}
+                  toYear={new Date().getFullYear()}
+                  classNames={{
+                    caption_label: "hidden",
+                    vhidden: "hidden",
+                    day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
+                    month: "space-y-4 p-4",
+                    months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                    nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+                    nav_button_next: "absolute right-1",
+                    nav_button_previous: "absolute left-1",
+                    head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+                    row: "flex w-full mt-2",
+                    cell: "h-9 w-9 text-center text-sm p-0 relative",
+                    day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                    day_today: "bg-accent text-accent-foreground",
+                    day_outside: "text-muted-foreground opacity-50",
+                  }}
+                  onMonthChange={setDate} // Allow month navigation to set the date
+                />
+              </PopoverContent>
+            </Popover>
         </div>
       </div>
 
@@ -347,7 +391,7 @@ export default function GuardianDashboard() {
                         </AccordionTrigger>
                         <AccordionContent>
                            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t gap-4">
-                             <div className="flex items-center justify-between w-full sm:w-auto">
+                             <div className="flex items-center justify-between w-full sm:w-auto gap-4">
                                   <span className="text-muted-foreground">Saldo Atual:</span>
                                   <span className="font-bold text-lg text-primary flex items-center gap-2">
                                     <Wallet className="h-5 w-5"/>
@@ -370,12 +414,12 @@ export default function GuardianDashboard() {
       <Tabs defaultValue="orders">
         <Card className="bg-card-foreground/5">
         <CardHeader className="p-4 border-b rounded-t-lg">
-             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <TabsList className="grid w-full grid-cols-2 md:w-auto">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <TabsList className="grid w-full grid-cols-2 md:w-auto shrink-0">
                     <TabsTrigger value="orders">Histórico de Pedidos</TabsTrigger>
                     <TabsTrigger value="transactions">Histórico de Transações</TabsTrigger>
                 </TabsList>
-                <div className="relative flex-1 md:grow-0">
+                <div className="relative w-full md:max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="Buscar por ID do pedido..."
@@ -516,3 +560,5 @@ export default function GuardianDashboard() {
     </div>
   );
 }
+
+    

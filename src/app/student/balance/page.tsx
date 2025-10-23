@@ -205,8 +205,8 @@ export default function StudentBalancePage() {
             <Card>
                 <CardHeader className="bg-card-foreground/5 border-b p-4 md:p-6 rounded-t-lg">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <h3 className="text-lg font-semibold m-0">Histórico de Transações</h3>
-                        <div className="flex flex-col sm:flex-row gap-2">
+                        <h3 className="text-lg font-semibold m-0 shrink-0">Histórico de Transações</h3>
+                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto justify-end">
                             <Select value={filterOrigin} onValueChange={(value) => setFilterOrigin(value as FilterOriginKey)}>
                                 <SelectTrigger className="w-full sm:w-auto min-w-[150px] bg-background">
                                     <SelectValue placeholder="Filtrar por origem" />
@@ -312,3 +312,5 @@ export default function StudentBalancePage() {
         </div>
     );
 }
+
+    
