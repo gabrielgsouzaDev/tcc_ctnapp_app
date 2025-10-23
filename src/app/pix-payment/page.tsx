@@ -20,7 +20,7 @@ function PixPaymentContent() {
   const { toast } = useToast();
 
   const amount = searchParams.get('amount') || '0';
-  const studentId = searchParams.get('studentId'); // Pode ser nulo se o aluno estiver pagando
+  const studentId = searchParams.get('studentId'); // Pode ser nulo/vazio se o responsável estiver recarregando para si.
 
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'confirmed'>('pending');
 
@@ -44,7 +44,10 @@ function PixPaymentContent() {
 
     // Redireciona o usuário após a confirmação
     setTimeout(() => {
-      const redirectPath = studentId ? '/guardian/dashboard' : '/student/balance';
+      // Se studentId existe e não está vazio, é um responsável recarregando para um aluno.
+      // Se está vazio, pode ser o responsável recarregando para si ou um aluno recarregando para si.
+      const isGuardianFlow = studentId !== null; // Se o param studentId existe, veio da tela do responsável.
+      const redirectPath = isGuardianFlow ? '/guardian/dashboard' : '/student/balance';
       router.push(redirectPath);
     }, 5000);
   };
@@ -67,7 +70,7 @@ function PixPaymentContent() {
           Pagar com PIX
         </CardTitle>
         <CardDescription>
-          Escaneie o QR Code abaixo com o app do seu banco ou copie o código para pagar.
+          Escaneie o QR Code abaixo com o app do seu banco ou copie o código para pagar o valor de <span className="font-bold text-primary">R$ {Number(amount).toFixed(2)}</span>.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-6">

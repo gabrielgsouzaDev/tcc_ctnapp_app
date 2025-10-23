@@ -26,23 +26,39 @@ import {
 } from '@/components/ui/alert-dialog';
 import Link from 'next/link';
 
+type RechargeTarget = {
+  id: string;
+  name: string;
+  balance: number;
+  isGuardian?: boolean;
+};
+
 const quickAmounts = [20, 50, 100];
 
 export default function GuardianRechargePage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedTarget, setSelectedTarget] = useState<RechargeTarget | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [guardianBalance] = useState(75.50); // Saldo fictício para o responsável
+
+  const guardianAsTarget: RechargeTarget = {
+      id: 'guardian',
+      name: guardianProfile.name,
+      balance: guardianProfile.balance,
+      isGuardian: true,
+  }
+
+  const allTargets: RechargeTarget[] = [guardianAsTarget, ...guardianProfile.students];
+
 
   const handleAmountSelect = (amount: number) => {
     setRechargeAmount(amount.toString());
   };
   
   const handleInternalTransfer = () => {
-     if (!selectedStudent || !rechargeAmount || Number(rechargeAmount) <= 0) {
+     if (!selectedTarget || selectedTarget.isGuardian || !rechargeAmount || Number(rechargeAmount) <= 0) {
       toast({
         variant: 'destructive',
         title: 'Dados inválidos',
@@ -51,7 +67,7 @@ export default function GuardianRechargePage() {
       return;
     }
 
-    if (Number(rechargeAmount) > guardianBalance) {
+    if (Number(rechargeAmount) > guardianProfile.balance) {
       toast({
         variant: 'destructive',
         title: 'Saldo insuficiente',
@@ -63,21 +79,21 @@ export default function GuardianRechargePage() {
     setIsProcessing(true);
     toast({
       title: 'Processando Transferência...',
-      description: `O valor de R$${Number(rechargeAmount).toFixed(2)} está sendo transferido para ${selectedStudent.name}.`,
+      description: `O valor de R$${Number(rechargeAmount).toFixed(2)} está sendo transferido para ${selectedTarget.name}.`,
     });
 
     setTimeout(() => {
       toast({
         title: 'Transferência Concluída!',
-        description: `O saldo de ${selectedStudent.name} foi atualizado com sucesso.`,
+        description: `O saldo de ${selectedTarget.name} foi atualizado com sucesso.`,
       });
       router.push('/guardian/dashboard');
     }, 1500);
   }
 
   const amountValue = Number(rechargeAmount);
-  const isButtonDisabled = !selectedStudent || !amountValue || amountValue <= 0 || isProcessing;
-  const isTransferDisabled = isButtonDisabled || amountValue > guardianBalance;
+  const isPixButtonDisabled = !selectedTarget || !amountValue || amountValue <= 0 || isProcessing;
+  const isTransferDisabled = isPixButtonDisabled || amountValue > guardianProfile.balance || selectedTarget?.isGuardian;
 
 
   return (
@@ -85,7 +101,7 @@ export default function GuardianRechargePage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight font-headline">Recarregar Saldo</h1>
         <p className="text-muted-foreground">
-          Adicione créditos para os alunos de forma rápida e segura.
+          Adicione créditos para os alunos ou para sua própria conta.
         </p>
       </div>
 
@@ -93,31 +109,31 @@ export default function GuardianRechargePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5 text-primary" />
-            Passo 1: Selecione o Aluno
+            Passo 1: Selecione o Destinatário
           </CardTitle>
           <CardDescription>
-            Escolha para qual aluno a recarga será destinada.
+            Escolha para quem a recarga será destinada.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {guardianProfile.students.map((student) => (
+          {allTargets.map((target) => (
             <button
-              key={student.id}
-              onClick={() => setSelectedStudent(student)}
+              key={target.id}
+              onClick={() => setSelectedTarget(target)}
               className={cn(
                 'relative flex flex-col items-center justify-center rounded-lg border-2 p-4 text-center transition-all duration-200',
-                selectedStudent?.id === student.id
+                selectedTarget?.id === target.id
                   ? 'border-primary bg-primary/5 shadow-lg'
                   : 'border-border bg-card hover:border-primary/50'
               )}
             >
-              {selectedStudent?.id === student.id && (
+              {selectedTarget?.id === target.id && (
                 <CheckCircle2 className="absolute right-2 top-2 h-5 w-5 text-primary" />
               )}
               <User className="mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="font-semibold">{student.name}</p>
+              <p className="font-semibold">{target.name}</p>
               <p className="text-sm text-muted-foreground">
-                Saldo: R$ {student.balance.toFixed(2)}
+                Saldo: R$ {target.balance.toFixed(2)}
               </p>
             </button>
           ))}
@@ -131,7 +147,7 @@ export default function GuardianRechargePage() {
             Passo 2: Escolha o Valor
           </CardTitle>
           <CardDescription>
-            Defina o valor a ser adicionado ao saldo do aluno.
+            Defina o valor a ser adicionado ao saldo.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -169,8 +185,8 @@ export default function GuardianRechargePage() {
         </CardHeader>
         <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Aluno:</span>
-                <span className="font-medium">{selectedStudent?.name || 'N/A'}</span>
+                <span className="text-muted-foreground">Destinatário:</span>
+                <span className="font-medium">{selectedTarget?.name || 'N/A'}</span>
             </div>
             <Separator />
             <div className="flex items-center justify-between text-xl">
@@ -195,8 +211,8 @@ export default function GuardianRechargePage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Confirmar Transferência Interna</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Você está prestes a transferir <span className="font-bold">R$ {amountValue.toFixed(2)}</span> do seu saldo para <span className="font-bold">{selectedStudent?.name}</span>.
-                        Seu saldo restante será <span className="font-bold">R$ {(guardianBalance - amountValue).toFixed(2)}</span>.
+                        Você está prestes a transferir <span className="font-bold">R$ {amountValue > 0 ? amountValue.toFixed(2) : '0.00'}</span> do seu saldo para <span className="font-bold">{selectedTarget?.name}</span>.
+                        Seu saldo restante será <span className="font-bold">R$ {(guardianProfile.balance - amountValue).toFixed(2)}</span>.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -207,13 +223,13 @@ export default function GuardianRechargePage() {
             </AlertDialog>
 
             <Link 
-                href={`/pix-payment?amount=${amountValue}&studentId=${selectedStudent?.id}`}
+                href={`/pix-payment?amount=${amountValue}&studentId=${selectedTarget?.isGuardian ? '' : selectedTarget?.id}`}
                 passHref
-                className={cn('w-full', isButtonDisabled && 'pointer-events-none opacity-50')}
+                className={cn('w-full', isPixButtonDisabled && 'pointer-events-none opacity-50')}
             >
                 <Button
                     size="lg"
-                    disabled={isButtonDisabled}
+                    disabled={isPixButtonDisabled}
                     className="w-full"
                 >
                     {isProcessing ? 'Processando...' : 'Pagar com PIX'}
@@ -224,7 +240,7 @@ export default function GuardianRechargePage() {
       </Card>
       
        <p className="text-xs text-center text-muted-foreground">
-          Seu saldo como responsável é de R$ {guardianBalance.toFixed(2)}.
+          Seu saldo como responsável é de R$ {guardianProfile.balance.toFixed(2)}. Use-o para transferir para os alunos.
        </p>
     </div>
   );
