@@ -1,3 +1,4 @@
+
 import { User, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +13,7 @@ export default function ProfileSelectionPage() {
         </div>
         <h2 className="mb-6 text-2xl font-semibold">Quem está usando?</h2>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <Link href="/aluno">
+          <Link href="/student/dashboard">
             <Card className="flex h-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
                 <CardTitle className="flex flex-col items-center gap-2">
@@ -27,7 +28,7 @@ export default function ProfileSelectionPage() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/responsavel">
+          <Link href="/guardian/dashboard">
             <Card className="flex h-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
                 <CardTitle className="flex flex-col items-center gap-2">
