@@ -203,9 +203,9 @@ export default function StudentBalancePage() {
 
 
             <Card>
-                <CardHeader className="flex-col items-stretch space-y-2 border-b p-4 md:flex-row md:items-center md:space-y-0 md:p-6">
-                    <CardTitle className="flex-1">Histórico de Transações</CardTitle>
-                    <div className="flex flex-col gap-2 md:flex-row">
+                <CardHeader className="border-b p-4 md:p-6">
+                    <CardTitle>Histórico de Transações</CardTitle>
+                    <div className="mt-4 flex flex-col gap-2 md:flex-row">
                         <Select value={filterOrigin} onValueChange={(value) => setFilterOrigin(value as FilterOriginKey)}>
                             <SelectTrigger className="w-full md:w-[150px]">
                                 <SelectValue placeholder="Filtrar por origem" />
@@ -241,58 +241,65 @@ export default function StudentBalancePage() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[120px] p-4">Data</TableHead>
-                                <TableHead className="p-4">Descrição</TableHead>
-                                <TableHead className="p-4">Origem</TableHead>
-                                <TableHead className="w-[100px] text-center p-4">Tipo</TableHead>
-                                <TableHead className="text-right w-[120px] p-4">Valor</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isClient && filteredHistory.map((transaction) => (
-                                <Dialog key={transaction.id}>
-                                    <DialogTrigger asChild>
-                                        <TableRow className="cursor-pointer">
-                                            <TableCell className="text-muted-foreground">
-                                                {new Date(transaction.date).toLocaleDateString('pt-BR')}
-                                            </TableCell>
-                                            <TableCell className="font-medium">{transaction.description}</TableCell>
-                                            <TableCell>{transaction.origin}</TableCell>
-                                            <TableCell className="text-center">
-                                            <Badge variant={transaction.type === 'credit' ? 'default' : 'destructive'} className={cn(
-                                                'capitalize',
-                                                transaction.type === 'credit' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[120px] p-4 hidden sm:table-cell">Data</TableHead>
+                                    <TableHead className="p-4">Descrição</TableHead>
+                                    <TableHead className="text-right w-[120px] p-4">Valor</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {isClient && filteredHistory.map((transaction) => (
+                                    <Dialog key={transaction.id}>
+                                        <DialogTrigger asChild>
+                                            <TableRow className="cursor-pointer">
+                                                <TableCell className="text-muted-foreground hidden sm:table-cell">
+                                                    {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                                                </TableCell>
+                                                <TableCell className="font-medium">
+                                                    <div className="flex flex-col">
+                                                        <span>{transaction.description}</span>
+                                                        <span className="text-xs text-muted-foreground sm:hidden">
+                                                            {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                                                        </span>
+                                                        <Badge variant={transaction.type === 'credit' ? 'default' : 'destructive'} className={cn(
+                                                            'capitalize w-fit mt-1 sm:hidden',
+                                                            transaction.type === 'credit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                                            )}>
+                                                            {transaction.type === 'credit' ? 'Crédito' : 'Débito'}
+                                                        </Badge>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className={cn(
+                                                    "text-right font-semibold",
+                                                    transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
                                                 )}>
-                                                {transaction.type === 'credit' ? 'Crédito' : 'Débito'}
-                                            </Badge>
+                                                    {transaction.type === 'credit' ? '+' : '-'} R$ {transaction.amount.toFixed(2)}
+                                                </TableCell>
+                                            </TableRow>
+                                        </DialogTrigger>
+                                        <TransactionDetailsDialog transaction={transaction} />
+                                    </Dialog>
+                                ))}
+                                {!isClient && (
+                                    [...Array(4)].map((_, i) => (
+                                        <TableRow key={`skeleton-${i}`}>
+                                            <TableCell className="hidden sm:table-cell"><div className="h-4 bg-muted rounded w-3/4"></div></TableCell>
+                                            <TableCell>
+                                                <div className="space-y-1">
+                                                    <div className="h-4 bg-muted rounded w-1/2"></div>
+                                                    <div className="h-3 bg-muted rounded w-1/4 sm:hidden"></div>
+                                                </div>
                                             </TableCell>
-                                            <TableCell className={cn(
-                                                "text-right font-semibold",
-                                                transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
-                                            )}>
-                                                {transaction.type === 'credit' ? '+' : '-'} R$ {transaction.amount.toFixed(2)}
-                                            </TableCell>
+                                            <TableCell><div className="h-4 bg-muted rounded w-1/4 ml-auto"></div></TableCell>
                                         </TableRow>
-                                    </DialogTrigger>
-                                    <TransactionDetailsDialog transaction={transaction} />
-                                </Dialog>
-                            ))}
-                            {!isClient && (
-                                [...Array(4)].map((_, i) => (
-                                    <TableRow key={`skeleton-${i}`}>
-                                        <TableCell><div className="h-4 bg-muted rounded w-3/4"></div></TableCell>
-                                        <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
-                                        <TableCell><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
-                                        <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
-                                        <TableCell><div className="h-4 bg-muted rounded w-1/4 ml-auto"></div></TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                     {isClient && filteredHistory.length === 0 && (
                         <div className="text-center text-muted-foreground py-10">
                             <p>Nenhuma transação encontrada para os filtros selecionados.</p>

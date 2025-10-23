@@ -88,7 +88,7 @@ export function AppLayout({
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   const handleLogout = () => {
-    // Aqui você pode adicionar a lógica de logout do Firebase se necessário
+    // Here you can add the Firebase logout logic if necessary
     // Ex: await signOut(auth);
     router.push("/");
   };
@@ -126,13 +126,7 @@ export function AppLayout({
       label: "Fazer Pedido",
       icon: <ShoppingCart />,
       active: pathname === "/guardian/order",
-    },
-     {
-      href: "/guardian/profile",
-      label: "Perfil",
-      icon: <User />,
-      active: pathname === "/guardian/profile",
-    },
+    }
   ];
   
   const settingsNavItem = {

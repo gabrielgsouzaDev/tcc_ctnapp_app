@@ -203,12 +203,12 @@ export default function StudentOrdersPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex-col items-stretch space-y-2 border-b p-4 md:flex-row md:items-center md:space-y-0 md:p-6">
+        <CardHeader className="flex-col items-stretch gap-2 border-b p-4 md:flex-row md:items-center md:gap-4 md:p-6">
             <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                     placeholder="Buscar por ID do pedido..."
-                    className="pl-10 w-full md:w-auto"
+                    className="pl-10 w-full"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -232,7 +232,7 @@ export default function StudentOrdersPage() {
                 <TableRow>
                   <TableHead className="w-[100px] p-4">Pedido</TableHead>
                   <TableHead className="p-4">Data</TableHead>
-                  <TableHead className="p-4">Itens</TableHead>
+                  <TableHead className="p-4 hidden sm:table-cell">Itens</TableHead>
                   <TableHead className="p-4">Status</TableHead>
                   <TableHead className="text-right p-4">Total</TableHead>
                 </TableRow>
@@ -247,7 +247,7 @@ export default function StudentOrdersPage() {
                         )}>
                         <TableCell className="font-medium">{order.id}</TableCell>
                         <TableCell>{new Date(order.date).toLocaleDateString('pt-BR')}</TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <div className="flex -space-x-4">
                             {order.items.slice(0, 3).map((item, index) => (
                                 <Image 
@@ -282,7 +282,7 @@ export default function StudentOrdersPage() {
                         <TableRow key={`skeleton-${i}`}>
                             <TableCell><div className="h-4 bg-muted rounded w-3/4"></div></TableCell>
                             <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
-                            <TableCell><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
+                            <TableCell className="hidden sm:table-cell"><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
                             <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
                             <TableCell><div className="h-4 bg-muted rounded w-1/4 ml-auto"></div></TableCell>
                         </TableRow>
