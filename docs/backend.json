@@ -1,0 +1,177 @@
+{
+  "entities": {
+    "StudentProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "StudentProfile",
+      "type": "object",
+      "description": "Represents the profile of a student.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the StudentProfile entity."
+        },
+        "firebaseUid": {
+          "type": "string",
+          "description": "The Firebase UID associated with the student's authentication."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the student."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the student.",
+          "format": "email"
+        },
+        "schoolId": {
+          "type": "string",
+          "description": "Reference to School. (Relationship: School 1:N StudentProfile). Represents the school the student belongs to."
+        },
+        "ra": {
+          "type": "string",
+          "description": "The student's registration number (RA)."
+        }
+      },
+      "required": [
+        "id",
+        "firebaseUid",
+        "name",
+        "email",
+        "schoolId",
+        "ra"
+      ]
+    },
+    "GuardianProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GuardianProfile",
+      "type": "object",
+      "description": "Represents the profile of a guardian.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the GuardianProfile entity."
+        },
+        "firebaseUid": {
+          "type": "string",
+          "description": "The Firebase UID associated with the guardian's authentication."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the guardian."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the guardian.",
+          "format": "email"
+        },
+        "studentRa": {
+          "type": "string",
+          "description": "The RA of the student this guardian is responsible for."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "The ID of the student this guardian is responsible for."
+        }
+      },
+      "required": [
+        "id",
+        "firebaseUid",
+        "name",
+        "email",
+        "studentRa"
+      ]
+    },
+    "School": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "School",
+      "type": "object",
+      "description": "Represents a school entity where canteens and students belong.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the School entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the school."
+        },
+        "address": {
+          "type": "string",
+          "description": "The address of the school."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "address"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}/studentProfiles/{studentProfileId}",
+        "definition": {
+          "entityName": "StudentProfile",
+          "schema": {
+            "$ref": "#/backend/entities/StudentProfile"
+          },
+          "description": "Stores student profile information, accessible only to the student and authorized school personnel (future enhancement). Includes denormalized data such as schoolId for efficient querying and authorization.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase UID of the user (student)."
+            },
+            {
+              "name": "studentProfileId",
+              "description": "The unique identifier of the student profile."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/guardianProfiles/{guardianProfileId}",
+        "definition": {
+          "entityName": "GuardianProfile",
+          "schema": {
+            "$ref": "#/backend/entities/GuardianProfile"
+          },
+          "description": "Stores guardian profile information, accessible only to the guardian. Includes denormalized data for efficient querying. Includes `studentRa` for linking to a student.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase UID of the user (guardian)."
+            },
+            {
+              "name": "guardianProfileId",
+              "description": "The unique identifier of the guardian profile."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/schools/{schoolId}",
+        "definition": {
+          "entityName": "School",
+          "schema": {
+            "$ref": "#/backend/entities/School"
+          },
+          "description": "Stores school information, accessible to all users (read-only) and authorized personnel (read-write).",
+          "params": [
+            {
+              "name": "schoolId",
+              "description": "The unique identifier of the school."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure prioritizes authorization independence and simplifies security rules by denormalizing authorization data. It caters to the application's core features like student and guardian authentication and real-time synchronization of orders. The structure is designed to ensure that guardians only have access to student data they are linked to.\n\nThe key design choices are:\n\n1.  **User Profiles:**  Student and Guardian profiles are stored under `/users/{uid}`, ensuring that only the authenticated user can access their profile data.  This directly supports authentication of both students and guardians.\n2.  **Schools:** Schools are stored in a top-level `/schools` collection.  This is a common pattern for global data. The Student profile includes the `schoolId` to connect them.\n\nThis structure facilitates QAPs by:\n\n*   **Segregation:** User data is segregated by `userId`, enabling simple path-based rules for access control.\n*   **Authorization Independence:**  The structure inherently achieves authorization independence as all profile data resides directly under the user's `uid`.  No `get()` calls are required to validate ownership."
+  }
+}

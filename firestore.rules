@@ -1,0 +1,98 @@
+/**
+ * @fileoverview Firestore Security Rules for the application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for student and guardian profiles,
+ * ensuring that only authenticated users can access their own profile data. Schools
+ * are publicly readable but require authorization for write access (not yet defined).
+ *
+ * Data Structure:
+ * - /users/{userId}/studentProfiles/{studentProfileId}: Student profiles owned by a specific user.
+ * - /users/{userId}/guardianProfiles/{guardianProfileId}: Guardian profiles owned by a specific user.
+ * - /schools/{schoolId}: School data, publicly readable.
+ *
+ * Key Security Decisions:
+ * - User listing is disallowed.
+ * - School data is publicly readable.
+ * - The default security posture for ambiguous relationships is strict owner-only access.
+ *
+ * Denormalization for Authorization:
+ * - StudentProfile and GuardianProfile documents include the firebaseUid to simplify ownership checks.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Controls access to student profiles. Only the owner can read, create, update, or delete.
+     * @path /users/{userId}/studentProfiles/{studentProfileId}
+     * @allow (create) - User A can create a student profile under /users/A/studentProfiles/studentProfile1 if authenticated as user A and request.resource.data.id == "studentProfile1".
+     * @allow (get) - User A can get a student profile under /users/A/studentProfiles/studentProfile1 if authenticated as user A.
+     * @deny (create) - User B cannot create a student profile under /users/A/studentProfiles/studentProfile1.
+     * @deny (get) - User B cannot get a student profile under /users/A/studentProfiles/studentProfile1.
+     * @principle Enforces document ownership for all operations, ensuring only the owner has full access. Validates relational integrity on create and update.
+     */
+    match /users/{userId}/studentProfiles/{studentProfileId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isSignedIn() && isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == studentProfileId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to guardian profiles. Only the owner can read, create, update, or delete.
+     * @path /users/{userId}/guardianProfiles/{guardianProfileId}
+     * @allow (create) - User A can create a guardian profile under /users/A/guardianProfiles/guardianProfile1 if authenticated as user A and request.resource.data.id == "guardianProfile1".
+     * @allow (get) - User A can get a guardian profile under /users/A/guardianProfiles/guardianProfile1 if authenticated as user A.
+     * @deny (create) - User B cannot create a guardian profile under /users/A/guardianProfiles/guardianProfile1.
+     * @deny (get) - User B cannot get a guardian profile under /users/A/guardianProfiles/guardianProfile1.
+     * @principle Enforces document ownership for all operations, ensuring only the owner has full access. Validates relational integrity on create and update.
+     */
+    match /users/{userId}/guardianProfiles/{guardianProfileId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isSignedIn() && isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == guardianProfileId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to school data.  Anyone can read school data, but write access is denied.
+     * @path /schools/{schoolId}
+     * @allow (get) - Any user can read school data.
+     * @deny (create) - No user can create school data without authorization.
+     * @deny (update) - No user can update school data without authorization.
+     * @deny (delete) - No user can delete school data without authorization.
+     * @principle Public read access with restricted write access.
+     */
+    match /schools/{schoolId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+  }
+}

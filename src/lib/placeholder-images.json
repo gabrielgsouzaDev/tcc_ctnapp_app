@@ -1,0 +1,58 @@
+{
+  "placeholderImages": [
+    {
+      "id": "prod_burger",
+      "description": "A juicy hamburger.",
+      "imageUrl": "https://images.unsplash.com/photo-1530554764233-e79e16c91d08?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxidXJnZXJ8ZW58MHx8fHwxNzYxMDA4NDk0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "burger"
+    },
+    {
+      "id": "prod_pizza",
+      "description": "A slice of pepperoni pizza.",
+      "imageUrl": "https://images.unsplash.com/photo-1611915365928-565c527a0590?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxwaXp6YSUyMHNsaWNlfGVufDB8fHx8MTc2MTA1NDg4Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pizza slice"
+    },
+    {
+      "id": "prod_soda",
+      "description": "A can of soda.",
+      "imageUrl": "https://images.unsplash.com/photo-1598038990523-32bcaa29f679?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxzb2RhJTIwY2FufGVufDB8fHx8MTc2MTA1NjEwMHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "soda can"
+    },
+    {
+      "id": "prod_juice",
+      "description": "A box of apple juice.",
+      "imageUrl": "https://images.unsplash.com/photo-1590012040529-c5e12f37b5d8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxqdWljZSUyMGJveHxlbnwwfHx8fDE3NjEwNTYxMDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "juice box"
+    },
+    {
+      "id": "prod_salad",
+      "description": "A fresh garden salad.",
+      "imageUrl": "https://images.unsplash.com/photo-1662714208483-3480ccd2de39?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8c2FsYWQlMjBib3dsfGVufDB8fHx8MTc2MTA1NDY4MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "salad bowl"
+    },
+    {
+      "id": "prod_sandwich",
+      "description": "A ham and cheese sandwich.",
+      "imageUrl": "https://images.unsplash.com/photo-1539252554453-80ab65ce3586?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxzYW5kd2ljaHxlbnwwfHx8fDE3NjA5NDUyMDd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sandwich"
+    },
+    {
+      "id": "prod_lunch",
+      "description": "prato de almoço",
+      "imageUrl": "https://images.unsplash.com/photo-1629536183146-2b23fd062163?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxsdW5jaCUyMHBsYXRlfGVufDB8fHx8MTc2MTIzNDg0Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "lunch plate"
+    },
+    {
+      "id": "prod_brigadeiro",
+      "description": "chocolate brigadeiro",
+      "imageUrl": "https://images.unsplash.com/photo-1549007994-cb92caebd54b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxjaG9jb2xhdGUlMjBjYW5keXxlbnwwfHx8fDE3NjExNjc4MDh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "chocolate candy"
+    },
+    {
+      "id": "prod_pudding",
+      "description": "pedaço de pudim",
+      "imageUrl": "https://images.unsplash.com/photo-1621164078472-1d59a47f63dd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwdWRkaW5nJTIwc2xpY2V8ZW58MHx8fHwxNzYxMjM0ODQyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pudding slice"
+    }
+  ]
+}
