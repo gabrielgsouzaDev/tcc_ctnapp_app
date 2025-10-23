@@ -414,12 +414,12 @@ export default function GuardianDashboard() {
       <Tabs defaultValue="orders">
         <Card className="bg-card-foreground/5">
         <CardHeader className="p-4 border-b rounded-t-lg">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
                 <TabsList className="grid w-full grid-cols-2 md:w-auto shrink-0">
                     <TabsTrigger value="orders">Histórico de Pedidos</TabsTrigger>
                     <TabsTrigger value="transactions">Histórico de Transações</TabsTrigger>
                 </TabsList>
-                <div className="relative w-full md:max-w-sm">
+                <div className="relative w-full sm:w-auto sm:flex-1 md:max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="Buscar por ID do pedido..."
@@ -612,6 +612,8 @@ export default function GuardianDashboard() {
     </div>
   );
 }
+
+    
 
     
 
