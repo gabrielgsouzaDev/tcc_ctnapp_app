@@ -1,9 +1,9 @@
 
 'use client';
 
-import { Wallet, TrendingUp, TrendingDown, CreditCard } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { studentProfile, transactionHistory, Transaction } from '@/lib/data';
+import { Wallet, CreditCard } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { studentProfile, transactionHistory, type Transaction } from '@/lib/data';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -95,7 +95,6 @@ export default function StudentBalancePage() {
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [filterType, setFilterType] = useState<FilterTypeKey>('all');
     const [filterOrigin, setFilterOrigin] = useState<FilterOriginKey>('all');
-    const [filteredHistory, setFilteredHistory] = useState<Transaction[]>([]);
     const [isClient, setIsClient] = useState(false);
     
     // For prototype purposes, we assume the student has permission to recharge.
@@ -106,39 +105,35 @@ export default function StudentBalancePage() {
         setIsClient(true);
     }, []);
     
-    useEffect(() => {
-        if (isClient) {
-            let processedTransactions = [...transactionHistory];
+    const filteredHistory = useMemo(() => {
+        if (!isClient) return [];
+        let processedTransactions = [...transactionHistory];
 
-            // 1. Filter by type
-            if (filterType !== 'all') {
-                processedTransactions = processedTransactions.filter(t => t.type === filterType);
-            }
-            
-            // 2. Filter by origin
-            if (filterOrigin !== 'all') {
-                processedTransactions = processedTransactions.filter(t => t.origin === filterOrigin);
-            }
-
-            // 3. Sort
-            switch (sortKey) {
-                case 'date-asc':
-                    processedTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                    break;
-                case 'amount-desc':
-                    processedTransactions.sort((a, b) => b.amount - a.amount);
-                    break;
-                case 'amount-asc':
-                    processedTransactions.sort((a, b) => a.amount - b.amount);
-                    break;
-                case 'date-desc':
-                default:
-                    processedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                    break;
-            }
-
-            setFilteredHistory(processedTransactions);
+        if (filterType !== 'all') {
+            processedTransactions = processedTransactions.filter(t => t.type === filterType);
         }
+        
+        if (filterOrigin !== 'all') {
+            processedTransactions = processedTransactions.filter(t => t.origin === filterOrigin);
+        }
+
+        switch (sortKey) {
+            case 'date-asc':
+                processedTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                break;
+            case 'amount-desc':
+                processedTransactions.sort((a, b) => b.amount - a.amount);
+                break;
+            case 'amount-asc':
+                processedTransactions.sort((a, b) => a.amount - b.amount);
+                break;
+            case 'date-desc':
+            default:
+                processedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                break;
+        }
+
+        return processedTransactions;
     }, [sortKey, filterType, filterOrigin, isClient]);
 
     const handleRecharge = (e: React.FormEvent) => {
@@ -317,4 +312,3 @@ export default function StudentBalancePage() {
     );
 }
 
-    
