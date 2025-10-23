@@ -198,7 +198,7 @@ export default function StudentBalancePage() {
                         <form className="space-y-4" onSubmit={handleRecharge}>
                         <div className="space-y-2">
                             <Label htmlFor="amount">Valor da Recarga (R$)</Label>
-                            <Input id="amount" name="amount" type="number" placeholder="ex: 50.00" step="0.01" min="1" className="bg-white dark:bg-muted" />
+                            <Input id="amount" name="amount" type="number" placeholder="ex: 50.00" step="0.01" min="1" className="bg-background" />
                         </div>
                         <Button type="submit" className="w-full">Recarregar</Button>
                         </form>
@@ -209,7 +209,7 @@ export default function StudentBalancePage() {
 
 
             <Card>
-                <CardHeader className="flex flex-col gap-4 border-b bg-card-foreground/5 p-4 md:flex-row md:items-center md:justify-between md:p-6">
+                <CardHeader className="flex flex-col gap-4 border-b p-4 md:flex-row md:items-center md:justify-between md:p-6">
                     <h3 className="text-lg font-semibold shrink-0">Histórico de Transações</h3>
                     <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto md:justify-end">
                         <Select value={filterOrigin} onValueChange={(value) => setFilterOrigin(value as FilterOriginKey)}>
