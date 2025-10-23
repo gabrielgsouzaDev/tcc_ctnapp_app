@@ -178,7 +178,7 @@ export default function StudentBalancePage() {
                         </p>
                     </CardContent>
                 </Card>
-                {canRecharge && (
+                {canRecharge ? (
                  <Card className="bg-card">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -197,6 +197,20 @@ export default function StudentBalancePage() {
                         </div>
                         <Button type="submit" className="w-full">Recarregar</Button>
                         </form>
+                    </CardContent>
+                </Card>
+                ) : (
+                <Card className="flex flex-col items-center justify-center text-center p-6 bg-muted/50">
+                    <CardHeader className="p-0">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                            <CreditCard />
+                            Recarregar Saldo
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0 mt-4">
+                        <p className="text-sm text-muted-foreground">
+                            As recargas do seu saldo são gerenciadas pelo seu responsável.
+                        </p>
                     </CardContent>
                 </Card>
                 )}
@@ -312,3 +326,4 @@ export default function StudentBalancePage() {
     );
 }
 
+    
