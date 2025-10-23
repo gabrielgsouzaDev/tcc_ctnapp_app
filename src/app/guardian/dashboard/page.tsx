@@ -432,16 +432,58 @@ export default function GuardianDashboard() {
         </CardHeader>
         <CardContent className="p-0">
             <TabsContent value="orders" className="m-0">
-                <div className="overflow-x-auto">
+                <div className="md:hidden space-y-4 p-4">
+                    {isClient && filteredOrders.map((order) => (
+                         <Dialog key={`mobile-order-${order.id}`}>
+                            <DialogTrigger asChild>
+                                <Card className={cn("p-4", order.status === 'Pendente' && 'bg-yellow-50/50 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-600')}>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-bold">{order.id}</p>
+                                            <p className="text-sm text-muted-foreground">{studentsMap.get(order.studentId)?.name || 'N/A'}</p>
+                                            <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleDateString('pt-BR')}</p>
+                                        </div>
+                                        <OrderStatusBadge status={order.status} />
+                                    </div>
+                                    <Separator className="my-2"/>
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex -space-x-4">
+                                            {order.items.slice(0, 3).map((item, index) => (
+                                                <Image 
+                                                    key={index}
+                                                    src={item.product.image.imageUrl} 
+                                                    alt={item.product.name} 
+                                                    width={24} 
+                                                    height={24} 
+                                                    className="rounded-full object-cover border-2 border-background h-6 w-6" 
+                                                    data-ai-hint={item.product.image.imageHint}
+                                                    title={item.product.name}
+                                                />
+                                            ))}
+                                            {order.items.length > 3 && (
+                                                <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-xs font-medium border-2 border-background">
+                                                    +{order.items.length - 3}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="font-bold text-lg">R$ {order.total.toFixed(2)}</p>
+                                    </div>
+                                </Card>
+                            </DialogTrigger>
+                            <OrderDetailsDialog order={order} onRepeatOrder={handleRepeatOrder} />
+                        </Dialog>
+                    ))}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
                     <Table>
                     <TableHeader>
                         <TableRow>
-                        <TableHead className="p-4">Pedido</TableHead>
-                        <TableHead className="p-4">Aluno</TableHead>
-                        <TableHead className="p-4">Data</TableHead>
-                        <TableHead className="p-4 hidden sm:table-cell">Itens</TableHead>
-                        <TableHead className="p-4">Status</TableHead>
-                        <TableHead className="text-right p-4">Total</TableHead>
+                        <TableHead>Pedido</TableHead>
+                        <TableHead>Aluno</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Itens</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -455,7 +497,7 @@ export default function GuardianDashboard() {
                                 <TableCell className="font-medium">{order.id}</TableCell>
                                 <TableCell>{studentsMap.get(order.studentId)?.name || 'N/A'}</TableCell>
                                 <TableCell>{new Date(order.date).toLocaleDateString('pt-BR')}</TableCell>
-                                <TableCell className="hidden sm:table-cell">
+                                <TableCell>
                                 <div className="flex -space-x-4">
                                     {order.items.slice(0, 3).map((item, index) => (
                                         <Image 
@@ -485,51 +527,60 @@ export default function GuardianDashboard() {
                             <OrderDetailsDialog order={order} onRepeatOrder={handleRepeatOrder} />
                         </Dialog>
                         ))}
-                        {!isClient && (
+                    </TableBody>
+                    </Table>
+                    {!isClient && (
                             [...Array(3)].map((_, i) => (
-                                <TableRow key={`skeleton-order-${i}`}>
+                                <TableRow key={`skeleton-order-${i}`} className="hidden md:table-row">
                                     {[...Array(6)].map((_, j) => <TableCell key={j}><div className="h-4 bg-muted rounded w-full"></div></TableCell>)}
                                 </TableRow>
                             ))
                         )}
-                    </TableBody>
-                    </Table>
-                    {isClient && filteredOrders.length === 0 && (
-                        <div className="text-center text-muted-foreground py-10">
-                            {searchTermHistory ? 
-                            <p>Nenhum pedido encontrado para a busca "{searchTermHistory}".</p> :
-                            <p>Nenhum pedido encontrado para o(s) aluno(s) selecionado(s).</p>
-                            }
-                        </div>
-                    )}
                 </div>
+                 {isClient && filteredOrders.length === 0 && (
+                    <div className="text-center text-muted-foreground py-10">
+                        {searchTermHistory ? 
+                        <p>Nenhum pedido encontrado para a busca "{searchTermHistory}".</p> :
+                        <p>Nenhum pedido encontrado para o(s) aluno(s) selecionado(s).</p>
+                        }
+                    </div>
+                )}
             </TabsContent>
             <TabsContent value="transactions" className="m-0">
-                    <div className="overflow-x-auto">
+                    <div className="md:hidden space-y-4 p-4">
+                        {isClient && filteredTransactions.map((transaction) => (
+                            <Card key={`mobile-tx-${transaction.id}`} className="p-4">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <p className="font-semibold">{transaction.description}</p>
+                                        <p className="text-sm text-muted-foreground">{studentsMap.get((transaction as any).studentId)?.name || 'N/A'}</p>
+                                    </div>
+                                    <p className={cn("font-bold text-lg", transaction.type === 'credit' ? 'text-green-600' : 'text-red-600')}>
+                                        {transaction.type === 'credit' ? '+' : '-'} R$ {transaction.amount.toFixed(2)}
+                                    </p>
+                                </div>
+                                 <p className="text-sm text-muted-foreground mt-1">{new Date(transaction.date).toLocaleDateString('pt-BR')}</p>
+                            </Card>
+                        ))}
+                    </div>
+                    <div className="hidden md:block overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="p-4">Aluno</TableHead>
-                                    <TableHead className="w-[120px] p-4 hidden sm:table-cell">Data</TableHead>
-                                    <TableHead className="p-4">Descrição</TableHead>
-                                    <TableHead className="text-right w-[120px] p-4">Valor</TableHead>
+                                    <TableHead>Aluno</TableHead>
+                                    <TableHead>Data</TableHead>
+                                    <TableHead>Descrição</TableHead>
+                                    <TableHead className="text-right">Valor</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isClient && filteredTransactions.map((transaction) => (
                                     <TableRow key={transaction.id}>
                                         <TableCell>{studentsMap.get((transaction as any).studentId)?.name || 'N/A'}</TableCell>
-                                        <TableCell className="text-muted-foreground hidden sm:table-cell">
+                                        <TableCell className="text-muted-foreground">
                                             {new Date(transaction.date).toLocaleDateString('pt-BR')}
                                         </TableCell>
-                                        <TableCell className="font-medium">
-                                            <div className="flex flex-col">
-                                                <span>{transaction.description}</span>
-                                                <span className="text-xs text-muted-foreground sm:hidden">
-                                                    {new Date(transaction.date).toLocaleDateString('pt-BR')}
-                                                </span>
-                                            </div>
-                                        </TableCell>
+                                        <TableCell className="font-medium">{transaction.description}</TableCell>
                                         <TableCell className={cn(
                                             "text-right font-semibold",
                                             transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
@@ -538,16 +589,17 @@ export default function GuardianDashboard() {
                                         </TableCell>
                                     </TableRow>
                                 ))}
-                                {!isClient && (
-                                    [...Array(4)].map((_, i) => (
-                                         <TableRow key={`skeleton-tx-${i}`}>
-                                            {[...Array(4)].map((_, j) => <TableCell key={j}><div className="h-4 bg-muted rounded w-full"></div></TableCell>)}
-                                        </TableRow>
-                                    ))
-                                )}
+                                
                             </TableBody>
                         </Table>
                     </div>
+                    {!isClient && (
+                         [...Array(4)].map((_, i) => (
+                                <TableRow key={`skeleton-tx-${i}`} className="hidden md:table-row">
+                                   {[...Array(4)].map((_, j) => <TableCell key={j}><div className="h-4 bg-muted rounded w-full"></div></TableCell>)}
+                               </TableRow>
+                           ))
+                    )}
                     {isClient && filteredTransactions.length === 0 && (
                         <div className="text-center text-muted-foreground py-10">
                             <p>Nenhuma transação encontrada para os filtros selecionados.</p>
@@ -560,5 +612,7 @@ export default function GuardianDashboard() {
     </div>
   );
 }
+
+    
 
     

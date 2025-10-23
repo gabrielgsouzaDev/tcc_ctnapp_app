@@ -228,15 +228,56 @@ export default function StudentOrdersPage() {
             </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="md:hidden space-y-4 p-4">
+              {isClient && filteredHistory.map((order) => (
+                  <Dialog key={`mobile-${order.id}`}>
+                      <DialogTrigger asChild>
+                          <Card className={cn("p-4", order.status === 'Pendente' && 'bg-yellow-50/50 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-600')}>
+                              <div className="flex justify-between items-start">
+                                  <div>
+                                      <p className="font-bold">{order.id}</p>
+                                      <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleDateString('pt-BR')}</p>
+                                  </div>
+                                  <OrderStatusBadge status={order.status} />
+                              </div>
+                              <Separator className="my-2"/>
+                              <div className="flex justify-between items-center">
+                                  <div className="flex -space-x-4">
+                                    {order.items.slice(0, 3).map((item, index) => (
+                                        <Image 
+                                            key={index}
+                                            src={item.product.image.imageUrl} 
+                                            alt={item.product.name} 
+                                            width={24} 
+                                            height={24} 
+                                            className="rounded-full object-cover border-2 border-background h-6 w-6" 
+                                            data-ai-hint={item.product.image.imageHint}
+                                            title={item.product.name}
+                                        />
+                                    ))}
+                                     {order.items.length > 3 && (
+                                        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-xs font-medium border-2 border-background">
+                                            +{order.items.length - 3}
+                                        </div>
+                                    )}
+                                  </div>
+                                  <p className="font-bold text-lg">R$ {order.total.toFixed(2)}</p>
+                              </div>
+                          </Card>
+                      </DialogTrigger>
+                      <OrderDetailsDialog order={order} onRepeatOrder={handleRepeatOrder} />
+                  </Dialog>
+              ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px] p-4">Pedido</TableHead>
-                  <TableHead className="p-4">Data</TableHead>
-                  <TableHead className="p-4 hidden sm:table-cell">Itens</TableHead>
-                  <TableHead className="p-4">Status</TableHead>
-                  <TableHead className="text-right p-4">Total</TableHead>
+                  <TableHead>Pedido</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Itens</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -249,7 +290,7 @@ export default function StudentOrdersPage() {
                         )}>
                         <TableCell className="font-medium">{order.id}</TableCell>
                         <TableCell>{new Date(order.date).toLocaleDateString('pt-BR')}</TableCell>
-                        <TableCell className="hidden sm:table-cell">
+                        <TableCell>
                           <div className="flex -space-x-4">
                             {order.items.slice(0, 3).map((item, index) => (
                                 <Image 
@@ -279,25 +320,25 @@ export default function StudentOrdersPage() {
                     <OrderDetailsDialog order={order} onRepeatOrder={handleRepeatOrder} />
                   </Dialog>
                 ))}
-                {!isClient && (
-                    [...Array(3)].map((_, i) => (
-                        <TableRow key={`skeleton-${i}`}>
-                            <TableCell><div className="h-4 bg-muted rounded w-3/4"></div></TableCell>
-                            <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
-                            <TableCell className="hidden sm:table-cell"><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
-                            <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
-                            <TableCell><div className="h-4 bg-muted rounded w-1/4 ml-auto"></div></TableCell>
-                        </TableRow>
-                    ))
-                )}
               </TableBody>
             </Table>
-            {isClient && filteredHistory.length === 0 && (
+             {!isClient && (
+                [...Array(3)].map((_, i) => (
+                    <TableRow key={`skeleton-${i}`} className="hidden md:table-row">
+                        <TableCell><div className="h-4 bg-muted rounded w-3/4"></div></TableCell>
+                        <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
+                        <TableCell><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
+                        <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
+                        <TableCell><div className="h-4 bg-muted rounded w-1/4 ml-auto"></div></TableCell>
+                    </TableRow>
+                ))
+            )}
+          </div>
+          {isClient && filteredHistory.length === 0 && (
                 <div className="text-center text-muted-foreground py-10">
                     <p>Nenhum pedido encontrado para a busca "{searchTerm}".</p>
                 </div>
             )}
-          </div>
         </CardContent>
       </Card>
     </div>
