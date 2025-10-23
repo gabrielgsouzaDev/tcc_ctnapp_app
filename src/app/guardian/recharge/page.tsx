@@ -6,7 +6,7 @@ import { ArrowRight, CheckCircle2, CreditCard, DollarSign, Repeat, User, Wallet 
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -164,7 +164,7 @@ export default function GuardianRechargePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Wallet className="h-5 w-5" />
-            Resumo da Operação
+            Passo 3: Pagamento
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -174,59 +174,58 @@ export default function GuardianRechargePage() {
             </div>
             <Separator />
             <div className="flex items-center justify-between text-xl">
-                <span className="font-semibold">Valor:</span>
+                <span className="font-semibold">Valor da Recarga:</span>
                 <span className="font-bold text-primary">R$ {amountValue > 0 ? amountValue.toFixed(2) : '0.00'}</span>
             </div>
         </CardContent>
+        <CardFooter className="flex-col gap-4 sm:flex-row">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  disabled={isTransferDisabled}
+                  className="w-full"
+                >
+                  <Repeat className="mr-2 h-5 w-5" />
+                  {isProcessing ? 'Processando...' : 'Transferir do seu Saldo'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar Transferência Interna</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Você está prestes a transferir <span className="font-bold">R$ {amountValue.toFixed(2)}</span> do seu saldo para <span className="font-bold">{selectedStudent?.name}</span>.
+                        Seu saldo restante será <span className="font-bold">R$ {(guardianBalance - amountValue).toFixed(2)}</span>.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleInternalTransfer}>Confirmar Transferência</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <Link 
+                href={`/pix-payment?amount=${amountValue}&studentId=${selectedStudent?.id}`}
+                passHref
+                className={cn('w-full', isButtonDisabled && 'pointer-events-none opacity-50')}
+            >
+                <Button
+                    size="lg"
+                    disabled={isButtonDisabled}
+                    className="w-full"
+                >
+                    {isProcessing ? 'Processando...' : 'Pagar com PIX'}
+                    {!isProcessing && <CreditCard className="ml-2 h-5 w-5" />}
+                </Button>
+            </Link>
+        </CardFooter>
       </Card>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:justify-end">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              size="lg"
-              variant="outline"
-              disabled={isTransferDisabled}
-              className="w-full"
-            >
-              <Repeat className="mr-2 h-5 w-5" />
-              {isProcessing ? 'Processando...' : 'Transferir do seu Saldo'}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirmar Transferência Interna</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Você está prestes a transferir <span className="font-bold">R$ {amountValue.toFixed(2)}</span> do seu saldo para <span className="font-bold">{selectedStudent?.name}</span>.
-                    Seu saldo restante será <span className="font-bold">R$ {(guardianBalance - amountValue).toFixed(2)}</span>.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleInternalTransfer}>Confirmar Transferência</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-
-        <Link 
-            href={`/pix-payment?amount=${amountValue}&studentId=${selectedStudent?.id}`}
-            passHref
-            className={cn(isButtonDisabled && 'pointer-events-none opacity-50')}
-        >
-            <Button
-                size="lg"
-                disabled={isButtonDisabled}
-                className="w-full"
-            >
-                {isProcessing ? 'Processando...' : 'Pagar com PIX'}
-                {!isProcessing && <CreditCard className="ml-2 h-5 w-5" />}
-            </Button>
-        </Link>
-      </div>
+      
        <p className="text-xs text-center text-muted-foreground">
           Seu saldo como responsável é de R$ {guardianBalance.toFixed(2)}.
        </p>
     </div>
   );
 }
-

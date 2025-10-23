@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import { CopyButton } from '@/components/shared/copy-button';
 import { QRCode } from '@/components/shared/qr-code';
+import { Label } from '@/components/ui/label';
 
 function PixPaymentContent() {
   const router = useRouter();
@@ -50,7 +51,7 @@ function PixPaymentContent() {
 
   if (paymentStatus === 'confirmed') {
     return (
-      <div className="flex flex-col items-center justify-center text-center">
+      <div className="flex flex-col items-center justify-center text-center p-6">
         <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
         <h2 className="text-2xl font-bold">Pagamento Confirmado!</h2>
         <p className="text-muted-foreground">O saldo foi atualizado. Você será redirecionado em breve.</p>
