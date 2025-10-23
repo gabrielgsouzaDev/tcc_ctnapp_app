@@ -1,7 +1,7 @@
 
 "use client";
 
-import { CreditCard, User, Wallet, Search, ShoppingBasket } from 'lucide-react';
+import { CreditCard, User, Wallet, Search, ShoppingBasket, ArrowDown, ArrowUp, Calendar, Filter, Download } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/accordion"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { guardianProfile, orderHistory, type Order, type OrderItem, type Student } from '@/lib/data';
+import { guardianProfile, orderHistory, transactionHistory, type Order, type OrderItem, type Student, type Transaction } from '@/lib/data';
 import {
   Table,
   TableBody,
@@ -53,6 +53,8 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { StudentFilter } from '@/components/shared/student-filter';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
@@ -72,7 +74,6 @@ const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
 
   return <Badge variant={variant} className={cn('capitalize', className)}>{status.toLowerCase()}</Badge>;
 };
-
 
 const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOrder: (items: OrderItem[]) => void; }) => {
     const [progress, setProgress] = useState(10)
@@ -156,7 +157,7 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
 export default function GuardianDashboard() {
   const { toast } = useToast();
   const [activeStudentAccordion, setActiveStudentAccordion] = useState<string | undefined>(guardianProfile.students[0]?.id);
-  const [selectedStudentFilter, setSelectedStudentFilter] = useState<string>('all');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>('date-desc');
   const [searchTermHistory, setSearchTermHistory] = useState('');
   const [isClient, setIsClient] = useState(false);
@@ -165,69 +166,87 @@ export default function GuardianDashboard() {
       setIsClient(true);
   }, []);
 
-  const handleRecharge = (e: React.FormEvent, studentName: string) => {
-    e.preventDefault();
-    const amount = (e.currentTarget as HTMLFormElement).amount.value;
-    if (amount && Number(amount) > 0) {
-      toast({
-        title: "Recarga em processamento!",
-        description: `O valor de R$ ${Number(amount).toFixed(2)} será adicionado em breve para ${studentName}.`,
-      });
-      (e.currentTarget as HTMLFormElement).reset();
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Valor inválido",
-        description: "Por favor, insira um valor positivo para a recarga.",
-      });
-    }
-  };
-
   const studentsMap = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, Student>();
     guardianProfile.students.forEach(student => {
-      map.set(student.id, student.name);
+      map.set(student.id, student);
     });
     return map;
   }, []);
 
-  const filteredHistory = useMemo(() => {
+  const filteredOrders = useMemo(() => {
     if (!isClient) return [];
   
     let processedOrders = [...orderHistory];
-
-    if (selectedStudentFilter !== 'all') {
-      processedOrders = processedOrders.filter(o => o.studentId === selectedStudentFilter);
+    
+    // Filter by student
+    if (selectedStudentIds.length > 0) {
+      processedOrders = processedOrders.filter(o => selectedStudentIds.includes(o.studentId));
     }
 
+    // Filter by search term
     if (searchTermHistory) {
       processedOrders = processedOrders.filter(order => 
         order.id.toLowerCase().includes(searchTermHistory.toLowerCase())
       );
     }
-
-    switch (sortKey) {
-        case 'date-asc':
-            processedOrders.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-            break;
-        case 'total-desc':
-            processedOrders.sort((a, b) => b.total - a.total);
-            break;
-        case 'total-asc':
-            processedOrders.sort((a, b) => a.total - b.total);
-            break;
-        case 'date-desc':
-        default:
-            processedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            break;
-    }
+    
+    // Sort
+    processedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return processedOrders;
-  }, [sortKey, isClient, searchTermHistory, selectedStudentFilter]);
+  }, [isClient, searchTermHistory, selectedStudentIds]);
+
+   const filteredTransactions = useMemo(() => {
+    if (!isClient) return [];
+
+    let processedTransactions = [...transactionHistory];
+    
+    // For now, linking transactions to students is mocked. Let's assume a studentId property.
+    // In a real scenario, you'd need this link in your data.
+    const mockStudentTransactions = processedTransactions.map((t, i) => ({
+      ...t,
+      studentId: guardianProfile.students[i % guardianProfile.students.length].id
+    }));
+    
+    let studentFilteredTxs = mockStudentTransactions;
+    if (selectedStudentIds.length > 0) {
+      studentFilteredTxs = mockStudentTransactions.filter(t => selectedStudentIds.includes(t.studentId));
+    }
+
+    // Sort
+    studentFilteredTxs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return studentFilteredTxs;
+  }, [isClient, selectedStudentIds]);
+
+  const dashboardMetrics = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const ordersInMonth = filteredOrders.filter(order => {
+        const orderDate = new Date(order.date);
+        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+    });
+
+    const transactionsInMonth = filteredTransactions.filter(tx => {
+        const txDate = new Date(tx.date);
+        return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+    });
+    
+    const totalSpent = ordersInMonth.reduce((acc, order) => acc + order.total, 0);
+    const totalDeposits = transactionsInMonth
+      .filter(tx => tx.type === 'credit')
+      .reduce((acc, tx) => acc + tx.amount, 0);
+
+    return {
+      totalOrders: ordersInMonth.length,
+      totalSpent,
+      totalDeposits,
+    }
+  }, [filteredOrders, filteredTransactions]);
 
   const handleRepeatOrder = (items: OrderItem[]) => {
-      // NOTE: This is a placeholder for future state management.
-      // In a real app, this would likely update a shared cart state (e.g. via Context or Zustand)
-      // and then navigate to the ordering page.
       console.log("Adding items to cart for repeat order:", items);
       toast({
           title: "Itens no Carrinho!",
@@ -237,12 +256,61 @@ export default function GuardianDashboard() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold tracking-tight font-headline">Painel do Responsável</h1>
-      
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h1 className="text-2xl font-bold tracking-tight font-headline">Painel do Responsável</h1>
+            <p className="text-muted-foreground">Acompanhe os gastos, pedidos e saldos.</p>
+        </div>
+        <div className="flex items-center gap-2">
+            <StudentFilter
+              students={guardianProfile.students}
+              selectedStudentIds={selectedStudentIds}
+              onSelectionChange={setSelectedStudentIds}
+            />
+             <Button variant="outline">
+                <Calendar className="mr-2 h-4 w-4" />
+                Este Mês
+            </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Gasto</CardTitle>
+                  <ShoppingBasket className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                  <div className="text-2xl font-bold">R$ {dashboardMetrics.totalSpent.toFixed(2)}</div>
+                  <p className="text-xs text-muted-foreground">Total de {dashboardMetrics.totalOrders} pedidos este mês</p>
+              </CardContent>
+          </Card>
+          <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Depositado</CardTitle>
+                  <ArrowUp className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                  <div className="text-2xl font-bold">R$ {dashboardMetrics.totalDeposits.toFixed(2)}</div>
+                  <p className="text-xs text-muted-foreground">Recargas realizadas neste mês</p>
+              </CardContent>
+          </Card>
+          <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Saldo Combinado</CardTitle>
+                  <Wallet className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                  <div className="text-2xl font-bold">R$ {guardianProfile.students.reduce((acc, s) => acc + s.balance, 0).toFixed(2)}</div>
+                   <p className="text-xs text-muted-foreground">Soma dos saldos de todos os alunos</p>
+              </CardContent>
+          </Card>
+      </div>
+
       <Card>
         <CardHeader>
             <CardTitle>Alunos Vinculados</CardTitle>
-            <CardDescription>Selecione um aluno para ver os detalhes e gerenciar o saldo.</CardDescription>
+            <CardDescription>Consulte o saldo individual e recarregue.</CardDescription>
         </CardHeader>
         <CardContent>
             <Accordion 
@@ -256,35 +324,22 @@ export default function GuardianDashboard() {
                     <AccordionItem value={student.id} key={student.id} className="border-b-0 rounded-lg bg-background">
                         <AccordionTrigger className="p-4">
                             <div className="flex items-center gap-4">
-                                <User />
+                                <User className="h-5 w-5" />
                                 <span className="font-medium">{student.name}</span>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
-                           <div className="grid gap-6 lg:grid-cols-2 p-4 border-t">
-                             <div className="space-y-4">
-                                <h3 className="font-semibold">Informações</h3>
-                                <div className="flex items-center justify-between">
+                           <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t gap-4">
+                             <div className="flex items-center justify-between w-full sm:w-auto">
                                   <span className="text-muted-foreground">Saldo Atual</span>
                                   <span className="font-bold text-lg text-primary flex items-center gap-2">
-                                    <Wallet />
+                                    <Wallet className="h-5 w-5"/>
                                     R$ {student.balance.toFixed(2)}
                                   </span>
-                                </div>
                              </div>
-                             
-                             <div>
-                                <h3 className="font-semibold">Recarregar Saldo</h3>
-                                 <form className="space-y-4 mt-2" onSubmit={(e) => handleRecharge(e, student.name)}>
-                                    <div className="space-y-2">
-                                        <Label htmlFor={`amount-${student.id}`}>Valor da Recarga (R$)</Label>
-                                        <Input id={`amount-${student.id}`} name="amount" type="number" placeholder="ex: 50.00" step="0.01" min="1" className="bg-white dark:bg-muted" />
-                                    </div>
-                                    <Button type="submit" className="w-full">
-                                        <CreditCard className="mr-2 h-4 w-4" /> Recarregar para {student.name.split(' ')[0]}
-                                    </Button>
-                                </form>
-                             </div>
+                            <Button className="w-full sm:w-auto">
+                                <CreditCard className="mr-2 h-4 w-4" /> Recarregar Saldo
+                            </Button>
                            </div>
                         </AccordionContent>
                     </AccordionItem>
@@ -293,135 +348,155 @@ export default function GuardianDashboard() {
         </CardContent>
       </Card>
       
-      <div className="space-y-6">
-        <div>
-            <h2 className="text-xl font-bold tracking-tight font-headline flex items-center gap-2">
-              <ShoppingBasket />
-              Histórico de Pedidos
-            </h2>
-            <p className="text-muted-foreground">
-            Acompanhe o histórico de pedidos de todos os alunos vinculados.
-            </p>
+      <Tabs defaultValue="orders">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <TabsList>
+                <TabsTrigger value="orders">Histórico de Pedidos</TabsTrigger>
+                <TabsTrigger value="transactions">Histórico de Transações</TabsTrigger>
+            </TabsList>
+             <div className="relative flex-1 md:max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Buscar por ID do pedido..."
+                    className="pl-10 w-full bg-background"
+                    value={searchTermHistory}
+                    onChange={(e) => setSearchTermHistory(e.target.value)}
+                />
+            </div>
         </div>
 
-        <Card>
-            <CardHeader className="bg-card-foreground/5 border-b p-4 md:p-6 rounded-t-lg">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Buscar por ID do pedido..."
-                            className="pl-10 w-full bg-background"
-                            value={searchTermHistory}
-                            onChange={(e) => setSearchTermHistory(e.target.value)}
-                        />
-                    </div>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <Select value={selectedStudentFilter} onValueChange={setSelectedStudentFilter}>
-                            <SelectTrigger className="w-full sm:w-auto min-w-[180px] bg-background">
-                                <SelectValue placeholder="Filtrar por aluno" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todos os Alunos</SelectItem>
-                                {guardianProfile.students.map(student => (
-                                    <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
-                            <SelectTrigger className="w-full sm:w-auto min-w-[180px] bg-background">
-                                <SelectValue placeholder="Ordenar por" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="date-desc">Mais recentes</SelectItem>
-                                <SelectItem value="date-asc">Mais antigos</SelectItem>
-                                <SelectItem value="total-desc">Maior valor</SelectItem>
-                                <SelectItem value="total-asc">Menor valor</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="p-0">
-            <div className="overflow-x-auto">
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead className="p-4">Pedido</TableHead>
-                    <TableHead className="p-4">Aluno</TableHead>
-                    <TableHead className="p-4">Data</TableHead>
-                    <TableHead className="p-4">Itens</TableHead>
-                    <TableHead className="p-4">Status</TableHead>
-                    <TableHead className="text-right p-4">Total</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {isClient && filteredHistory.map((order) => (
-                    <Dialog key={order.id}>
-                        <DialogTrigger asChild>
-                        <TableRow className={cn(
-                            "cursor-pointer",
-                            order.status === 'Pendente' && 'bg-yellow-50/50 border-l-4 border-yellow-400 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-600 dark:hover:bg-yellow-900/30'
-                            )}>
-                            <TableCell className="font-medium">{order.id}</TableCell>
-                            <TableCell>{studentsMap.get(order.studentId) || 'N/A'}</TableCell>
-                            <TableCell>{new Date(order.date).toLocaleDateString('pt-BR')}</TableCell>
-                            <TableCell>
-                            <div className="flex -space-x-4">
-                                {order.items.slice(0, 3).map((item, index) => (
-                                    <Image 
-                                        key={index}
-                                        src={item.product.image.imageUrl} 
-                                        alt={item.product.name} 
-                                        width={32} 
-                                        height={32} 
-                                        className="rounded-full object-cover border-2 border-background h-8 w-8" 
-                                        data-ai-hint={item.product.image.imageHint}
-                                        title={item.product.name}
-                                    />
-                                ))}
-                                {order.items.length > 3 && (
-                                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-xs font-medium border-2 border-background">
-                                        +{order.items.length - 3}
-                                    </div>
-                                )}
-                            </div>
-                            </TableCell>
-                            <TableCell>
-                            <OrderStatusBadge status={order.status} />
-                            </TableCell>
-                            <TableCell className="text-right font-semibold">R$ {order.total.toFixed(2)}</TableCell>
+        <TabsContent value="orders">
+            <Card>
+                <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead className="p-4">Pedido</TableHead>
+                        <TableHead className="p-4">Aluno</TableHead>
+                        <TableHead className="p-4">Data</TableHead>
+                        <TableHead className="p-4">Itens</TableHead>
+                        <TableHead className="p-4">Status</TableHead>
+                        <TableHead className="text-right p-4">Total</TableHead>
                         </TableRow>
-                        </DialogTrigger>
-                        <OrderDetailsDialog order={order} onRepeatOrder={handleRepeatOrder} />
-                    </Dialog>
-                    ))}
-                    {!isClient && (
-                        [...Array(3)].map((_, i) => (
-                            <TableRow key={`skeleton-${i}`}>
-                                <TableCell><div className="h-4 bg-muted rounded w-3/4"></div></TableCell>
-                                <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
-                                <TableCell><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
-                                <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
-                                <TableCell><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
-                                <TableCell><div className="h-4 bg-muted rounded w-1/4 ml-auto"></div></TableCell>
+                    </TableHeader>
+                    <TableBody>
+                        {isClient && filteredOrders.map((order) => (
+                        <Dialog key={order.id}>
+                            <DialogTrigger asChild>
+                            <TableRow className={cn(
+                                "cursor-pointer",
+                                order.status === 'Pendente' && 'bg-yellow-50/50 border-l-4 border-yellow-400 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-600 dark:hover:bg-yellow-900/30'
+                                )}>
+                                <TableCell className="font-medium">{order.id}</TableCell>
+                                <TableCell>{studentsMap.get(order.studentId)?.name || 'N/A'}</TableCell>
+                                <TableCell>{new Date(order.date).toLocaleDateString('pt-BR')}</TableCell>
+                                <TableCell>
+                                <div className="flex -space-x-4">
+                                    {order.items.slice(0, 3).map((item, index) => (
+                                        <Image 
+                                            key={index}
+                                            src={item.product.image.imageUrl} 
+                                            alt={item.product.name} 
+                                            width={32} 
+                                            height={32} 
+                                            className="rounded-full object-cover border-2 border-background h-8 w-8" 
+                                            data-ai-hint={item.product.image.imageHint}
+                                            title={item.product.name}
+                                        />
+                                    ))}
+                                    {order.items.length > 3 && (
+                                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-xs font-medium border-2 border-background">
+                                            +{order.items.length - 3}
+                                        </div>
+                                    )}
+                                </div>
+                                </TableCell>
+                                <TableCell>
+                                <OrderStatusBadge status={order.status} />
+                                </TableCell>
+                                <TableCell className="text-right font-semibold">R$ {order.total.toFixed(2)}</TableCell>
                             </TableRow>
-                        ))
+                            </DialogTrigger>
+                            <OrderDetailsDialog order={order} onRepeatOrder={handleRepeatOrder} />
+                        </Dialog>
+                        ))}
+                        {!isClient && (
+                            [...Array(3)].map((_, i) => (
+                                <TableRow key={`skeleton-order-${i}`}>
+                                    {[...Array(6)].map((_, j) => <TableCell key={j}><div className="h-4 bg-muted rounded w-full"></div></TableCell>)}
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                    </Table>
+                    {isClient && filteredOrders.length === 0 && (
+                        <div className="text-center text-muted-foreground py-10">
+                            {searchTermHistory ? 
+                            <p>Nenhum pedido encontrado para a busca "{searchTermHistory}".</p> :
+                            <p>Nenhum pedido encontrado para o(s) aluno(s) selecionado(s).</p>
+                            }
+                        </div>
                     )}
-                </TableBody>
-                </Table>
-                {isClient && filteredHistory.length === 0 && (
-                    <div className="text-center text-muted-foreground py-10">
-                        {searchTermHistory ? 
-                          <p>Nenhum pedido encontrado para a busca "{searchTermHistory}".</p> :
-                          <p>Nenhum pedido encontrado para o aluno selecionado.</p>
-                        }
+                </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="transactions">
+            <Card>
+                 <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="p-4">Aluno</TableHead>
+                                    <TableHead className="w-[120px] p-4 hidden sm:table-cell">Data</TableHead>
+                                    <TableHead className="p-4">Descrição</TableHead>
+                                    <TableHead className="text-right w-[120px] p-4">Valor</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {isClient && filteredTransactions.map((transaction) => (
+                                    <TableRow key={transaction.id}>
+                                        <TableCell>{studentsMap.get((transaction as any).studentId)?.name || 'N/A'}</TableCell>
+                                        <TableCell className="text-muted-foreground hidden sm:table-cell">
+                                            {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                                        </TableCell>
+                                        <TableCell className="font-medium">
+                                            <div className="flex flex-col">
+                                                <span>{transaction.description}</span>
+                                                <span className="text-xs text-muted-foreground sm:hidden">
+                                                    {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className={cn(
+                                            "text-right font-semibold",
+                                            transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
+                                        )}>
+                                            {transaction.type === 'credit' ? '+' : '-'} R$ {transaction.amount.toFixed(2)}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {!isClient && (
+                                    [...Array(4)].map((_, i) => (
+                                         <TableRow key={`skeleton-tx-${i}`}>
+                                            {[...Array(4)].map((_, j) => <TableCell key={j}><div className="h-4 bg-muted rounded w-full"></div></TableCell>)}
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
                     </div>
-                )}
-            </div>
-            </CardContent>
-        </Card>
-      </div>
+                    {isClient && filteredTransactions.length === 0 && (
+                        <div className="text-center text-muted-foreground py-10">
+                            <p>Nenhuma transação encontrada para os filtros selecionados.</p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
