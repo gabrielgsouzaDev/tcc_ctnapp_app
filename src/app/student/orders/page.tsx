@@ -203,27 +203,29 @@ export default function StudentOrdersPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex-col items-stretch gap-2 border-b p-4 md:flex-row md:items-center md:gap-4 md:p-6">
-            <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                    placeholder="Buscar por ID do pedido..."
-                    className="pl-10 w-full"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
+        <CardHeader className="bg-muted/50 border-b p-4 md:p-6 rounded-t-lg">
+            <div className="flex flex-col md:flex-row items-stretch gap-4">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Buscar por ID do pedido..."
+                        className="pl-10 w-full bg-background"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
+                    <SelectTrigger className="w-full md:w-auto min-w-[180px] bg-background">
+                        <SelectValue placeholder="Ordenar por" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="date-desc">Mais recentes</SelectItem>
+                        <SelectItem value="date-asc">Mais antigos</SelectItem>
+                        <SelectItem value="total-desc">Maior valor</SelectItem>
+                        <SelectItem value="total-asc">Menor valor</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
-            <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                    <SelectValue placeholder="Ordenar por" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="date-desc">Mais recentes</SelectItem>
-                    <SelectItem value="date-asc">Mais antigos</SelectItem>
-                    <SelectItem value="total-desc">Maior valor</SelectItem>
-                    <SelectItem value="total-asc">Menor valor</SelectItem>
-                </SelectContent>
-            </Select>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -243,7 +245,7 @@ export default function StudentOrdersPage() {
                     <DialogTrigger asChild>
                        <TableRow className={cn(
                            "cursor-pointer",
-                           order.status === 'Pendente' && 'bg-yellow-50/50 border-l-4 border-yellow-400 hover:bg-yellow-50'
+                            order.status === 'Pendente' && 'bg-yellow-50/50 border-l-4 border-yellow-400 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-600 dark:hover:bg-yellow-900/30'
                         )}>
                         <TableCell className="font-medium">{order.id}</TableCell>
                         <TableCell>{new Date(order.date).toLocaleDateString('pt-BR')}</TableCell>

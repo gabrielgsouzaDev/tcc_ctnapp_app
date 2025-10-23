@@ -250,17 +250,18 @@ export default function GuardianDashboard() {
               collapsible 
               defaultValue={activeStudentAccordion} 
               onValueChange={(value) => setActiveStudentAccordion(value)}
+              className="space-y-2"
             >
                 {guardianProfile.students.map((student: Student) => (
-                    <AccordionItem value={student.id} key={student.id}>
-                        <AccordionTrigger>
+                    <AccordionItem value={student.id} key={student.id} className="border-b-0 rounded-lg bg-background">
+                        <AccordionTrigger className="p-4">
                             <div className="flex items-center gap-4">
                                 <User />
                                 <span className="font-medium">{student.name}</span>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
-                           <div className="grid gap-6 lg:grid-cols-2 p-4">
+                           <div className="grid gap-6 lg:grid-cols-2 p-4 border-t">
                              <div className="space-y-4">
                                 <h3 className="font-semibold">Informações</h3>
                                 <div className="flex items-center justify-between">
@@ -277,7 +278,7 @@ export default function GuardianDashboard() {
                                  <form className="space-y-4 mt-2" onSubmit={(e) => handleRecharge(e, student.name)}>
                                     <div className="space-y-2">
                                         <Label htmlFor={`amount-${student.id}`}>Valor da Recarga (R$)</Label>
-                                        <Input id={`amount-${student.id}`} name="amount" type="number" placeholder="ex: 50.00" step="0.01" min="1" />
+                                        <Input id={`amount-${student.id}`} name="amount" type="number" placeholder="ex: 50.00" step="0.01" min="1" className="bg-white dark:bg-muted" />
                                     </div>
                                     <Button type="submit" className="w-full">
                                         <CreditCard className="mr-2 h-4 w-4" /> Recarregar para {student.name.split(' ')[0]}
@@ -304,39 +305,41 @@ export default function GuardianDashboard() {
         </div>
 
         <Card>
-            <CardHeader className="flex-col items-stretch gap-4 border-b p-4 md:flex-row md:items-center md:p-6">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Buscar por ID do pedido..."
-                        className="pl-10 w-full"
-                        value={searchTermHistory}
-                        onChange={(e) => setSearchTermHistory(e.target.value)}
-                    />
-                </div>
-                <div className="flex w-full flex-col gap-4 md:w-auto md:flex-row md:items-center">
-                    <Select value={selectedStudentFilter} onValueChange={setSelectedStudentFilter}>
-                        <SelectTrigger className="w-full md:w-[180px]">
-                            <SelectValue placeholder="Filtrar por aluno" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos os Alunos</SelectItem>
-                            {guardianProfile.students.map(student => (
-                                <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
-                        <SelectTrigger className="w-full md:w-[180px]">
-                            <SelectValue placeholder="Ordenar por" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="date-desc">Mais recentes</SelectItem>
-                            <SelectItem value="date-asc">Mais antigos</SelectItem>
-                            <SelectItem value="total-desc">Maior valor</SelectItem>
-                            <SelectItem value="total-asc">Menor valor</SelectItem>
-                        </SelectContent>
-                    </Select>
+            <CardHeader className="bg-muted/50 border-b p-4 md:p-6 rounded-t-lg">
+                <div className="flex flex-col md:flex-row items-stretch gap-4">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Buscar por ID do pedido..."
+                            className="pl-10 w-full bg-background"
+                            value={searchTermHistory}
+                            onChange={(e) => setSearchTermHistory(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center">
+                        <Select value={selectedStudentFilter} onValueChange={setSelectedStudentFilter}>
+                            <SelectTrigger className="w-full sm:w-auto min-w-[180px] bg-background">
+                                <SelectValue placeholder="Filtrar por aluno" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todos os Alunos</SelectItem>
+                                {guardianProfile.students.map(student => (
+                                    <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
+                            <SelectTrigger className="w-full sm:w-auto min-w-[180px] bg-background">
+                                <SelectValue placeholder="Ordenar por" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="date-desc">Mais recentes</SelectItem>
+                                <SelectItem value="date-asc">Mais antigos</SelectItem>
+                                <SelectItem value="total-desc">Maior valor</SelectItem>
+                                <SelectItem value="total-asc">Menor valor</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -358,7 +361,7 @@ export default function GuardianDashboard() {
                         <DialogTrigger asChild>
                         <TableRow className={cn(
                             "cursor-pointer",
-                            order.status === 'Pendente' && 'bg-yellow-50/50 border-l-4 border-yellow-400 hover:bg-yellow-50'
+                            order.status === 'Pendente' && 'bg-yellow-50/50 border-l-4 border-yellow-400 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-600 dark:hover:bg-yellow-900/30'
                             )}>
                             <TableCell className="font-medium">{order.id}</TableCell>
                             <TableCell>{studentsMap.get(order.studentId) || 'N/A'}</TableCell>

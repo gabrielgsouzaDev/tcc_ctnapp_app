@@ -166,7 +166,7 @@ export default function StudentBalancePage() {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-                <Card>
+                <Card className="bg-card">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Wallet className="h-6 w-6"/>
@@ -179,7 +179,7 @@ export default function StudentBalancePage() {
                         </p>
                     </CardContent>
                 </Card>
-                 <Card>
+                 <Card className="bg-card">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                         <CreditCard />
@@ -193,7 +193,7 @@ export default function StudentBalancePage() {
                         <form className="space-y-4" onSubmit={handleRecharge}>
                         <div className="space-y-2">
                             <Label htmlFor="amount">Valor da Recarga (R$)</Label>
-                            <Input id="amount" name="amount" type="number" placeholder="ex: 50.00" step="0.01" min="1" />
+                            <Input id="amount" name="amount" type="number" placeholder="ex: 50.00" step="0.01" min="1" className="bg-white dark:bg-muted" />
                         </div>
                         <Button type="submit" className="w-full">Recarregar</Button>
                         </form>
@@ -203,41 +203,43 @@ export default function StudentBalancePage() {
 
 
             <Card>
-                <CardHeader className="border-b p-4 md:p-6">
-                    <CardTitle>Histórico de Transações</CardTitle>
-                    <div className="mt-4 flex flex-col gap-2 md:flex-row">
-                        <Select value={filterOrigin} onValueChange={(value) => setFilterOrigin(value as FilterOriginKey)}>
-                            <SelectTrigger className="w-full md:w-[150px]">
-                                <SelectValue placeholder="Filtrar por origem" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Toda Origem</SelectItem>
-                                <SelectItem value="Aluno">Aluno</SelectItem>
-                                <SelectItem value="Responsável">Responsável</SelectItem>
-                                <SelectItem value="Cantina">Cantina</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterTypeKey)}>
-                            <SelectTrigger className="w-full md:w-[150px]">
-                                <SelectValue placeholder="Filtrar por tipo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todos os Tipos</SelectItem>
-                                <SelectItem value="credit">Créditos</SelectItem>
-                                <SelectItem value="debit">Débitos</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
-                            <SelectTrigger className="w-full md:w-[180px]">
-                                <SelectValue placeholder="Ordenar por" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="date-desc">Mais recentes</SelectItem>
-                                <SelectItem value="date-asc">Mais antigos</SelectItem>
-                                <SelectItem value="amount-desc">Maior valor</SelectItem>
-                                <SelectItem value="amount-asc">Menor valor</SelectItem>
-                            </SelectContent>
-                        </Select>
+                <CardHeader className="bg-muted/50 border-b p-4 md:p-6 rounded-t-lg">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <CardTitle className="m-0">Histórico de Transações</CardTitle>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <Select value={filterOrigin} onValueChange={(value) => setFilterOrigin(value as FilterOriginKey)}>
+                                <SelectTrigger className="w-full sm:w-auto min-w-[150px] bg-background">
+                                    <SelectValue placeholder="Filtrar por origem" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Toda Origem</SelectItem>
+                                    <SelectItem value="Aluno">Aluno</SelectItem>
+                                    <SelectItem value="Responsável">Responsável</SelectItem>
+                                    <SelectItem value="Cantina">Cantina</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterTypeKey)}>
+                                <SelectTrigger className="w-full sm:w-auto min-w-[150px] bg-background">
+                                    <SelectValue placeholder="Filtrar por tipo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos os Tipos</SelectItem>
+                                    <SelectItem value="credit">Créditos</SelectItem>
+                                    <SelectItem value="debit">Débitos</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
+                                <SelectTrigger className="w-full sm:w-auto min-w-[180px] bg-background">
+                                    <SelectValue placeholder="Ordenar por" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="date-desc">Mais recentes</SelectItem>
+                                    <SelectItem value="date-asc">Mais antigos</SelectItem>
+                                    <SelectItem value="amount-desc">Maior valor</SelectItem>
+                                    <SelectItem value="amount-asc">Menor valor</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">

@@ -148,7 +148,7 @@ export function AppLayout({
         <Sidebar>
           <SidebarHeader>
             <div className="flex items-center gap-2 p-2">
-              <span className="font-semibold text-lg text-primary px-2">CTNAPP</span>
+              <span className="font-semibold text-xl text-primary px-2">CTNAPP</span>
             </div>
           </SidebarHeader>
           <SidebarContent>
