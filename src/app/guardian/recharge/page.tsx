@@ -25,6 +25,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 type RechargeTarget = {
   id: string;
@@ -127,10 +128,13 @@ export default function GuardianRechargePage() {
                   : 'border-border bg-card hover:border-primary/50'
               )}
             >
+              <Badge variant={target.isGuardian ? "secondary" : "default"} className="absolute left-2 top-2">
+                {target.isGuardian ? 'Responsável' : 'Aluno'}
+              </Badge>
               {selectedTarget?.id === target.id && (
                 <CheckCircle2 className="absolute right-2 top-2 h-5 w-5 text-primary" />
               )}
-              <User className="mb-2 h-8 w-8 text-muted-foreground" />
+              <User className="mb-2 mt-8 h-8 w-8 text-muted-foreground" />
               <p className="font-semibold">{target.name}</p>
               <p className="text-sm text-muted-foreground">
                 Saldo: R$ {target.balance.toFixed(2)}
