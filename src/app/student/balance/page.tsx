@@ -37,6 +37,7 @@ type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 type FilterTypeKey = 'all' | 'credit' | 'debit';
 type FilterOriginKey = 'all' | 'Aluno' | 'Responsável' | 'Cantina';
 
+const quickAmounts = [20, 50, 100];
 
 const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction }) => {
     return (
@@ -95,6 +96,7 @@ export default function StudentBalancePage() {
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [filterType, setFilterType] = useState<FilterTypeKey>('all');
     const [filterOrigin, setFilterOrigin] = useState<FilterOriginKey>('all');
+    const [rechargeAmount, setRechargeAmount] = useState('');
     const [isClient, setIsClient] = useState(false);
     
     // For prototype purposes, we assume the student has permission to recharge.
@@ -136,15 +138,14 @@ export default function StudentBalancePage() {
         return processedTransactions;
     }, [sortKey, filterType, filterOrigin, isClient]);
 
-    const handleRecharge = (e: React.FormEvent) => {
-        e.preventDefault();
-        const amount = (e.target as HTMLFormElement).amount.value;
-        if (amount && Number(amount) > 0) {
+    const handleRecharge = () => {
+        const amountValue = Number(rechargeAmount);
+        if (amountValue > 0) {
             toast({
                 title: "Recarga em processamento!",
-                description: `O valor de R$ ${Number(amount).toFixed(2)} será adicionado em breve.`,
+                description: `O valor de R$ ${amountValue.toFixed(2)} será adicionado em breve.`,
             });
-            (e.target as HTMLFormElement).reset();
+            setRechargeAmount('');
         } else {
             toast({
                 variant: "destructive",
@@ -152,6 +153,10 @@ export default function StudentBalancePage() {
                 description: "Por favor, insira um valor positivo para a recarga.",
             });
         }
+    };
+    
+    const handleAmountSelect = (amount: number) => {
+        setRechargeAmount(amount.toString());
     };
 
 
@@ -179,7 +184,7 @@ export default function StudentBalancePage() {
                     </CardContent>
                 </Card>
                 {canRecharge ? (
-                 <Card className="bg-card">
+                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                         <CreditCard />
@@ -189,14 +194,36 @@ export default function StudentBalancePage() {
                         Adicione créditos para usar na cantina.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <form className="space-y-4" onSubmit={handleRecharge}>
-                        <div className="space-y-2">
-                            <Label htmlFor="amount">Valor da Recarga (R$)</Label>
-                            <Input id="amount" name="amount" type="number" placeholder="ex: 50.00" step="0.01" min="1" className="bg-background" />
+                    <CardContent className="space-y-4">
+                        <div className="flex flex-col items-center gap-2 sm:flex-row">
+                            <Label htmlFor="amount" className="text-lg font-semibold sm:mb-0">R$</Label>
+                            <Input
+                            id="amount"
+                            type="number"
+                            value={rechargeAmount}
+                            onChange={(e) => setRechargeAmount(e.target.value)}
+                            placeholder="0.00"
+                            className="h-14 flex-1 text-center text-4xl font-bold tracking-tight [appearance:textfield] focus-visible:ring-offset-0 sm:text-left [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            />
                         </div>
-                        <Button type="submit" className="w-full">Recarregar</Button>
-                        </form>
+                        <div className="grid grid-cols-3 gap-2">
+                            {quickAmounts.map((amount) => (
+                            <Button
+                                key={amount}
+                                variant={Number(rechargeAmount) === amount ? 'default' : 'outline'}
+                                onClick={() => handleAmountSelect(amount)}
+                            >
+                                R$ {amount}
+                            </Button>
+                            ))}
+                        </div>
+                        <Button 
+                            className="w-full"
+                            onClick={handleRecharge} 
+                            disabled={!rechargeAmount || Number(rechargeAmount) <= 0}
+                        >
+                            Recarregar
+                        </Button>
                     </CardContent>
                 </Card>
                 ) : (
