@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Bell, Brush, ShieldCheck } from 'lucide-react';
+import { Bell, Brush, ShieldCheck, UserCog } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -54,6 +54,29 @@ export default function GuardianSettingsPage() {
               </p>
             </div>
             <Switch id="notifications-email" />
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserCog />
+            Controle dos Alunos
+          </CardTitle>
+          <CardDescription>
+            Gerencie as permissões dos alunos vinculados à sua conta.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="student-recharge" className="text-base">Permitir que o aluno recarregue o próprio saldo</Label>
+              <p className="text-sm text-muted-foreground">
+                Quando ativado, o aluno poderá adicionar créditos ao próprio saldo.
+              </p>
+            </div>
+            <Switch id="student-recharge" defaultChecked />
           </div>
         </CardContent>
       </Card>
