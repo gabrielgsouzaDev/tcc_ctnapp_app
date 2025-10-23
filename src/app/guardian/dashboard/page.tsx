@@ -1,7 +1,7 @@
 
 "use client";
 
-import { CreditCard, User, Wallet, Search, ShoppingBasket, ArrowDown, ArrowUp, Calendar, Filter, Download } from 'lucide-react';
+import { CreditCard, User, Wallet, Search, ShoppingBasket, ArrowDown, ArrowUp, Calendar, Filter, Download, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/accordion"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { guardianProfile, orderHistory, transactionHistory, type Order, type OrderItem, type Student, type Transaction } from '@/lib/data';
+import { type Order, type OrderItem, type Student, type Transaction, type Guardian } from '@/lib/data';
+import api from '@/lib/api';
 import {
   Table,
   TableBody,
@@ -46,13 +47,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -61,7 +55,7 @@ import Link from 'next/link';
 import { StudentFilter } from '@/components/shared/student-filter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
-import { format, subMonths } from 'date-fns';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
@@ -163,27 +157,60 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
 
 export default function GuardianDashboard() {
   const { toast } = useToast();
-  const [activeStudentAccordion, setActiveStudentAccordion] = useState<string | undefined>(guardianProfile.students[0]?.id);
+  
+  const [guardianProfile, setGuardianProfile] = useState<Guardian | null>(null);
+  const [orderHistory, setOrderHistory] = useState<Order[]>([]);
+  const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [activeStudentAccordion, setActiveStudentAccordion] = useState<string | undefined>();
   const [selectedStudentId, setSelectedStudentId] = useState<string>('all');
   const [searchTermHistory, setSearchTermHistory] = useState('');
-  const [isClient, setIsClient] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
-  
+
   useEffect(() => {
-      setIsClient(true);
-  }, []);
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [profileRes, ordersRes, transactionsRes] = await Promise.all([
+          api.get('/guardian/profile'),
+          api.get('/orders'),
+          api.get('/transactions')
+        ]);
+        
+        setGuardianProfile(profileRes.data);
+        setOrderHistory(ordersRes.data);
+        setTransactionHistory(transactionsRes.data);
+
+        if (profileRes.data?.students?.length > 0) {
+            setActiveStudentAccordion(profileRes.data.students[0].id);
+        }
+
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar dados",
+          description: "Não foi possível buscar as informações do dashboard. Tente novamente mais tarde.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [toast]);
+
 
   const studentsMap = useMemo(() => {
     const map = new Map<string, Student>();
-    guardianProfile.students.forEach(student => {
+    guardianProfile?.students.forEach(student => {
       map.set(student.id, student);
     });
     return map;
-  }, []);
+  }, [guardianProfile]);
 
   const filteredOrders = useMemo(() => {
-    if (!isClient) return [];
-  
     let processedOrders = [...orderHistory];
     
     // Filter by student
@@ -201,30 +228,21 @@ export default function GuardianDashboard() {
     // Sort
     processedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return processedOrders;
-  }, [isClient, searchTermHistory, selectedStudentId]);
+  }, [searchTermHistory, selectedStudentId, orderHistory]);
 
    const filteredTransactions = useMemo(() => {
-    if (!isClient) return [];
-
     let processedTransactions = [...transactionHistory];
     
-    // For now, linking transactions to students is mocked. Let's assume a studentId property.
-    // In a real scenario, you'd need this link in your data.
-    const mockStudentTransactions = processedTransactions.map((t, i) => ({
-      ...t,
-      studentId: guardianProfile.students[i % guardianProfile.students.length].id
-    }));
-    
-    let studentFilteredTxs = mockStudentTransactions;
+    let studentFilteredTxs = processedTransactions;
     if (selectedStudentId !== 'all') {
-      studentFilteredTxs = mockStudentTransactions.filter(t => selectedStudentId === t.studentId);
+      studentFilteredTxs = processedTransactions.filter(t => selectedStudentId === (t as any).studentId);
     }
 
     // Sort
     studentFilteredTxs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return studentFilteredTxs;
-  }, [isClient, selectedStudentId]);
+  }, [selectedStudentId, transactionHistory]);
 
   const dashboardMetrics = useMemo(() => {
     const selectedMonth = date.getMonth();
@@ -246,7 +264,7 @@ export default function GuardianDashboard() {
       .reduce((acc, tx) => acc + tx.amount, 0);
     
     const combinedBalance = selectedStudentId === 'all' 
-      ? guardianProfile.students.reduce((acc, s) => acc + s.balance, 0)
+      ? guardianProfile?.students.reduce((acc, s) => acc + s.balance, 0) || 0
       : studentsMap.get(selectedStudentId)?.balance || 0;
 
     return {
@@ -255,7 +273,7 @@ export default function GuardianDashboard() {
       totalDeposits,
       combinedBalance
     }
-  }, [filteredOrders, filteredTransactions, selectedStudentId, studentsMap, date]);
+  }, [filteredOrders, filteredTransactions, selectedStudentId, studentsMap, date, guardianProfile]);
 
   const handleRepeatOrder = (items: OrderItem[]) => {
       console.log("Adding items to cart for repeat order:", items);
@@ -264,6 +282,36 @@ export default function GuardianDashboard() {
           description: `Itens adicionados ao seu carrinho. Vá para 'Fazer Pedido' para finalizar.`,
       });
   };
+
+  if (isLoading) {
+    return (
+        <div className="space-y-8 animate-pulse">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <div className="h-8 bg-muted rounded w-48"></div>
+                    <div className="h-4 bg-muted rounded w-64 mt-2"></div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="h-10 bg-muted rounded w-[250px]"></div>
+                    <div className="h-10 bg-muted rounded w-[220px]"></div>
+                </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {[...Array(4)].map((_, i) => <Card key={i} className="h-28" />)}
+            </div>
+            <Card className="h-40" />
+            <Card className="h-96" />
+        </div>
+    );
+  }
+
+  if (!guardianProfile) {
+    return (
+        <div className="text-center py-10">
+            <p className="text-muted-foreground">Não foi possível carregar o perfil.</p>
+        </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -316,7 +364,7 @@ export default function GuardianDashboard() {
                     day_today: "bg-accent text-accent-foreground",
                     day_outside: "text-muted-foreground opacity-50",
                   }}
-                  onMonthChange={setDate} // Allow month navigation to set the date
+                  onMonthChange={setDate}
                 />
               </PopoverContent>
             </Popover>
@@ -433,7 +481,7 @@ export default function GuardianDashboard() {
         <CardContent className="p-0">
             <TabsContent value="orders" className="m-0">
                 <div className="md:hidden space-y-4 p-4">
-                    {isClient && filteredOrders.map((order) => (
+                    {filteredOrders.map((order) => (
                          <Dialog key={`mobile-order-${order.id}`}>
                             <DialogTrigger asChild>
                                 <Card className={cn("p-4", order.status === 'Pendente' && 'bg-yellow-50/50 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-600')}>
@@ -487,7 +535,7 @@ export default function GuardianDashboard() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isClient && filteredOrders.map((order) => (
+                        {filteredOrders.map((order) => (
                         <Dialog key={order.id}>
                             <DialogTrigger asChild>
                             <TableRow className={cn(
@@ -529,15 +577,8 @@ export default function GuardianDashboard() {
                         ))}
                     </TableBody>
                     </Table>
-                    {!isClient && (
-                            [...Array(3)].map((_, i) => (
-                                <TableRow key={`skeleton-order-${i}`} className="hidden md:table-row">
-                                    {[...Array(6)].map((_, j) => <TableCell key={j}><div className="h-4 bg-muted rounded w-full"></div></TableCell>)}
-                                </TableRow>
-                            ))
-                        )}
                 </div>
-                 {isClient && filteredOrders.length === 0 && (
+                 {filteredOrders.length === 0 && (
                     <div className="text-center text-muted-foreground py-10">
                         {searchTermHistory ? 
                         <p>Nenhum pedido encontrado para a busca "{searchTermHistory}".</p> :
@@ -548,7 +589,7 @@ export default function GuardianDashboard() {
             </TabsContent>
             <TabsContent value="transactions" className="m-0">
                     <div className="md:hidden space-y-4 p-4">
-                        {isClient && filteredTransactions.map((transaction) => (
+                        {filteredTransactions.map((transaction) => (
                             <Card key={`mobile-tx-${transaction.id}`} className="p-4">
                                 <div className="flex justify-between items-center">
                                     <div>
@@ -574,7 +615,7 @@ export default function GuardianDashboard() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {isClient && filteredTransactions.map((transaction) => (
+                                {filteredTransactions.map((transaction) => (
                                     <TableRow key={transaction.id}>
                                         <TableCell>{studentsMap.get((transaction as any).studentId)?.name || 'N/A'}</TableCell>
                                         <TableCell className="text-muted-foreground">
@@ -593,14 +634,7 @@ export default function GuardianDashboard() {
                             </TableBody>
                         </Table>
                     </div>
-                    {!isClient && (
-                         [...Array(4)].map((_, i) => (
-                                <TableRow key={`skeleton-tx-${i}`} className="hidden md:table-row">
-                                   {[...Array(4)].map((_, j) => <TableCell key={j}><div className="h-4 bg-muted rounded w-full"></div></TableCell>)}
-                               </TableRow>
-                           ))
-                    )}
-                    {isClient && filteredTransactions.length === 0 && (
+                    {filteredTransactions.length === 0 && (
                         <div className="text-center text-muted-foreground py-10">
                             <p>Nenhuma transação encontrada para os filtros selecionados.</p>
                         </div>
@@ -612,9 +646,3 @@ export default function GuardianDashboard() {
     </div>
   );
 }
-
-    
-
-    
-
-    

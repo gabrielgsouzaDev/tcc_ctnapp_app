@@ -8,6 +8,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/firebase';
+import api from '@/lib/api';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -33,6 +36,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function GuardianAuthPage() {
   const router = useRouter();
+  const auth = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -46,26 +50,51 @@ export default function GuardianAuthPage() {
     defaultValues: { name: '', studentRa: '', email: '', password: '' },
   });
 
-  const onLoginSubmit = (data: LoginFormValues) => {
+  const onLoginSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
-    console.log('Login data:', data);
-    toast({ title: 'Processando login...' });
-    setTimeout(() => {
+    try {
+      await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
       router.push('/guardian/dashboard');
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Falha no login',
+        description: error.message || 'Ocorreu um erro ao tentar fazer login. Verifique suas credenciais.',
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1500);
+    }
   };
 
-  const onSignupSubmit = (data: SignupFormValues) => {
+  const onSignupSubmit = async (data: SignupFormValues) => {
     setIsSubmitting(true);
-    console.log('Signup data:', data);
-    toast({ title: 'Criando conta...' });
-    setTimeout(() => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+
+      // Now, call the Laravel backend to create the guardian profile
+      await api.post('/guardian/register', {
+        firebaseUid: user.uid,
+        name: data.name,
+        email: data.email,
+        studentRa: data.studentRa,
+      });
+
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
       router.push('/guardian/dashboard');
+    } catch (error: any) {
+      console.error("Signup failed:", error);
+      const errorMessage = error.response?.data?.message || error.message || 'Ocorreu um erro ao criar a conta.';
+      toast({
+        variant: 'destructive',
+        title: 'Falha no cadastro',
+        description: errorMessage,
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1500);
+    }
   };
 
   return (
