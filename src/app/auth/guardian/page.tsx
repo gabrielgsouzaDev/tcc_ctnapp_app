@@ -75,11 +75,15 @@ export default function GuardianAuthPage() {
   const onSignupSubmit = async (data: SignupFormValues) => {
     if (!auth) return;
     setIsSubmitting(true);
+
+    let userCredential; // Keep userCredential in a broader scope
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      // Step 1: Create user in Firebase Auth
+      userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
-      // Now, call the Laravel backend to create the guardian profile
+      // Step 2: Call the Laravel backend to create the guardian profile
       await api.post('/guardian/register', {
         firebaseUid: user.uid,
         name: data.name,
@@ -89,13 +93,30 @@ export default function GuardianAuthPage() {
 
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
       router.push('/guardian/dashboard');
+
     } catch (error: any) {
       let description = 'Ocorreu um erro ao criar a conta.';
+
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
       } else if (error.response?.data?.message) {
+        // This is an error from the Laravel API
         description = error.response.data.message;
+
+        // ** CRITICAL ROLLBACK STEP **
+        // If the Laravel API call failed, but the Firebase user was created, delete the Firebase user.
+        if (userCredential) {
+          try {
+            await userCredential.user.delete();
+            console.log('Orphaned Firebase user deleted due to API registration failure.');
+          } catch (deleteError) {
+            console.error('CRITICAL: Failed to delete orphaned Firebase user.', deleteError);
+            // In a production app, you'd want to log this critical failure.
+            description = "Ocorreu um erro no cadastro. Por favor, contate o suporte.";
+          }
+        }
       }
+      
       toast({
         variant: 'destructive',
         title: 'Falha no cadastro',
