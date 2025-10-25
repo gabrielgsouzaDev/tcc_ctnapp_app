@@ -168,7 +168,7 @@ export default function EmployeeBalancePage() {
     const amountValue = Number(rechargeAmount);
     const isButtonDisabled = !amountValue || amountValue <= 0;
 
-    if (isLoading || !employeeProfile) {
+    if (isLoading) {
         return (
              <div className="space-y-6 animate-pulse">
                 <div className="space-y-1">
@@ -189,6 +189,14 @@ export default function EmployeeBalancePage() {
                         </div>
                     </CardContent>
                 </Card>
+            </div>
+        )
+    }
+
+    if (!employeeProfile) {
+        return (
+            <div className="text-center">
+                <p className="text-muted-foreground">Não foi possível carregar as informações de saldo.</p>
             </div>
         )
     }

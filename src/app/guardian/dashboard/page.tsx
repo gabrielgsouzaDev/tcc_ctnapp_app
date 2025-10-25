@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 import api from '@/lib/api';
-import { type Order, type OrderItem, type Student, type Transaction, type Guardian } from '@/lib/data';
+import { type Order, type OrderItem, type Student, type Guardian, type Transaction } from '@/lib/data';
 import { StudentFilter } from '@/components/shared/student-filter';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/firebase';
@@ -283,10 +283,10 @@ export default function GuardianDashboard() {
 
   if (!guardianProfile) {
     return (
-        <div className="text-center py-10">
-            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-            <p className="text-muted-foreground mt-4">Carregando perfil do responsável...</p>
-            <p className="text-sm text-muted-foreground mt-2">Se esta tela persistir, tente fazer o login novamente.</p>
+        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary mb-4" />
+            <p className="text-lg font-semibold text-muted-foreground">Não foi possível carregar os dados do painel.</p>
+            <p className="text-sm text-muted-foreground mt-2">Isso pode ter acontecido por um problema de rede. Por favor, tente novamente mais tarde.</p>
              <Button onClick={() => router.push('/auth/guardian')} variant="outline" className="mt-4">Voltar ao Login</Button>
         </div>
     );
@@ -557,7 +557,7 @@ export default function GuardianDashboard() {
                     </TableBody>
                     </Table>
                 </div>
-                 {filteredOrders.length === 0 && (
+                 {filteredOrders.length === 0 && !isLoading && (
                     <div className="text-center text-muted-foreground py-10">
                         {searchTermHistory ? 
                         <p>Nenhum pedido encontrado para a busca "{searchTermHistory}".</p> :
@@ -613,7 +613,7 @@ export default function GuardianDashboard() {
                             </TableBody>
                         </Table>
                     </div>
-                    {filteredTransactions.length === 0 && (
+                    {filteredTransactions.length === 0 && !isLoading && (
                         <div className="text-center text-muted-foreground py-10">
                             <p>Nenhuma transação encontrada para os filtros selecionados.</p>
                         </div>

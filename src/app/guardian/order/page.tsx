@@ -220,8 +220,8 @@ export default function GuardianOrderPage() {
 
   if (isLoading) {
     return (
-        <div className="space-y-6">
-             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between animate-pulse">
+        <div className="space-y-6 animate-pulse">
+             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <div className="h-8 bg-muted rounded w-48"></div>
                     <div className="h-4 bg-muted rounded w-64 mt-2"></div>
@@ -231,13 +231,13 @@ export default function GuardianOrderPage() {
                     <div className="h-10 w-10 bg-muted rounded-full"></div>
                  </div>
              </div>
-             <div className="space-y-4 animate-pulse">
+             <div className="space-y-4">
                  <div className="h-10 bg-muted rounded w-full"></div>
                  <div className="flex flex-wrap items-center gap-2">
                     {[...Array(5)].map((_,i) => <div key={i} className="h-10 w-24 bg-muted rounded-md"></div>)}
                  </div>
              </div>
-             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-pulse">
+             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {[...Array(8)].map((_, i) => <Card key={i} className="h-80" />)}
              </div>
         </div>

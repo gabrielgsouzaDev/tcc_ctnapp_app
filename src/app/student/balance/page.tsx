@@ -169,7 +169,7 @@ export default function StudentBalancePage() {
     const amountValue = Number(rechargeAmount);
     const isButtonDisabled = !amountValue || amountValue <= 0;
 
-    if (isLoading || !studentProfile) {
+    if (isLoading) {
         return (
              <div className="space-y-6 animate-pulse">
                 <div className="space-y-1">
@@ -190,6 +190,14 @@ export default function StudentBalancePage() {
                         </div>
                     </CardContent>
                 </Card>
+            </div>
+        )
+    }
+
+    if (!studentProfile) {
+        return (
+            <div className="text-center">
+                <p className="text-muted-foreground">Não foi possível carregar as informações de saldo.</p>
             </div>
         )
     }
