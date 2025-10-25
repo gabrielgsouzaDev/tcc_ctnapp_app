@@ -7,7 +7,7 @@ import { initializeFirebase } from '@/firebase/index';
 initializeFirebase();
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
+  baseURL: 'https://ctnapp-api-427218.uc.r.appspot.com/api',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
