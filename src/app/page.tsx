@@ -1,5 +1,5 @@
 
-import { User, Shield, Briefcase } from 'lucide-react';
+import { User, Shield, BookUser } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -47,7 +47,7 @@ export default function ProfileSelectionPage() {
              <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
                 <CardTitle className="flex flex-col items-center gap-2">
-                  <Briefcase className="h-12 w-12 text-primary" />
+                  <BookUser className="h-12 w-12 text-primary" />
                   <span>Funcionário</span>
                 </CardTitle>
               </CardHeader>
