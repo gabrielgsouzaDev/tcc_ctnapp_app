@@ -146,11 +146,22 @@ export function AppLayout({
   const employeeNavItems: NavItem[] = [
     {
       href: "/employee/dashboard",
-      label: "Início",
+      label: "Cardápio",
       icon: <Home />,
       active: pathname === "/employee/dashboard",
     },
-    // Add more specific employee links here in the future
+    {
+      href: "/employee/orders",
+      label: "Pedidos",
+      icon: <ShoppingBasket />,
+      active: pathname === "/employee/orders",
+    },
+    {
+      href: "/employee/balance",
+      label: "Saldo",
+      icon: <Wallet />,
+      active: pathname === "/employee/balance",
+    },
   ];
   
   const settingsNavItem = {
@@ -288,3 +299,5 @@ export function AppLayout({
     </SidebarProvider>
   );
 }
+
+    
