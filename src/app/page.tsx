@@ -43,7 +43,7 @@ export default function ProfileSelectionPage() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/auth/employee" className="flex">
+          <Link href="/employee/dashboard" className="flex">
              <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
                 <CardTitle className="flex flex-col items-center gap-2">
