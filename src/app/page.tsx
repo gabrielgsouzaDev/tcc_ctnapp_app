@@ -1,20 +1,20 @@
 
-import { User, Shield } from 'lucide-react';
+import { User, Shield, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function ProfileSelectionPage() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-md text-center">
+      <div className="w-full max-w-2xl text-center">
         <div className="mb-8 flex flex-col items-center">
           <h1 className="font-headline text-5xl font-bold text-primary">CTNAPP</h1>
           <p className="text-muted-foreground">A cantina na palma da sua mão.</p>
         </div>
         <h2 className="mb-6 text-2xl font-semibold">Quem está usando?</h2>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <Link href="/auth/student">
-            <Card className="flex h-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <Link href="/auth/student" className="flex">
+            <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
                 <CardTitle className="flex flex-col items-center gap-2">
                   <User className="h-12 w-12 text-primary" />
@@ -28,8 +28,8 @@ export default function ProfileSelectionPage() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/auth/guardian">
-            <Card className="flex h-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
+          <Link href="/auth/guardian" className="flex">
+            <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
                 <CardTitle className="flex flex-col items-center gap-2">
                   <Shield className="h-12 w-12 text-primary" />
@@ -39,6 +39,21 @@ export default function ProfileSelectionPage() {
               <CardContent>
                 <p className="text-sm text-muted-foreground">
                   Recarregar saldo e acompanhar os pedidos do aluno.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/auth/employee" className="flex">
+             <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex flex-col items-center gap-2">
+                  <Briefcase className="h-12 w-12 text-primary" />
+                  <span>Funcionário</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Acessar a cantina como professor ou funcionário.
                 </p>
               </CardContent>
             </Card>

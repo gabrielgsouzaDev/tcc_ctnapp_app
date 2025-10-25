@@ -83,7 +83,7 @@ export function AppLayout({
   userType,
 }: {
   children: ReactNode;
-  userType: "student" | "guardian";
+  userType: "student" | "guardian" | "employee";
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -142,20 +142,48 @@ export function AppLayout({
       active: pathname.startsWith("/guardian/recharge") || pathname.startsWith('/pix-payment'),
     }
   ];
+
+  const employeeNavItems: NavItem[] = [
+    {
+      href: "/employee/dashboard",
+      label: "Início",
+      icon: <Home />,
+      active: pathname === "/employee/dashboard",
+    },
+    // Add more specific employee links here in the future
+  ];
   
   const settingsNavItem = {
-      href: userType === 'student' ? "/student/settings" : "/guardian/settings",
+      href: `/${userType}/settings`,
       label: "Configurações",
       icon: <Settings />,
       active: pathname.includes("/settings"),
   }
 
-  const navItems = userType === "student" ? studentNavItems : guardianNavItems;
-  const userName = user?.displayName || (userType === 'student' ? 'Aluno' : 'Responsável');
+  const getNavItems = () => {
+    switch (userType) {
+        case 'student':
+            return studentNavItems;
+        case 'guardian':
+            return guardianNavItems;
+        case 'employee':
+            return employeeNavItems;
+        default:
+            return [];
+    }
+  }
+
+  const navItems = getNavItems();
+  const getUserName = () => {
+    if (user?.displayName) return user.displayName;
+    switch (userType) {
+        case 'student': return 'Aluno';
+        case 'guardian': return 'Responsável';
+        case 'employee': return 'Funcionário';
+    }
+  }
+  const userName = getUserName();
   const userEmail = user?.email || 'carregando...';
-  // Note: Balance is now fetched within each page, not available globally here.
-  // const userBalance = userType === 'student' ? studentProfile.balance : guardianProfile.balance;
-  // const userBalanceLabel = userType === 'student' ? 'Meu Saldo' : 'Saldo Próprio';
 
   return (
     <SidebarProvider>
