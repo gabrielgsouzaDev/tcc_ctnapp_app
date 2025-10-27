@@ -101,8 +101,8 @@ export default function GuardianAuthPage() {
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
       } else if (error.response) {
-        // Handle Laravel API errors
-        description = error.response.data?.message || 'Falha na comunicação com o servidor. Verifique os dados e tente novamente.';
+        // Handle Laravel API errors (4xx, 5xx)
+        description = error.response.data?.message || `Erro do servidor: ${error.response.statusText}`;
         
         // ** CRITICAL ROLLBACK STEP **
         if (userCredential) {
@@ -115,7 +115,7 @@ export default function GuardianAuthPage() {
           }
         }
       } else if (error.request) {
-        // Handle network errors (no response received)
+        // Handle network errors (no response received) - e.g., CORS, API down
         description = "Não foi possível conectar ao servidor. Verifique sua conexão com a internet.";
       }
       
