@@ -95,13 +95,13 @@ export default function GuardianAuthPage() {
       router.push('/guardian/dashboard');
 
     } catch (error: any) {
-      let description = 'Ocorreu um erro ao criar a conta.';
+      let description = 'Ocorreu um erro ao criar a conta. Tente novamente.';
 
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
-      } else if (error.response?.data?.message) {
-        // This is an error from the Laravel API
-        description = error.response.data.message;
+      } else if (error.response) {
+        // Handle Laravel API errors
+        description = error.response.data?.message || error.message || 'Falha na comunicação com o servidor.';
         
         // ** CRITICAL ROLLBACK STEP **
         // If the Laravel API call failed, but the Firebase user was created, delete the Firebase user.
@@ -111,10 +111,12 @@ export default function GuardianAuthPage() {
             console.log('Orphaned Firebase user deleted due to API registration failure.');
           } catch (deleteError) {
             console.error('CRITICAL: Failed to delete orphaned Firebase user.', deleteError);
-            // In a production app, you'd want to log this critical failure.
             description = "Ocorreu um erro crítico no cadastro. Por favor, contate o suporte.";
           }
         }
+      } else if (error.request) {
+        // Handle network errors (no response received)
+        description = "Não foi possível conectar ao servidor. Verifique sua conexão com a internet.";
       }
       
       toast({
