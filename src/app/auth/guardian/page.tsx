@@ -26,7 +26,7 @@ const loginSchema = z.object({
 
 const signupSchema = z.object({
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
-  ra_aluno: z.string().min(4, 'O RA do aluno deve ter pelo menos 4 caracteres.'),
+  ra: z.string().min(4, 'O RA do aluno deve ter pelo menos 4 caracteres.'),
   email: z.string().email('E-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
 });
@@ -47,7 +47,7 @@ export default function GuardianAuthPage() {
 
   const signupForm = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { name: '', ra_aluno: '', email: '', password: '' },
+    defaultValues: { name: '', ra: '', email: '', password: '' },
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
@@ -88,7 +88,7 @@ export default function GuardianAuthPage() {
         firebaseUid: user.uid,
         name: data.name,
         email: data.email,
-        ra_aluno: data.ra_aluno,
+        ra: data.ra,
       });
 
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
@@ -209,7 +209,7 @@ export default function GuardianAuthPage() {
                     />
                      <FormField
                       control={signupForm.control}
-                      name="ra_aluno"
+                      name="ra"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>RA do Aluno</FormLabel>
