@@ -26,7 +26,7 @@ const loginSchema = z.object({
 
 const signupSchema = z.object({
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
-  studentRa: z.string().min(4, 'O RA do aluno deve ter pelo menos 4 caracteres.'),
+  ra_aluno: z.string().min(4, 'O RA do aluno deve ter pelo menos 4 caracteres.'),
   email: z.string().email('E-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
 });
@@ -47,7 +47,7 @@ export default function GuardianAuthPage() {
 
   const signupForm = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { name: '', studentRa: '', email: '', password: '' },
+    defaultValues: { name: '', ra_aluno: '', email: '', password: '' },
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
@@ -76,7 +76,7 @@ export default function GuardianAuthPage() {
     if (!auth) return;
     setIsSubmitting(true);
 
-    let userCredential; // Keep userCredential in a broader scope
+    let userCredential; 
 
     try {
       // Step 1: Create user in Firebase Auth
@@ -88,7 +88,7 @@ export default function GuardianAuthPage() {
         firebaseUid: user.uid,
         name: data.name,
         email: data.email,
-        ra_aluno: data.studentRa, // Matching Laravel's expected field name
+        ra_aluno: data.ra_aluno,
       });
 
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
@@ -101,10 +101,8 @@ export default function GuardianAuthPage() {
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
       } else if (error.response) {
-        // Handle Laravel API errors (4xx, 5xx)
-        description = error.response.data?.message || `Erro do servidor: ${error.response.statusText}`;
+        description = error.response.data?.message || `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
         
-        // ** CRITICAL ROLLBACK STEP **
         if (userCredential) {
           try {
             await userCredential.user.delete();
@@ -115,8 +113,7 @@ export default function GuardianAuthPage() {
           }
         }
       } else if (error.request) {
-        // Handle network errors (no response received) - e.g., CORS, API down
-        description = "Não foi possível conectar ao servidor. Verifique sua conexão com a internet.";
+        description = "Não foi possível conectar ao servidor. Verifique sua conexão e se a API está online.";
       }
       
       toast({
@@ -212,7 +209,7 @@ export default function GuardianAuthPage() {
                     />
                      <FormField
                       control={signupForm.control}
-                      name="studentRa"
+                      name="ra_aluno"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>RA do Aluno</FormLabel>
