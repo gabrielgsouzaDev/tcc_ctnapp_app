@@ -102,7 +102,7 @@ export default function GuardianAuthPage() {
       } else if (error.response?.data?.message) {
         // This is an error from the Laravel API
         description = error.response.data.message;
-
+        
         // ** CRITICAL ROLLBACK STEP **
         // If the Laravel API call failed, but the Firebase user was created, delete the Firebase user.
         if (userCredential) {
@@ -112,7 +112,7 @@ export default function GuardianAuthPage() {
           } catch (deleteError) {
             console.error('CRITICAL: Failed to delete orphaned Firebase user.', deleteError);
             // In a production app, you'd want to log this critical failure.
-            description = "Ocorreu um erro no cadastro. Por favor, contate o suporte.";
+            description = "Ocorreu um erro crítico no cadastro. Por favor, contate o suporte.";
           }
         }
       }
