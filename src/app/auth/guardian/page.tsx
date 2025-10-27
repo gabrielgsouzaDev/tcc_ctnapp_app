@@ -101,18 +101,22 @@ export default function GuardianAuthPage() {
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
       } else if (error.response) {
+        // Error from Laravel API
         description = error.response.data?.message || `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
         
+        // Critical: If API call fails, delete the created Firebase user to avoid orphans
         if (userCredential) {
           try {
             await userCredential.user.delete();
             console.log('Orphaned Firebase user deleted due to API registration failure.');
           } catch (deleteError) {
             console.error('CRITICAL: Failed to delete orphaned Firebase user.', deleteError);
+            // Update description to inform user about the critical failure
             description = "Ocorreu um erro crítico no cadastro. Por favor, contate o suporte.";
           }
         }
       } else if (error.request) {
+        // Network error (API is down, CORS issue, etc.)
         description = "Não foi possível conectar ao servidor. Verifique sua conexão e se a API está online.";
       }
       
