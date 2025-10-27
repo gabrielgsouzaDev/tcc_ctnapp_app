@@ -39,9 +39,9 @@ export default function GuardianRechargePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
+        setIsLoading(true);
         try {
-            setIsLoading(true);
-            const response = await api.get('/guardian/profile');
+            const response = await api.get('/perfil/responsavel');
             setGuardianProfile(response.data);
         } catch (error) {
             console.error("Failed to fetch guardian profile", error);
@@ -59,7 +59,7 @@ export default function GuardianRechargePage() {
 
 
   const guardianAsTarget: RechargeTarget | null = guardianProfile ? {
-      id: 'guardian',
+      id: 'guardian', // Using a special ID for the guardian
       name: guardianProfile.name,
       balance: guardianProfile.balance,
       isGuardian: true,
@@ -92,8 +92,8 @@ export default function GuardianRechargePage() {
 
     setIsProcessing(true);
     try {
-        await api.post('/transactions/transfer', {
-            toStudentId: selectedTarget.id,
+        await api.post('/update-saldo', {
+            id_aluno: selectedTarget.id,
             amount: Number(rechargeAmount),
         });
 

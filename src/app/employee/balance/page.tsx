@@ -5,7 +5,6 @@ import { Wallet, CreditCard, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { type Transaction, type Student } from '@/lib/data';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -108,12 +107,13 @@ export default function EmployeeBalancePage() {
 
     useEffect(() => {
         const fetchData = async () => {
+            setIsLoading(true);
             try {
-                setIsLoading(true);
-                // NOTE: We are hitting student endpoints, assuming the backend can resolve the user type via token.
+                // NOTE: Using a general 'profile' and 'transactions' endpoint. 
+                // The backend should determine the user type via Firebase token.
                 const [profileRes, transactionsRes] = await Promise.all([
-                    api.get('/employee/profile'), // This should be the correct endpoint
-                    api.get('/transactions')
+                    api.get('/perfil/funcionario'), 
+                    api.get('/transacoes')
                 ]);
                 setEmployeeProfile(profileRes.data);
                 setTransactionHistory(transactionsRes.data);
@@ -381,5 +381,3 @@ export default function EmployeeBalancePage() {
         </div>
     );
 }
-
-    

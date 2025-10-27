@@ -148,13 +148,12 @@ export default function GuardianDashboard() {
     }
       
     const fetchData = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        // Assuming your API returns data in { data: [...] } format
         const [profileRes, ordersRes, transactionsRes] = await Promise.all([
-          api.get('/guardian/profile'),
-          api.get('/orders'),
-          api.get('/transactions')
+          api.get('/perfil/responsavel'),
+          api.get('/pedidos'),
+          api.get('/transacoes')
         ]);
         
         setGuardianProfile(profileRes.data);

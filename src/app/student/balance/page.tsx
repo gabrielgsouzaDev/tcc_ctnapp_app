@@ -5,7 +5,6 @@ import { Wallet, CreditCard, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { type Transaction, type Student } from '@/lib/data';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -110,11 +109,11 @@ export default function StudentBalancePage() {
 
     useEffect(() => {
         const fetchData = async () => {
+            setIsLoading(true);
             try {
-                setIsLoading(true);
                 const [profileRes, transactionsRes] = await Promise.all([
-                    api.get('/student/profile'),
-                    api.get('/transactions')
+                    api.get('/perfil/aluno'),
+                    api.get('/transacoes')
                 ]);
                 setStudentProfile(profileRes.data);
                 setTransactionHistory(transactionsRes.data);

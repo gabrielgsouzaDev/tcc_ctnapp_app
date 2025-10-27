@@ -84,27 +84,27 @@ export default function GuardianAuthPage() {
       const user = userCredential.user;
 
       // Step 2: Call the Laravel backend to create the guardian profile
-      await api.post('/guardian/register', {
+      await api.post('/cadastrar-responsavel', {
         firebaseUid: user.uid,
         name: data.name,
         email: data.email,
-        studentRa: data.studentRa,
+        ra_aluno: data.studentRa, // Matching Laravel's expected field name
       });
 
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
       router.push('/guardian/dashboard');
 
     } catch (error: any) {
+      console.error("Signup Error:", error);
       let description = 'Ocorreu um erro ao criar a conta. Tente novamente.';
 
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
       } else if (error.response) {
         // Handle Laravel API errors
-        description = error.response.data?.message || error.message || 'Falha na comunicação com o servidor.';
+        description = error.response.data?.message || 'Falha na comunicação com o servidor. Verifique os dados e tente novamente.';
         
         // ** CRITICAL ROLLBACK STEP **
-        // If the Laravel API call failed, but the Firebase user was created, delete the Firebase user.
         if (userCredential) {
           try {
             await userCredential.user.delete();

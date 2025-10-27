@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { type Product, type Canteen } from '@/lib/data';
+import { type Product, type Canteen, type Student } from '@/lib/data';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
@@ -66,6 +66,7 @@ export default function EmployeeDashboard() {
   
   const [products, setProducts] = useState<Product[]>([]);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
+  const [schoolId, setSchoolId] = useState<string>(''); // Added state for school ID
   const [isLoading, setIsLoading] = useState(true);
 
   const [selectedCanteen, setSelectedCanteen] = useState('');
@@ -77,38 +78,65 @@ export default function EmployeeDashboard() {
   const [favoriteCategory, setFavoriteCategory] = useState<Category>('Todos');
 
    useEffect(() => {
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        const [productsRes, canteensRes] = await Promise.all([
-          api.get('/products'),
-          api.get('/canteens'),
-        ]);
+        // First, get user profile to find out their school
+        const profileRes = await api.get('/perfil/funcionario');
+        const userSchoolId = profileRes.data.schoolId; // Assuming the profile contains schoolId
+        setSchoolId(userSchoolId);
 
-        setProducts(productsRes.data);
-        setCanteens(canteensRes.data);
+        if (userSchoolId) {
+          // Then, fetch canteens for that school
+          const canteensRes = await api.get(`/cantinas/${userSchoolId}`);
+          setCanteens(canteensRes.data);
 
-        if (canteensRes.data.length > 0) {
-          setSelectedCanteen(canteensRes.data[0].id);
+          if (canteensRes.data.length > 0) {
+            // Automatically select the first canteen
+            const firstCanteenId = canteensRes.data[0].id;
+            setSelectedCanteen(firstCanteenId);
+          }
         }
       } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
+        console.error("Failed to fetch initial data:", error);
         toast({
           variant: "destructive",
-          title: "Erro ao carregar cardápio",
-          description: "Não foi possível buscar os produtos e cantinas.",
+          title: "Erro ao carregar dados",
+          description: "Não foi possível buscar seu perfil e cantinas.",
         });
       } finally {
         setIsLoading(false);
       }
     };
-    fetchData();
+    fetchInitialData();
   }, [toast]);
+
+  useEffect(() => {
+    // Fetch products whenever the selected canteen changes
+    if (!selectedCanteen) {
+        setProducts([]);
+        return;
+    };
+
+    const fetchProducts = async () => {
+        try {
+            const productsRes = await api.get(`/produtos/${selectedCanteen}`);
+            setProducts(productsRes.data);
+        } catch (error) {
+            console.error(`Failed to fetch products for canteen ${selectedCanteen}:`, error);
+            toast({
+                variant: "destructive",
+                title: "Erro ao carregar cardápio",
+                description: "Não foi possível buscar os produtos desta cantina.",
+            });
+        }
+    };
+    fetchProducts();
+  }, [selectedCanteen, toast]);
 
 
   const filteredProducts = useMemo(() => {
     return products
-      .filter((p) => p.canteenId === selectedCanteen)
       .filter((p) =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
@@ -116,7 +144,7 @@ export default function EmployeeDashboard() {
         if (selectedCategory === 'Todos') return true;
         return p.category === selectedCategory;
       });
-  }, [selectedCanteen, searchTerm, selectedCategory, products]);
+  }, [searchTerm, selectedCategory, products]);
 
   const handleAddToCartVisuals = (product: Product) => {
     setAddToCartState(prev => ({ ...prev, [product.id]: 'added' }));
@@ -209,7 +237,7 @@ export default function EmployeeDashboard() {
     }
     
     try {
-        await api.post('/orders', {
+        await api.post('/pedido', {
             // userId will be identified by the backend via token
             items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })),
             total: parseFloat(cartTotal),
@@ -565,5 +593,3 @@ export default function EmployeeDashboard() {
     </div>
   );
 }
-
-    

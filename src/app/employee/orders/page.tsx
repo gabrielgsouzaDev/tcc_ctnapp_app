@@ -150,9 +150,9 @@ export default function EmployeeOrdersPage() {
 
     useEffect(() => {
         const fetchOrders = async () => {
+            setIsLoading(true);
             try {
-                setIsLoading(true);
-                const response = await api.get('/orders');
+                const response = await api.get('/pedidos'); // Uses a general endpoint
                 setOrderHistory(response.data);
             } catch (error) {
                 console.error('Failed to fetch order history:', error);
@@ -391,5 +391,3 @@ export default function EmployeeOrdersPage() {
     </div>
   );
 }
-
-    

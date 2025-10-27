@@ -66,6 +66,7 @@ export default function StudentDashboard() {
   
   const [products, setProducts] = useState<Product[]>([]);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
+  const [schoolId, setSchoolId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
 
   const [selectedCanteen, setSelectedCanteen] = useState('');
@@ -77,38 +78,61 @@ export default function StudentDashboard() {
   const [favoriteCategory, setFavoriteCategory] = useState<Category>('Todos');
 
    useEffect(() => {
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        const [productsRes, canteensRes] = await Promise.all([
-          api.get('/products'),
-          api.get('/canteens'),
-        ]);
+        const profileRes = await api.get('/perfil/aluno');
+        const userSchoolId = profileRes.data.schoolId;
+        setSchoolId(userSchoolId);
 
-        setProducts(productsRes.data);
-        setCanteens(canteensRes.data);
+        if (userSchoolId) {
+          const canteensRes = await api.get(`/cantinas/${userSchoolId}`);
+          setCanteens(canteensRes.data);
 
-        if (canteensRes.data.length > 0) {
-          setSelectedCanteen(canteensRes.data[0].id);
+          if (canteensRes.data.length > 0) {
+            const firstCanteenId = canteensRes.data[0].id;
+            setSelectedCanteen(firstCanteenId);
+          }
         }
       } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
+        console.error("Failed to fetch initial data:", error);
         toast({
           variant: "destructive",
-          title: "Erro ao carregar cardápio",
-          description: "Não foi possível buscar os produtos e cantinas.",
+          title: "Erro ao carregar dados",
+          description: "Não foi possível buscar seu perfil e cantinas.",
         });
       } finally {
         setIsLoading(false);
       }
     };
-    fetchData();
+    fetchInitialData();
   }, [toast]);
+
+  useEffect(() => {
+    if (!selectedCanteen) {
+        setProducts([]);
+        return;
+    };
+
+    const fetchProducts = async () => {
+        try {
+            const productsRes = await api.get(`/produtos/${selectedCanteen}`);
+            setProducts(productsRes.data);
+        } catch (error) {
+            console.error(`Failed to fetch products for canteen ${selectedCanteen}:`, error);
+            toast({
+                variant: "destructive",
+                title: "Erro ao carregar cardápio",
+                description: "Não foi possível buscar os produtos desta cantina.",
+            });
+        }
+    };
+    fetchProducts();
+  }, [selectedCanteen, toast]);
 
 
   const filteredProducts = useMemo(() => {
     return products
-      .filter((p) => p.canteenId === selectedCanteen)
       .filter((p) =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
@@ -116,7 +140,7 @@ export default function StudentDashboard() {
         if (selectedCategory === 'Todos') return true;
         return p.category === selectedCategory;
       });
-  }, [selectedCanteen, searchTerm, selectedCategory, products]);
+  }, [searchTerm, selectedCategory, products]);
 
   const handleAddToCartVisuals = (product: Product) => {
     setAddToCartState(prev => ({ ...prev, [product.id]: 'added' }));
@@ -209,8 +233,7 @@ export default function StudentDashboard() {
     }
     
     try {
-        await api.post('/orders', {
-            // studentId will be identified by the backend via token
+        await api.post('/pedido', {
             items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })),
             total: parseFloat(cartTotal),
         });

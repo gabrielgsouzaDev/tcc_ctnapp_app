@@ -150,9 +150,10 @@ export default function StudentOrdersPage() {
 
     useEffect(() => {
         const fetchOrders = async () => {
+            setIsLoading(true);
             try {
-                setIsLoading(true);
-                const response = await api.get('/orders');
+                // The backend will identify the student based on the Firebase token
+                const response = await api.get('/pedidos'); 
                 setOrderHistory(response.data);
             } catch (error) {
                 console.error('Failed to fetch order history:', error);

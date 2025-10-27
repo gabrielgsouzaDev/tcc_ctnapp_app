@@ -35,6 +35,7 @@ export default function GuardianOrderPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [schoolId, setSchoolId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
 
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -45,39 +46,64 @@ export default function GuardianOrderPage() {
   const [studentForOrder, setStudentForOrder] = useState<string>('');
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        const [productsRes, canteensRes, profileRes] = await Promise.all([
-          api.get('/products'),
-          api.get('/canteens'),
-          api.get('/guardian/profile'),
-        ]);
+        const profileRes = await api.get('/perfil/responsavel');
+        const userSchoolId = profileRes.data.schoolId; // Assuming profile has schoolId
+        const userStudents = profileRes.data.students;
 
-        setProducts(productsRes.data);
-        setCanteens(canteensRes.data);
-        setStudents(profileRes.data.students);
+        setSchoolId(userSchoolId);
+        setStudents(userStudents);
 
-        if (canteensRes.data.length > 0) {
-          setSelectedCanteen(canteensRes.data[0].id);
-        }
-        if (profileRes.data.students.length > 0) {
-          setStudentForOrder(profileRes.data.students[0].id);
+        if (userStudents.length > 0) {
+          setStudentForOrder(userStudents[0].id);
         }
 
+        if (userSchoolId) {
+          const canteensRes = await api.get(`/cantinas/${userSchoolId}`);
+          setCanteens(canteensRes.data);
+
+          if (canteensRes.data.length > 0) {
+            setSelectedCanteen(canteensRes.data[0].id);
+          }
+        }
       } catch (error) {
         console.error("Failed to fetch order page data:", error);
         toast({
           variant: "destructive",
           title: "Erro ao carregar página",
-          description: "Não foi possível buscar os produtos e cantinas.",
+          description: "Não foi possível buscar os dados de perfil e cantinas.",
         });
       } finally {
         setIsLoading(false);
       }
     };
-    fetchData();
+    fetchInitialData();
   }, [toast]);
+
+  useEffect(() => {
+    // Fetch products whenever the selected canteen changes
+    if (!selectedCanteen) {
+      setProducts([]);
+      return;
+    }
+
+    const fetchProducts = async () => {
+      try {
+        const productsRes = await api.get(`/produtos/${selectedCanteen}`);
+        setProducts(productsRes.data);
+      } catch (error) {
+        console.error(`Failed to fetch products for canteen ${selectedCanteen}:`, error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar cardápio",
+          description: "Não foi possível buscar os produtos desta cantina.",
+        });
+      }
+    };
+    fetchProducts();
+  }, [selectedCanteen, toast]);
 
   useEffect(() => {
     // Check for items to repeat from local storage (e.g., from order history)
@@ -117,7 +143,6 @@ export default function GuardianOrderPage() {
 
   const filteredProducts = useMemo(() => {
     return products
-      .filter((p) => p.canteenId === selectedCanteen)
       .filter((p) =>
         p.name.toLowerCase().includes(searchTermProducts.toLowerCase())
       )
@@ -125,7 +150,7 @@ export default function GuardianOrderPage() {
         if (selectedCategory === 'Todos') return true;
         return p.category === selectedCategory;
       });
-  }, [selectedCanteen, searchTermProducts, selectedCategory, products]);
+  }, [searchTermProducts, selectedCategory, products]);
 
   const handleAddToCartVisuals = (product: Product) => {
     setAddToCartState(prev => ({ ...prev, [product.id]: 'added' }));
@@ -193,8 +218,8 @@ export default function GuardianOrderPage() {
     }
     
     try {
-        await api.post('/orders', {
-            studentId: studentForOrder,
+        await api.post('/pedido', {
+            id_aluno: studentForOrder,
             items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })),
             total: parseFloat(cartTotal),
         });
