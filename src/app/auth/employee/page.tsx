@@ -8,6 +8,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/firebase';
+import api from '@/lib/api';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -32,6 +35,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function EmployeeAuthPage() {
   const router = useRouter();
+  const auth = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -46,25 +50,75 @@ export default function EmployeeAuthPage() {
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
+    if (!auth) return;
     setIsSubmitting(true);
-    console.log('Login data:', data);
-    toast({ title: 'Login (simulado) com sucesso!', description: 'Redirecionando para o painel...' });
-    // In a real scenario, you would call Firebase Auth here.
-    setTimeout(() => {
-        router.push('/employee/dashboard');
-        setIsSubmitting(false);
-    }, 1000);
+    try {
+      await signInWithEmailAndPassword(auth, data.email, data.password);
+      toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
+      router.push('/employee/dashboard');
+    } catch (error: any) {
+      let description = 'Ocorreu um erro inesperado. Tente novamente.';
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        description = 'E-mail ou senha inválidos. Por favor, tente novamente.';
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Falha no login',
+        description,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const onSignupSubmit = async (data: SignupFormValues) => {
+    if (!auth) return;
     setIsSubmitting(true);
-    console.log('Signup data:', data);
-    toast({ title: 'Conta criada (simulada) com sucesso!', description: 'Você será redirecionado para o painel.' });
-    // In a real scenario, you would call Firebase Auth and your backend API here.
-    setTimeout(() => {
-        router.push('/employee/dashboard');
-        setIsSubmitting(false);
-    }, 1000);
+    let userCredential;
+
+    try {
+      userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+
+      // Assuming an endpoint to register employees exists.
+      await api.post('/cadastrar-funcionario', {
+        firebaseUid: user.uid,
+        name: data.name,
+        email: data.email,
+      });
+
+      toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
+      router.push('/employee/dashboard');
+
+    } catch (error: any) {
+      console.error("Signup Error:", error);
+      let description = 'Ocorreu um erro ao criar a conta. Tente novamente.';
+
+      if (error.code === 'auth/email-already-in-use') {
+        description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
+      } else if (error.response) {
+        description = error.response.data?.message || `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
+        if (userCredential) {
+          try {
+            await userCredential.user.delete();
+            console.log('Orphaned Firebase user deleted due to API registration failure.');
+          } catch (deleteError) {
+            console.error('CRITICAL: Failed to delete orphaned Firebase user.', deleteError);
+            description = "Ocorreu um erro crítico no cadastro. Por favor, contate o suporte.";
+          }
+        }
+      } else if (error.request) {
+        description = "Não foi possível conectar ao servidor. Verifique sua conexão e se a API está online.";
+      }
+      
+      toast({
+        variant: 'destructive',
+        title: 'Falha no cadastro',
+        description,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

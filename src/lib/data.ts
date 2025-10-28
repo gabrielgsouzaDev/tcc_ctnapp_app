@@ -52,8 +52,14 @@ export type Student = {
 
 export type Guardian = {
     id: string;
+    schoolId: string;
     name: string;
     balance: number;
-    schoolId: string;
     students: Student[];
 }
+
+export type School = {
+  id: string;
+  name: string;
+  address: string;
+};
