@@ -102,6 +102,7 @@ export default function GuardianAuthPage() {
       } 
       // Check for error from Laravel API
       else if (error.response) {
+        // Safely access the message from the API response
         description = error.response.data?.message || `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
         
         // Critical: If API call fails, delete the created Firebase user to avoid orphans

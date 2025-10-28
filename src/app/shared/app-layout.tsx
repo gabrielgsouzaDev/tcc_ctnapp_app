@@ -53,7 +53,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuth, useUser } from "@/firebase";
-import { Logo } from "../shared/logo";
+import { Logo } from "@/components/shared/logo";
 
 type NavItem = {
   href: string;
