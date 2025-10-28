@@ -1,4 +1,3 @@
-
 import type { ImagePlaceholder } from './placeholder-images';
 
 // This file now only contains TYPE DEFINITIONS for our data models.
@@ -43,20 +42,28 @@ export type Transaction = {
   studentId?: string; // studentId is optional as a transaction can be for the guardian
 };
 
-export type Student = {
-    id: string;
-    name: string;
-    balance: number;
-    schoolId: string;
-}
+// Base User type reflecting tb_usuario and tb_carteira
+export type User = {
+  id: string; // Corresponds to id_usuario
+  uid_firebase: string;
+  name: string;
+  email: string;
+  schoolId: string; // Corresponds to id_escola
+  balance: number;
+  ra?: string;
+  cargo?: string;
+};
 
-export type Guardian = {
-    id: string;
-    schoolId: string;
-    name: string;
-    balance: number;
-    students: Student[];
-}
+// Student is a specific type of User
+export type Student = User & {
+  ra: string; // RA is mandatory for a student
+};
+
+// Guardian is a specific type of User that also has a list of dependents
+export type Guardian = User & {
+  students: Student[]; // List of dependent students
+};
+
 
 export type School = {
   id: string;

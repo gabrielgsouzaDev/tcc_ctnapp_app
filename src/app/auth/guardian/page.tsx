@@ -83,7 +83,7 @@ export default function GuardianAuthPage() {
       const user = userCredential.user;
 
       await api.post('/cadastrar-responsavel', {
-        firebaseUid: user.uid,
+        uid_firebase: user.uid, // Corrected field name
         name: data.name,
         email: data.email,
         ra: data.ra,
@@ -109,7 +109,6 @@ export default function GuardianAuthPage() {
             console.log('Orphaned Firebase user deleted due to API registration failure.');
           } catch (deleteError) {
             console.error('CRITICAL: Failed to delete orphaned Firebase user.', deleteError);
-            // Update description to inform user about the critical failure
             description = "Ocorreu um erro crítico no cadastro. Por favor, contate o suporte.";
           }
         }

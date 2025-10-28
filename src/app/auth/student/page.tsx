@@ -92,7 +92,7 @@ export default function StudentAuthPage() {
       const user = userCredential.user;
 
       await api.post('/cadastrar-aluno', {
-        firebaseUid: user.uid,
+        uid_firebase: user.uid, // Corrected field name
         name: data.name,
         email: data.email,
         ra: data.ra,

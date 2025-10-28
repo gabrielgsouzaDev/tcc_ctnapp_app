@@ -82,7 +82,7 @@ export default function EmployeeAuthPage() {
 
       // Assuming an endpoint to register employees exists.
       await api.post('/cadastrar-funcionario', {
-        firebaseUid: user.uid,
+        uid_firebase: user.uid,
         name: data.name,
         email: data.email,
       });
