@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase';
 import api from '@/lib/api';
 import { type School } from '@/lib/data';
+import { Logo } from '@/components/shared/logo';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -92,11 +93,11 @@ export default function StudentAuthPage() {
       const user = userCredential.user;
 
       await api.post('/cadastrar-aluno', {
-        uid_firebase: user.uid, // Corrected field name
+        uid_firebase: user.uid,
         name: data.name,
         email: data.email,
         ra: data.ra,
-        schoolId: data.schoolId,
+        id_escola: data.schoolId,
       });
 
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
@@ -136,11 +137,8 @@ export default function StudentAuthPage() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40 px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <Link href="/">
-            <h1 className="font-headline text-5xl font-bold text-primary">CTNAPP</h1>
-          </Link>
-          <p className="text-muted-foreground">Acesso do Aluno</p>
+        <div className="mb-8 flex justify-center">
+            <Logo />
         </div>
         
         <Tabs defaultValue="login" className="w-full">
@@ -152,7 +150,7 @@ export default function StudentAuthPage() {
           <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle>Login</CardTitle>
+                <CardTitle>Login de Aluno</CardTitle>
                 <CardDescription>Acesse sua conta para fazer pedidos.</CardDescription>
               </CardHeader>
               <CardContent>

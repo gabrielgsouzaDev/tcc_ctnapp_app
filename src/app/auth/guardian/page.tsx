@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase';
 import api from '@/lib/api';
+import { Logo } from '@/components/shared/logo';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -26,7 +27,7 @@ const loginSchema = z.object({
 
 const signupSchema = z.object({
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
-  ra: z.string().min(4, 'O RA do aluno deve ter pelo menos 4 caracteres.'),
+  ra: z.string().min(1, 'O RA do aluno é obrigatório.'),
   email: z.string().email('E-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
 });
@@ -75,15 +76,14 @@ export default function GuardianAuthPage() {
   const onSignupSubmit = async (data: SignupFormValues) => {
     if (!auth) return;
     setIsSubmitting(true);
-
-    let userCredential; 
+    let userCredential;
 
     try {
       userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
       await api.post('/cadastrar-responsavel', {
-        uid_firebase: user.uid, // Corrected field name
+        uid_firebase: user.uid,
         name: data.name,
         email: data.email,
         ra: data.ra,
@@ -95,11 +95,13 @@ export default function GuardianAuthPage() {
     } catch (error: any) {
       console.error("Signup Error:", error);
       let description = 'Ocorreu um erro ao criar a conta. Tente novamente.';
-
+      
+      // Check for specific Firebase error
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
-      } else if (error.response) {
-        // Error from Laravel API
+      } 
+      // Check for error from Laravel API
+      else if (error.response) {
         description = error.response.data?.message || `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
         
         // Critical: If API call fails, delete the created Firebase user to avoid orphans
@@ -112,8 +114,9 @@ export default function GuardianAuthPage() {
             description = "Ocorreu um erro crítico no cadastro. Por favor, contate o suporte.";
           }
         }
-      } else if (error.request) {
-        // Network error (API is down, CORS issue, etc.)
+      } 
+      // Check for network error (API is down, CORS issue, etc.)
+      else if (error.request) {
         description = "Não foi possível conectar ao servidor. Verifique sua conexão e se a API está online.";
       }
       
@@ -130,11 +133,8 @@ export default function GuardianAuthPage() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40 px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <Link href="/">
-            <h1 className="font-headline text-5xl font-bold text-primary">CTNAPP</h1>
-          </Link>
-          <p className="text-muted-foreground">Acesso do Responsável</p>
+        <div className="mb-8 flex justify-center">
+          <Logo />
         </div>
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -145,7 +145,7 @@ export default function GuardianAuthPage() {
           <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle>Login</CardTitle>
+                <CardTitle>Login de Responsável</CardTitle>
                 <CardDescription>Acesse sua conta para gerenciar saldos e pedidos.</CardDescription>
               </CardHeader>
               <CardContent>

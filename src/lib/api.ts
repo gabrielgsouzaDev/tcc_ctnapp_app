@@ -7,7 +7,7 @@ import { initializeFirebase } from '@/firebase/index';
 initializeFirebase();
 
 const api = axios.create({
-  baseURL: 'https://ctnapp-api-427218.uc.r.appspot.com/api',
+  baseURL: 'https://bemmu-api-427218.uc.r.appspot.com/api',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

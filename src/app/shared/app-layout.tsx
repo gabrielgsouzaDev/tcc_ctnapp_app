@@ -53,6 +53,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuth, useUser } from "@/firebase";
+import { Logo } from "../shared/logo";
 
 type NavItem = {
   href: string;
@@ -202,7 +203,7 @@ export function AppLayout({
         <Sidebar>
           <SidebarHeader>
             <div className="flex items-center gap-2 p-2">
-              <span className="font-semibold text-xl text-primary px-2">CTNAPP</span>
+              <Logo isSidebar={true} />
             </div>
           </SidebarHeader>
           <SidebarContent>
@@ -299,5 +300,3 @@ export function AppLayout({
     </SidebarProvider>
   );
 }
-
-    

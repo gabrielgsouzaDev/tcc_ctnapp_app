@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase';
 import api from '@/lib/api';
+import { Logo } from '@/components/shared/logo';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -80,7 +81,6 @@ export default function EmployeeAuthPage() {
       userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
-      // Assuming an endpoint to register employees exists.
       await api.post('/cadastrar-funcionario', {
         uid_firebase: user.uid,
         name: data.name,
@@ -97,9 +97,7 @@ export default function EmployeeAuthPage() {
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
       } else if (error.response) {
-        // Error from Laravel API
         description = error.response.data?.message || `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
-        // Critical: If API call fails, delete the created Firebase user to avoid orphans
         if (userCredential) {
           try {
             await userCredential.user.delete();
@@ -110,7 +108,6 @@ export default function EmployeeAuthPage() {
           }
         }
       } else if (error.request) {
-        // Network error (API is down, CORS issue, etc.)
         description = "Não foi possível conectar ao servidor. Verifique sua conexão e se a API está online.";
       }
       
@@ -127,11 +124,8 @@ export default function EmployeeAuthPage() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40 px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <Link href="/">
-            <h1 className="font-headline text-5xl font-bold text-primary">CTNAPP</h1>
-          </Link>
-          <p className="text-muted-foreground">Acesso do Funcionário</p>
+        <div className="mb-8 flex justify-center">
+            <Logo />
         </div>
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -142,7 +136,7 @@ export default function EmployeeAuthPage() {
           <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle>Login</CardTitle>
+                <CardTitle>Login de Funcionário</CardTitle>
                 <CardDescription>Acesse sua conta para usar a cantina.</CardDescription>
               </CardHeader>
               <CardContent>
