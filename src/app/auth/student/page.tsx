@@ -37,32 +37,18 @@ const signupSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 type SignupFormValues = z.infer<typeof signupSchema>;
 
+// Mock data for schools since there's no public endpoint yet
+const mockSchools: School[] = [
+  { id: '1', name: 'Escola Padrão A', address: 'Rua Exemplo, 123' },
+  { id: '2', name: 'Escola Padrão B', address: 'Avenida Teste, 456' },
+];
+
 export default function StudentAuthPage() {
   const router = useRouter();
   const auth = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [schools, setSchools] = useState<School[]>([]);
-
-  useEffect(() => {
-    const fetchSchools = async () => {
-      try {
-        // NOTE: This assumes a public endpoint `/escolas` exists to list all schools.
-        // This is necessary for the student to select their school upon registration.
-        const response = await api.get('/escolas');
-        setSchools(response.data);
-      } catch (error) {
-        console.error("Failed to fetch schools", error);
-        toast({
-          variant: 'destructive',
-          title: 'Erro ao carregar escolas',
-          description: 'Não foi possível buscar a lista de escolas. Tente recarregar a página.'
-        });
-      }
-    };
-    fetchSchools();
-  }, [toast]);
-
+  const [schools, setSchools] = useState<School[]>(mockSchools); // Use mock data
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
