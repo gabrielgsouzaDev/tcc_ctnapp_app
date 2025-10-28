@@ -141,7 +141,6 @@ export default function GuardianDashboard() {
   const [date, setDate] = useState<Date>(new Date());
 
   useEffect(() => {
-    // Redirect if not logged in
     if (!auth?.currentUser && process.env.NODE_ENV === 'production') {
         router.replace('/auth/guardian');
         return;

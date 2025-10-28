@@ -79,11 +79,9 @@ export default function GuardianAuthPage() {
     let userCredential; 
 
     try {
-      // Step 1: Create user in Firebase Auth
       userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
-      // Step 2: Call the Laravel backend to create the guardian profile
       await api.post('/cadastrar-responsavel', {
         firebaseUid: user.uid,
         name: data.name,

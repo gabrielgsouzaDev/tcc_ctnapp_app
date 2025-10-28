@@ -47,10 +47,13 @@ export type Student = {
     id: string;
     name: string;
     balance: number;
+    schoolId: string;
 }
 
 export type Guardian = {
+    id: string;
     name: string;
     balance: number;
+    schoolId: string;
     students: Student[];
 }
