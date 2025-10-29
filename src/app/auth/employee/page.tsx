@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword }from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,9 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase';
 import { Logo } from '@/components/shared/logo';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getSchools, createUserProfile } from '@/lib/services';
+import { School } from '@/lib/data';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -28,6 +32,7 @@ const signupSchema = z.object({
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
   email: z.string().email('E-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
+  schoolId: z.string({ required_error: 'Por favor, selecione uma escola.' }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -36,8 +41,35 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 export default function EmployeeAuthPage() {
   const router = useRouter();
   const auth = useAuth();
+  const firestore = getFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [schools, setSchools] = useState<School[]>([]);
+
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const schoolList = await getSchools(firestore);
+         if (schoolList.length === 0) {
+          setSchools([
+            { id: '1', name: 'Escola Padrão A', address: 'Rua Exemplo, 123' },
+            { id: '2', name: 'Escola Padrão B', address: 'Avenida Teste, 456' },
+          ]);
+        } else {
+          setSchools(schoolList);
+        }
+      } catch (error) {
+        console.error("Failed to fetch schools:", error);
+        toast({ variant: 'destructive', title: 'Erro ao buscar escolas' });
+         setSchools([
+            { id: '1', name: 'Escola Padrão A', address: 'Rua Exemplo, 123' },
+            { id: '2', name: 'Escola Padrão B', address: 'Avenida Teste, 456' },
+         ]);
+      }
+    };
+    fetchSchools();
+  }, [firestore, toast]);
+
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -76,10 +108,15 @@ export default function EmployeeAuthPage() {
     setIsSubmitting(true);
 
     try {
-       await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
       
-      // After successful Firebase user creation, you would typically
-      // save additional user info to Firestore here.
+      await createUserProfile(firestore, user.uid, {
+        name: data.name,
+        email: data.email,
+        schoolId: data.schoolId,
+        role: 'employee',
+      });
       
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
       router.push('/employee/dashboard');
@@ -189,6 +226,32 @@ export default function EmployeeAuthPage() {
                           <FormControl>
                             <Input placeholder="seu@email.com" {...field} />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={signupForm.control}
+                      name="schoolId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Escola</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione sua escola" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {schools.length === 0 ? (
+                                <SelectItem value="loading" disabled>Carregando escolas...</SelectItem>
+                              ) : (
+                                schools.map(school => (
+                                  <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}

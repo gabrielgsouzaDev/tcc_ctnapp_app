@@ -1,4 +1,3 @@
-
 import type { ImagePlaceholder } from './placeholder-images';
 
 // This file now contains TYPE DEFINITIONS and MOCK DATA for the entire application.
@@ -44,26 +43,38 @@ export type Transaction = {
   studentId?: string; // studentId is optional as a transaction can be for the guardian
 };
 
-// Base User type reflecting tb_usuario and tb_carteira
-export type User = {
-  id: string; // Corresponds to id_usuario
-  uid_firebase: string;
+// Represents the StudentProfile entity from backend.json
+export type StudentProfile = {
+  id: string; // doc id
+  firebaseUid: string;
   name: string;
   email: string;
-  schoolId: string; // Corresponds to id_escola
+  schoolId: string;
+  ra: string;
+  balance: number; // Not in the schema, but needed for app logic
+};
+
+// Represents the GuardianProfile entity from backend.json
+export type GuardianProfile = {
+  id: string; // doc id
+  firebaseUid: string;
+  name: string;
+  email: string;
+  studentRa: string;
+  studentId?: string; // This will be filled after linking
+  balance: number; // Not in the schema, but needed for app logic
+  students: StudentProfile[]; // Not in schema, but needed for app logic
+};
+
+// Represents a generic user profile for employees or other types
+export type UserProfile = {
+  id: string; // doc id
+  firebaseUid: string;
+  name: string;
+  email: string;
+  schoolId: string;
   balance: number;
-  ra?: string;
-  cargo?: string;
-};
-
-// Student is a specific type of User
-export type Student = User & {
-  ra: string; // RA is mandatory for a student
-};
-
-// Guardian is a specific type of User that also has a list of dependents
-export type Guardian = User & {
-  students: Student[]; // List of dependent students
+  role: 'employee' | 'admin';
 };
 
 
@@ -96,9 +107,9 @@ export const mockProducts: Product[] = [
     { id: 'prod-9', name: 'Pudim', price: 6.00, canteenId: 'canteen-2', category: 'Doce', image: PlaceHolderImages[8] },
 ];
 
-export const mockStudentProfile: Student = {
+export const mockStudentProfile: StudentProfile = {
     id: 'student-001',
-    uid_firebase: 'firebase-student-001',
+    firebaseUid: 'firebase-student-001',
     name: 'João Silva',
     email: 'joao.silva@aluno.com',
     schoolId: '1',
@@ -106,26 +117,26 @@ export const mockStudentProfile: Student = {
     ra: '12345'
 };
 
-export const mockEmployeeProfile: User = {
+export const mockEmployeeProfile: UserProfile = {
     id: 'emp-001',
-    uid_firebase: 'firebase-emp-001',
+    firebaseUid: 'firebase-emp-001',
     name: 'Carlos Antunes',
     email: 'carlos.antunes@escola.com',
     schoolId: '1',
     balance: 15.75,
-    cargo: 'Professor',
+    role: 'employee',
 };
 
-export const mockGuardianProfile: Guardian = {
+export const mockGuardianProfile: GuardianProfile = {
     id: 'guardian-001',
-    uid_firebase: 'firebase-guardian-001',
+    firebaseUid: 'firebase-guardian-001',
     name: 'Maria Silva',
     email: 'maria.silva@example.com',
-    schoolId: '1',
+    studentRa: '12345',
     balance: 150.00,
     students: [
         { ...mockStudentProfile }, // João Silva
-        { id: 'student-002', uid_firebase: 'firebase-student-002', name: 'Ana Silva', email: 'ana.silva@aluno.com', schoolId: '1', balance: 30.50, ra: '67890' },
+        { id: 'student-002', firebaseUid: 'firebase-student-002', name: 'Ana Silva', email: 'ana.silva@aluno.com', schoolId: '1', balance: 30.50, ra: '67890' },
     ]
 };
 

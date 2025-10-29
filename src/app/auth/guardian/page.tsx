@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase';
 import { Logo } from '@/components/shared/logo';
+import { createGuardianProfile } from '@/lib/services';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -26,7 +28,7 @@ const loginSchema = z.object({
 
 const signupSchema = z.object({
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
-  ra: z.string().min(1, 'O RA do aluno é obrigatório.'),
+  studentRa: z.string().min(1, 'O RA do aluno é obrigatório.'),
   email: z.string().email('E-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
 });
@@ -37,6 +39,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 export default function GuardianAuthPage() {
   const router = useRouter();
   const auth = useAuth();
+  const firestore = getFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,10 +50,9 @@ export default function GuardianAuthPage() {
 
   const signupForm = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { name: '', ra: '', email: '', password: '' },
+    defaultValues: { name: '', studentRa: '', email: '', password: '' },
   });
 
-  // === LOGIN ===
   const onLoginSubmit = async (data: LoginFormValues) => {
     if (!auth) return;
     setIsSubmitting(true);
@@ -78,31 +80,28 @@ export default function GuardianAuthPage() {
     }
   };
 
-  // === SIGNUP ===
   const onSignupSubmit = async (data: SignupFormValues) => {
     if (!auth) return;
     setIsSubmitting(true);
 
     try {
-      // 1️⃣ Creates user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
-      // 2️⃣ Here you would save additional guardian info to Firestore
-      // For example: await setDoc(doc(firestore, "users", user.uid), { ... });
+      await createGuardianProfile(firestore, user.uid, {
+        name: data.name,
+        email: data.email,
+        studentRa: data.studentRa,
+      });
 
       toast({ title: 'Conta criada com sucesso!', description: 'Redirecionando para o painel...' });
-
       router.push('/guardian/dashboard');
     } catch (error: any) {
       console.error('Signup Error:', error);
-
       let description = 'Ocorreu um erro ao criar a conta. Tente novamente.';
-
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use outro e-mail.';
       } 
-
       toast({
         variant: 'destructive',
         title: 'Falha no cadastro',
@@ -193,7 +192,7 @@ export default function GuardianAuthPage() {
                     />
                      <FormField
                       control={signupForm.control}
-                      name="ra"
+                      name="studentRa"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>RA do Aluno</FormLabel>

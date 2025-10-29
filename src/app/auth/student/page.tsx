@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase';
 import { type School } from '@/lib/data';
 import { Logo } from '@/components/shared/logo';
+import { getSchools, createStudentProfile } from '@/lib/services';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -37,18 +39,39 @@ const signupSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 type SignupFormValues = z.infer<typeof signupSchema>;
 
-// Mock data for schools since there's no public endpoint yet
-const mockSchools: School[] = [
-  { id: '1', name: 'Escola Padrão A', address: 'Rua Exemplo, 123' },
-  { id: '2', name: 'Escola Padrão B', address: 'Avenida Teste, 456' },
-];
-
 export default function StudentAuthPage() {
   const router = useRouter();
   const auth = useAuth();
+  const firestore = getFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [schools, setSchools] = useState<School[]>(mockSchools); // Use mock data
+  const [schools, setSchools] = useState<School[]>([]);
+
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const schoolList = await getSchools(firestore);
+        // Temporary mock data if firestore is empty
+        if (schoolList.length === 0) {
+          setSchools([
+            { id: '1', name: 'Escola Padrão A', address: 'Rua Exemplo, 123' },
+            { id: '2', name: 'Escola Padrão B', address: 'Avenida Teste, 456' },
+          ]);
+        } else {
+          setSchools(schoolList);
+        }
+      } catch (error) {
+        console.error("Failed to fetch schools:", error);
+        toast({ variant: 'destructive', title: 'Erro ao buscar escolas' });
+         setSchools([
+            { id: '1', name: 'Escola Padrão A', address: 'Rua Exemplo, 123' },
+            { id: '2', name: 'Escola Padrão B', address: 'Avenida Teste, 456' },
+         ]);
+      }
+    };
+    fetchSchools();
+  }, [firestore, toast]);
+
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -87,12 +110,18 @@ export default function StudentAuthPage() {
     setIsSubmitting(true);
     
     try {
-      // Step 1: Create user directly in Firebase Authentication
-      await createUserWithEmailAndPassword(auth, data.email, data.password);
-      
-      // Step 2 (in a real app): You would now save the extra student data
-      // (name, ra, schoolId) to your Firestore database.
+      // Step 1: Create user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
 
+      // Step 2: Create student profile in Firestore
+      await createStudentProfile(firestore, user.uid, {
+        name: data.name,
+        email: data.email,
+        ra: data.ra,
+        schoolId: data.schoolId,
+      });
+      
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
       router.push('/student/dashboard');
 
