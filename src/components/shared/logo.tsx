@@ -14,7 +14,7 @@ export function Logo({ isSidebar = false }: { isSidebar?: boolean }) {
 
   return (
     <Link href="/" className="flex flex-col items-center">
-      <div className="text-left">
+      <div className="pl-12 text-left">
         <h1 className="font-subtitle text-6xl font-bold text-primary leading-none">Bemmu.</h1>
       </div>
       <p className="text-muted-foreground mt-2 text-center">A cantina na palma da sua mão.</p>
