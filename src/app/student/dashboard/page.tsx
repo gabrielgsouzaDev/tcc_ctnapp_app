@@ -289,7 +289,7 @@ export default function StudentDashboard() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight font-headline">
+          <h1 className="text-2xl font-bold tracking-tight">
             Cardápio da Cantina
           </h1>
           <p className="text-muted-foreground">
@@ -548,7 +548,7 @@ export default function StudentDashboard() {
             </CardHeader>
             <CardContent className="flex flex-1 flex-col justify-between p-4">
               <div>
-                <CardTitle className="text-lg font-headline">{product.name}</CardTitle>
+                <CardTitle className="text-lg">{product.name}</CardTitle>
                 <div className="flex items-center justify-between">
                   <CardDescription className="text-md font-semibold text-primary">
                     R$ {product.price.toFixed(2)}

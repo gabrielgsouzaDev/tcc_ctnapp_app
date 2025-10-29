@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 import api from '@/lib/api';
-import { type Order, type OrderItem, type Student, type Guardian, type Transaction } from '@/lib/data';
+import { type Order, type OrderItem, type User, type Guardian, type Transaction } from '@/lib/data';
 import { StudentFilter } from '@/components/shared/student-filter';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/firebase';
@@ -180,7 +180,7 @@ export default function GuardianDashboard() {
 
 
   const studentsMap = useMemo(() => {
-    const map = new Map<string, Student>();
+    const map = new Map<string, User>();
     guardianProfile?.students.forEach(student => {
       map.set(student.id, student);
     });
@@ -294,7 +294,7 @@ export default function GuardianDashboard() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-            <h1 className="text-2xl font-bold tracking-tight font-headline">Dashboard</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-muted-foreground">Acompanhe os gastos, pedidos e saldos.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-2">
@@ -406,7 +406,7 @@ export default function GuardianDashboard() {
               onValueChange={(value) => setActiveStudentAccordion(value)}
               className="space-y-2"
             >
-                {guardianProfile.students.map((student: Student) => (
+                {guardianProfile.students.map((student: User) => (
                     <AccordionItem value={student.id} key={student.id} className="border-b-0 rounded-lg bg-background">
                         <AccordionTrigger className="p-4 hover:no-underline">
                             <div className="flex items-center gap-4">

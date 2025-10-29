@@ -12,7 +12,7 @@ export default function EmployeeSettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight font-headline">Configurações</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">
           Gerencie as preferências da sua conta e do aplicativo.
         </p>

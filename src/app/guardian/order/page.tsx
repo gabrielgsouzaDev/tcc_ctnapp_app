@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 
-import { type Product, type Canteen, type Student } from '@/lib/data';
+import { type Product, type Canteen, type User } from '@/lib/data';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -34,7 +34,7 @@ export default function GuardianOrderPage() {
   
   const [products, setProducts] = useState<Product[]>([]);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<User[]>([]);
   const [schoolId, setSchoolId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -273,7 +273,7 @@ export default function GuardianOrderPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-tight font-headline flex items-center gap-2">
+          <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
               <ShoppingCart />
               Fazer um Pedido
           </h2>
@@ -461,7 +461,7 @@ export default function GuardianOrderPage() {
             </CardHeader>
             <CardContent className="flex flex-1 flex-col justify-between p-4">
               <div>
-                <CardTitle className="text-lg font-headline">{product.name}</CardTitle>
+                <CardTitle className="text-lg">{product.name}</CardTitle>
                 <div className="flex items-center justify-between">
                   <CardDescription className="text-md font-semibold text-primary">
                     R$ {product.price.toFixed(2)}

@@ -3,7 +3,7 @@
 
 import { Wallet, CreditCard, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-import { type Transaction, type Student } from '@/lib/data';
+import { type Transaction, type User } from '@/lib/data';
 import Link from 'next/link';
 import api from '@/lib/api';
 
@@ -94,7 +94,7 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
 
 export default function EmployeeBalancePage() {
     const { toast } = useToast();
-    const [employeeProfile, setEmployeeProfile] = useState<Student | null>(null); // Reusing Student type for simplicity
+    const [employeeProfile, setEmployeeProfile] = useState<User | null>(null); // Reusing User type for simplicity
     const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -204,7 +204,7 @@ export default function EmployeeBalancePage() {
     return (
         <div className="space-y-6">
             <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight font-headline">Saldo e Extrato</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Saldo e Extrato</h1>
                 <p className="text-muted-foreground">
                     Consulte seu saldo atual e o histórico de transações.
                 </p>

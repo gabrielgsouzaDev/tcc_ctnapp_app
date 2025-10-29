@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { type Student, type Guardian } from '@/lib/data';
+import { type User, type Guardian } from '@/lib/data';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -59,7 +59,7 @@ export default function GuardianRechargePage() {
 
 
   const guardianAsTarget: RechargeTarget | null = guardianProfile ? {
-      id: 'guardian', // Using a special ID for the guardian
+      id: guardianProfile.id,
       name: guardianProfile.name,
       balance: guardianProfile.balance,
       isGuardian: true,
@@ -139,7 +139,7 @@ export default function GuardianRechargePage() {
   return (
     <div className="container mx-auto max-w-2xl space-y-8 px-4 py-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Recarregar Saldo</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Recarregar Saldo</h1>
         <p className="text-muted-foreground">
           Adicione créditos para os alunos ou para sua própria conta.
         </p>
