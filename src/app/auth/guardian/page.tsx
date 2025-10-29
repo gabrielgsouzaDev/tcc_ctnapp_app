@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -8,7 +7,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,16 +50,22 @@ export default function GuardianAuthPage() {
     defaultValues: { name: '', ra: '', email: '', password: '' },
   });
 
+  // === LOGIN ===
   const onLoginSubmit = async (data: LoginFormValues) => {
     if (!auth) return;
     setIsSubmitting(true);
+
     try {
       await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
       router.push('/guardian/dashboard');
     } catch (error: any) {
       let description = 'Ocorreu um erro inesperado. Tente novamente.';
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+      if (
+        error.code === 'auth/invalid-credential' ||
+        error.code === 'auth/wrong-password' ||
+        error.code === 'auth/user-not-found'
+      ) {
         description = 'E-mail ou senha inválidos. Por favor, tente novamente.';
       }
       toast({
@@ -73,37 +78,47 @@ export default function GuardianAuthPage() {
     }
   };
 
+  // === SIGNUP ===
   const onSignupSubmit = async (data: SignupFormValues) => {
     if (!auth) return;
     setIsSubmitting(true);
 
     try {
-      // Step 1: Call Laravel backend to create user in DB and Firebase
+      // 1️⃣ Cria usuário no Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+
+      // 2️⃣ Registra no backend Laravel
       await api.post('/cadastrar-responsavel', {
-        name: data.name,
+        uid_firebase: user.uid,
+        nome: data.name,
         email: data.email,
-        password: data.password,
-        ra: data.ra,
+        ra_aluno: data.ra,
       });
 
-      // Step 2: Sign in the user on the frontend to establish session
+      toast({ title: 'Conta criada com sucesso!', description: 'Redirecionando para o painel...' });
+
+      // 3️⃣ Login automático
       await signInWithEmailAndPassword(auth, data.email, data.password);
 
-      toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
       router.push('/guardian/dashboard');
-
     } catch (error: any) {
-      console.error("Signup Error:", error);
+      console.error('Signup Error:', error);
+
       let description = 'Ocorreu um erro ao criar a conta. Tente novamente.';
-      
+
       if (error.code === 'auth/email-already-in-use') {
-        description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
-      } else if (error.response) { // Error from Laravel API
-        description = error.response.data?.message || `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
-      } else if (error.request) { // Network error
-        description = "Não foi possível conectar ao servidor. Verifique sua conexão e se a API está online.";
+        description = 'Este e-mail já está em uso. Tente fazer login ou use outro e-mail.';
+      } else if (error.response) {
+        description =
+          error.response.data?.error ||
+          error.response.data?.message ||
+          `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
+      } else if (error.request) {
+        description =
+          'Não foi possível conectar ao servidor. Verifique sua conexão e se a API está online.';
       }
-      
+
       toast({
         variant: 'destructive',
         title: 'Falha no cadastro',

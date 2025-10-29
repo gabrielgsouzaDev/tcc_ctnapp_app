@@ -14,6 +14,7 @@ export function Logo({ isSidebar = false }: { isSidebar?: boolean }) {
   return (
     <Link href="/" className="flex flex-col items-center text-center">
       <div className="flex items-end">
+        {/* Este div interno garante o alinhamento à esquerda dos textos */}
         <div className="text-left">
           <p className="font-subtitle text-xs font-bold tracking-widest text-primary leading-none">CANTINA APP</p>
           <h1 className="font-subtitle text-6xl font-bold text-primary leading-none -mt-1">Bemmu.</h1>
