@@ -31,7 +31,7 @@ const mockProducts: Product[] = [
     { id: 'prod-2', name: 'Fatia de Pizza', price: 8.00, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[1] },
     { id: 'prod-3', name: 'Refrigerante Lata', price: 5.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[2] },
     { id: 'prod-4', name: 'Suco de Caixa', price: 4.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[3] },
-    { id.ts: 'prod-5', name: 'Salada Simples', price: 15.00, canteenId: 'canteen-1', category: 'Almoço', image: PlaceHolderImages[4] },
+    { id: 'prod-5', name: 'Salada Simples', price: 15.00, canteenId: 'canteen-1', category: 'Almoço', image: PlaceHolderImages[4] },
     { id: 'prod-6', name: 'Misto Quente', price: 7.50, canteenId: 'canteen-2', category: 'Salgado', image: PlaceHolderImages[5] },
     { id: 'prod-7', name: 'Prato do Dia', price: 22.00, canteenId: 'canteen-2', category: 'Almoço', image: PlaceHolderImages[6], popular: true },
     { id: 'prod-8', name: 'Brigadeiro', price: 3.00, canteenId: 'canteen-1', category: 'Doce', image: PlaceHolderImages[7] },

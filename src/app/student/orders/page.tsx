@@ -267,7 +267,7 @@ export default function StudentOrdersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight font-headline">Meus Pedidos</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Meus Pedidos</h1>
         <p className="text-muted-foreground">
           Veja aqui o histórico de todos os seus pedidos.
         </p>
@@ -366,7 +366,7 @@ export default function StudentOrdersPage() {
                             {order.items.slice(0, 3).map((item, index) => (
                                 <Image 
                                     key={index}
-                                    src={item.product.image.imageUrl} p
+                                    src={item.product.image.imageUrl}
                                     alt={item.product.name} 
                                     width={32} 
                                     height={32} 
