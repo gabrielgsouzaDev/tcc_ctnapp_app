@@ -12,11 +12,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { type User, type Guardian } from '@/lib/data';
-import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+
+// Mock Data
+const mockGuardianProfile: Guardian = {
+    id: 'guardian-001',
+    uid_firebase: 'firebase-guardian-001',
+    name: 'Maria Silva',
+    email: 'maria.silva@example.com',
+    schoolId: '1',
+    balance: 150.00,
+    students: [
+        { id: 'student-001', uid_firebase: 'firebase-student-001', name: 'João Silva', email: 'joao.silva@aluno.com', schoolId: '1', balance: 50.25, ra: '12345' },
+        { id: 'student-002', uid_firebase: 'firebase-student-002', name: 'Ana Silva', email: 'ana.silva@aluno.com', schoolId: '1', balance: 30.50, ra: '67890' },
+    ]
+};
+
 
 type RechargeTarget = {
   id: string;
@@ -40,19 +54,11 @@ export default function GuardianRechargePage() {
   useEffect(() => {
     const fetchProfile = async () => {
         setIsLoading(true);
-        try {
-            const response = await api.get('/perfil/responsavel');
-            setGuardianProfile(response.data);
-        } catch (error) {
-            console.error("Failed to fetch guardian profile", error);
-            toast({
-                variant: 'destructive',
-                title: 'Erro ao carregar perfil',
-                description: 'Não foi possível buscar as informações do seu perfil.'
-            })
-        } finally {
+        // Simulate API call
+        setTimeout(() => {
+            setGuardianProfile(mockGuardianProfile);
             setIsLoading(false);
-        }
+        }, 1000);
     };
     fetchProfile();
   }, [toast]);
@@ -91,26 +97,15 @@ export default function GuardianRechargePage() {
     }
 
     setIsProcessing(true);
-    try {
-        await api.post('/update-saldo', {
-            id_aluno: selectedTarget.id,
-            amount: Number(rechargeAmount),
-        });
-
-        toast({
+    // Simulate API call
+    setTimeout(() => {
+         toast({
           title: 'Transferência Concluída!',
           description: `O saldo de ${selectedTarget.name} foi atualizado com sucesso.`,
         });
         router.push('/guardian/dashboard');
-    } catch(error: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Erro na Transferência',
-            description: error.response?.data?.message || 'Não foi possível completar a transferência.'
-        });
-    } finally {
         setIsProcessing(false);
-    }
+    }, 1500);
   }
 
   const amountValue = Number(rechargeAmount);

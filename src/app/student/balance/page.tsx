@@ -5,7 +5,6 @@ import { Wallet, CreditCard, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { type Transaction, type Student } from '@/lib/data';
 import Link from 'next/link';
-import api from '@/lib/api';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -33,6 +32,24 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+// Mock Data
+const mockStudentProfile: Student = {
+    id: 'student-001',
+    uid_firebase: 'firebase-student-001',
+    name: 'João Silva',
+    email: 'joao.silva@aluno.com',
+    schoolId: '1',
+    balance: 50.25,
+    ra: '12345'
+};
+
+const mockTransactions: Transaction[] = [
+    { id: 'tx-1', date: '2024-07-23T12:15:00Z', description: 'Compra de Pedido #PED-002', amount: 8.00, type: 'debit', origin: 'Cantina', studentId: 'student-001' },
+    { id: 'tx-2', date: '2024-07-22T10:00:00Z', description: 'Compra de Pedido #PED-001', amount: 17.50, type: 'debit', origin: 'Cantina', studentId: 'student-001' },
+    { id: 'tx-3', date: '2024-07-22T08:00:00Z', description: 'Recarga do Responsável', amount: 50.00, type: 'credit', origin: 'Responsável', studentId: 'student-001' },
+];
+
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 type FilterTypeKey = 'all' | 'credit' | 'debit';
@@ -110,23 +127,12 @@ export default function StudentBalancePage() {
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
-            try {
-                const [profileRes, transactionsRes] = await Promise.all([
-                    api.get('/perfil/aluno'),
-                    api.get('/transacoes')
-                ]);
-                setStudentProfile(profileRes.data);
-                setTransactionHistory(transactionsRes.data);
-            } catch (error) {
-                console.error("Failed to fetch balance data:", error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Erro ao carregar dados',
-                    description: 'Não foi possível buscar as informações de saldo.'
-                })
-            } finally {
+            // Simulate API Call
+            setTimeout(() => {
+                setStudentProfile(mockStudentProfile);
+                setTransactionHistory(mockTransactions);
                 setIsLoading(false);
-            }
+            }, 1000);
         };
         fetchData();
     }, [toast]);

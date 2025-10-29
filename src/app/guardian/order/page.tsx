@@ -17,8 +17,32 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 
 import { type Product, type Canteen, type User } from '@/lib/data';
-import api from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+
+// Mock Data
+const mockCanteens: Canteen[] = [
+    { id: 'canteen-1', name: 'Cantina Central' },
+    { id: 'canteen-2', name: 'Ponto do Lanche' },
+];
+
+const mockProducts: Product[] = [
+    { id: 'prod-1', name: 'Hambúrguer de Carne', price: 12.50, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[0], popular: true },
+    { id: 'prod-2', name: 'Fatia de Pizza', price: 8.00, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[1] },
+    { id: 'prod-3', name: 'Refrigerante Lata', price: 5.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[2] },
+    { id: 'prod-4', name: 'Suco de Caixa', price: 4.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[3] },
+    { id.ts: 'prod-5', name: 'Salada Simples', price: 15.00, canteenId: 'canteen-1', category: 'Almoço', image: PlaceHolderImages[4] },
+    { id: 'prod-6', name: 'Misto Quente', price: 7.50, canteenId: 'canteen-2', category: 'Salgado', image: PlaceHolderImages[5] },
+    { id: 'prod-7', name: 'Prato do Dia', price: 22.00, canteenId: 'canteen-2', category: 'Almoço', image: PlaceHolderImages[6], popular: true },
+    { id: 'prod-8', name: 'Brigadeiro', price: 3.00, canteenId: 'canteen-1', category: 'Doce', image: PlaceHolderImages[7] },
+    { id: 'prod-9', name: 'Pudim', price: 6.00, canteenId: 'canteen-2', category: 'Doce', image: PlaceHolderImages[8] },
+];
+
+const mockStudents: User[] = [
+    { id: 'student-001', uid_firebase: 'firebase-student-001', name: 'João Silva', email: 'joao.silva@aluno.com', schoolId: '1', balance: 50.25, ra: '12345' },
+    { id: 'student-002', uid_firebase: 'firebase-student-002', name: 'Ana Silva', email: 'ana.silva@aluno.com', schoolId: '1', balance: 30.50, ra: '67890' },
+];
+
 
 type Category = 'Todos' | 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
 type CartItem = {
@@ -35,7 +59,7 @@ export default function GuardianOrderPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
   const [students, setStudents] = useState<User[]>([]);
-  const [schoolId, setSchoolId] = useState<string>('');
+  const [schoolId, setSchoolId] = useState<string>('school-1');
   const [isLoading, setIsLoading] = useState(true);
 
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -48,36 +72,18 @@ export default function GuardianOrderPage() {
   useEffect(() => {
     const fetchInitialData = async () => {
       setIsLoading(true);
-      try {
-        const profileRes = await api.get('/perfil/responsavel');
-        const userSchoolId = profileRes.data.schoolId; // Assuming profile has schoolId
-        const userStudents = profileRes.data.students;
-
-        setSchoolId(userSchoolId);
-        setStudents(userStudents);
-
-        if (userStudents.length > 0) {
-          setStudentForOrder(userStudents[0].id);
+      // Simulate API calls
+      setTimeout(() => {
+        setStudents(mockStudents);
+        setCanteens(mockCanteens);
+        if (mockStudents.length > 0) {
+          setStudentForOrder(mockStudents[0].id);
         }
-
-        if (userSchoolId) {
-          const canteensRes = await api.get(`/cantinas/${userSchoolId}`);
-          setCanteens(canteensRes.data);
-
-          if (canteensRes.data.length > 0) {
-            setSelectedCanteen(canteensRes.data[0].id);
-          }
+        if (mockCanteens.length > 0) {
+          setSelectedCanteen(mockCanteens[0].id);
         }
-      } catch (error) {
-        console.error("Failed to fetch order page data:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao carregar página",
-          description: "Não foi possível buscar os dados de perfil e cantinas.",
-        });
-      } finally {
         setIsLoading(false);
-      }
+      }, 1000);
     };
     fetchInitialData();
   }, [toast]);
@@ -89,18 +95,10 @@ export default function GuardianOrderPage() {
       return;
     }
 
+    // Simulate product fetching
     const fetchProducts = async () => {
-      try {
-        const productsRes = await api.get(`/produtos/${selectedCanteen}`);
-        setProducts(productsRes.data);
-      } catch (error) {
-        console.error(`Failed to fetch products for canteen ${selectedCanteen}:`, error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao carregar cardápio",
-          description: "Não foi possível buscar os produtos desta cantina.",
-        });
-      }
+        const canteenProducts = mockProducts.filter(p => p.canteenId === selectedCanteen);
+        setProducts(canteenProducts);
     };
     fetchProducts();
   }, [selectedCanteen, toast]);
@@ -217,24 +215,12 @@ export default function GuardianOrderPage() {
       return;
     }
     
-    try {
-        await api.post('/pedido', {
-            id_aluno: studentForOrder,
-            items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })),
-            total: parseFloat(cartTotal),
-        });
-        toast({
-            title: "Pedido realizado com sucesso!",
-            description: `O pedido foi feito para ${studentsMap.get(studentForOrder)} e pode ser acompanhado no histórico.`,
-        });
-        setCart([]);
-    } catch (error: any) {
-         toast({
-          variant: "destructive",
-          title: "Erro ao finalizar pedido",
-          description: error.response?.data?.message || "Não foi possível completar o pedido. Tente novamente.",
-      });
-    }
+    // Simulate checkout
+    toast({
+        title: "Pedido realizado com sucesso!",
+        description: `O pedido foi feito para ${studentsMap.get(studentForOrder)} e pode ser acompanhado no histórico.`,
+    });
+    setCart([]);
   }
 
   const getCartItemQuantity = (productId: string) => {

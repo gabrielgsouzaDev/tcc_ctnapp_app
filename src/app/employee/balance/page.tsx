@@ -5,7 +5,6 @@ import { Wallet, CreditCard, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { type Transaction, type User } from '@/lib/data';
 import Link from 'next/link';
-import api from '@/lib/api';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -33,6 +32,24 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+// Mock Data
+const mockEmployeeProfile: User = {
+    id: 'emp-001',
+    uid_firebase: 'firebase-emp-001',
+    name: 'Carlos Antunes',
+    email: 'carlos.antunes@escola.com',
+    schoolId: '1',
+    balance: 15.75,
+    cargo: 'Professor',
+};
+
+const mockTransactions: Transaction[] = [
+    { id: 'tx-emp-1', date: '2024-07-22T10:00:00Z', description: 'Compra na Cantina Central', amount: 12.50, type: 'debit', origin: 'Cantina' },
+    { id: 'tx-emp-2', date: '2024-07-21T12:00:00Z', description: 'Recarga via PIX', amount: 50.00, type: 'credit', origin: 'PIX' },
+    { id: 'tx-emp-3', date: '2024-07-20T09:30:00Z', description: 'Compra de Café', amount: 3.25, type: 'debit', origin: 'Cantina' },
+];
+
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 type FilterTypeKey = 'all' | 'credit' | 'debit';
@@ -108,25 +125,12 @@ export default function EmployeeBalancePage() {
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
-            try {
-                // NOTE: Using a general 'profile' and 'transactions' endpoint. 
-                // The backend should determine the user type via Firebase token.
-                const [profileRes, transactionsRes] = await Promise.all([
-                    api.get('/perfil/funcionario'), 
-                    api.get('/transacoes')
-                ]);
-                setEmployeeProfile(profileRes.data);
-                setTransactionHistory(transactionsRes.data);
-            } catch (error) {
-                console.error("Failed to fetch balance data:", error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Erro ao carregar dados',
-                    description: 'Não foi possível buscar as informações de saldo.'
-                })
-            } finally {
+            // Simulate API call
+            setTimeout(() => {
+                setEmployeeProfile(mockEmployeeProfile);
+                setTransactionHistory(mockTransactions);
                 setIsLoading(false);
-            }
+            }, 1000);
         };
         fetchData();
     }, [toast]);

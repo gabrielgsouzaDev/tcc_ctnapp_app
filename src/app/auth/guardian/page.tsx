@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -16,7 +17,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase';
-import api from '@/lib/api';
 import { Logo } from '@/components/shared/logo';
 
 const loginSchema = z.object({
@@ -84,22 +84,14 @@ export default function GuardianAuthPage() {
     setIsSubmitting(true);
 
     try {
-      // 1️⃣ Cria usuário no Firebase
+      // 1️⃣ Creates user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
-      // 2️⃣ Registra no backend Laravel
-      await api.post('/cadastrar-responsavel', {
-        uid_firebase: user.uid,
-        nome: data.name,
-        email: data.email,
-        ra_aluno: data.ra,
-      });
+      // 2️⃣ Here you would save additional guardian info to Firestore
+      // For example: await setDoc(doc(firestore, "users", user.uid), { ... });
 
       toast({ title: 'Conta criada com sucesso!', description: 'Redirecionando para o painel...' });
-
-      // 3️⃣ Login automático
-      await signInWithEmailAndPassword(auth, data.email, data.password);
 
       router.push('/guardian/dashboard');
     } catch (error: any) {
@@ -109,15 +101,7 @@ export default function GuardianAuthPage() {
 
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use outro e-mail.';
-      } else if (error.response) {
-        description =
-          error.response.data?.error ||
-          error.response.data?.message ||
-          `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
-      } else if (error.request) {
-        description =
-          'Não foi possível conectar ao servidor. Verifique sua conexão e se a API está online.';
-      }
+      } 
 
       toast({
         variant: 'destructive',

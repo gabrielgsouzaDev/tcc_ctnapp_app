@@ -45,10 +45,28 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { type Product, type Canteen, type User } from '@/lib/data';
-import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+
+// Mock Data
+const mockCanteens: Canteen[] = [
+    { id: 'canteen-1', name: 'Cantina Central' },
+    { id: 'canteen-2', name: 'Ponto do Lanche' },
+];
+
+const mockProducts: Product[] = [
+    { id: 'prod-1', name: 'Hambúrguer de Carne', price: 12.50, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[0], popular: true },
+    { id: 'prod-2', name: 'Fatia de Pizza', price: 8.00, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[1] },
+    { id: 'prod-3', name: 'Refrigerante Lata', price: 5.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[2] },
+    { id: 'prod-4', name: 'Suco de Caixa', price: 4.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[3] },
+    { id.ts: 'prod-5', name: 'Salada Simples', price: 15.00, canteenId: 'canteen-1', category: 'Almoço', image: PlaceHolderImages[4] },
+    { id: 'prod-6', name: 'Misto Quente', price: 7.50, canteenId: 'canteen-2', category: 'Salgado', image: PlaceHolderImages[5] },
+    { id: 'prod-7', name: 'Prato do Dia', price: 22.00, canteenId: 'canteen-2', category: 'Almoço', image: PlaceHolderImages[6], popular: true },
+    { id: 'prod-8', name: 'Brigadeiro', price: 3.00, canteenId: 'canteen-1', category: 'Doce', image: PlaceHolderImages[7] },
+    { id: 'prod-9', name: 'Pudim', price: 6.00, canteenId: 'canteen-2', category: 'Doce', image: PlaceHolderImages[8] },
+];
 
 type CartItem = {
   product: Product;
@@ -66,12 +84,12 @@ export default function EmployeeDashboard() {
   
   const [products, setProducts] = useState<Product[]>([]);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
-  const [schoolId, setSchoolId] = useState<string>(''); // Added state for school ID
+  const [schoolId, setSchoolId] = useState<string>('school-1'); // Added state for school ID
   const [isLoading, setIsLoading] = useState(true);
 
   const [selectedCanteen, setSelectedCanteen] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<string[]>(['prod-1', 'prod-7']);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
@@ -80,33 +98,14 @@ export default function EmployeeDashboard() {
    useEffect(() => {
     const fetchInitialData = async () => {
       setIsLoading(true);
-      try {
-        // First, get user profile to find out their school
-        const profileRes = await api.get('/perfil/funcionario');
-        const userSchoolId = profileRes.data.schoolId; // Assuming the profile contains schoolId
-        setSchoolId(userSchoolId);
-
-        if (userSchoolId) {
-          // Then, fetch canteens for that school
-          const canteensRes = await api.get(`/cantinas/${userSchoolId}`);
-          setCanteens(canteensRes.data);
-
-          if (canteensRes.data.length > 0) {
-            // Automatically select the first canteen
-            const firstCanteenId = canteensRes.data[0].id;
-            setSelectedCanteen(firstCanteenId);
-          }
+      // Simulate API calls with setTimeout
+      setTimeout(() => {
+        setCanteens(mockCanteens);
+        if (mockCanteens.length > 0) {
+          setSelectedCanteen(mockCanteens[0].id);
         }
-      } catch (error) {
-        console.error("Failed to fetch initial data:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao carregar dados",
-          description: "Não foi possível buscar seu perfil e cantinas.",
-        });
-      } finally {
         setIsLoading(false);
-      }
+      }, 1000);
     };
     fetchInitialData();
   }, [toast]);
@@ -118,18 +117,10 @@ export default function EmployeeDashboard() {
         return;
     };
 
+    // Simulate API call
     const fetchProducts = async () => {
-        try {
-            const productsRes = await api.get(`/produtos/${selectedCanteen}`);
-            setProducts(productsRes.data);
-        } catch (error) {
-            console.error(`Failed to fetch products for canteen ${selectedCanteen}:`, error);
-            toast({
-                variant: "destructive",
-                title: "Erro ao carregar cardápio",
-                description: "Não foi possível buscar os produtos desta cantina.",
-            });
-        }
+        const canteenProducts = mockProducts.filter(p => p.canteenId === selectedCanteen);
+        setProducts(canteenProducts);
     };
     fetchProducts();
   }, [selectedCanteen, toast]);
@@ -220,10 +211,10 @@ export default function EmployeeDashboard() {
   const isFavorite = (productId: string) => favorites.includes(productId);
   
   const favoriteProducts = useMemo(() => {
-    return products
+    return mockProducts
       .filter(p => favorites.includes(p.id))
       .filter(p => favoriteCategory === 'Todos' || p.category === favoriteCategory);
-  }, [favorites, favoriteCategory, products]);
+  }, [favorites, favoriteCategory]);
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart
@@ -236,24 +227,12 @@ export default function EmployeeDashboard() {
         return;
     }
     
-    try {
-        await api.post('/pedido', {
-            // userId will be identified by the backend via token
-            items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })),
-            total: parseFloat(cartTotal),
-        });
-        toast({
-            title: "Pedido realizado com sucesso!",
-            description: `Você pode acompanhar o status em 'Meus Pedidos'.`,
-        });
-        setCart([]);
-    } catch (error: any) {
-         toast({
-          variant: "destructive",
-          title: "Erro ao finalizar pedido",
-          description: error.response?.data?.message || "Não foi possível completar o pedido. Tente novamente.",
-      });
-    }
+    // Simulate API call
+    toast({
+        title: "Pedido realizado com sucesso!",
+        description: `Você pode acompanhar o status em 'Meus Pedidos'.`,
+    });
+    setCart([]);
   }
 
   const getCartItemQuantity = (productId: string) => {

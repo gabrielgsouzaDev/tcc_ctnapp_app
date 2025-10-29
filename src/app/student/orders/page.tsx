@@ -38,11 +38,32 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { type Order, type OrderItem } from '@/lib/data';
-import api from '@/lib/api';
+import { type Order, type OrderItem, type Product } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+
+// Mock Data
+const mockProducts: Product[] = [
+    { id: 'prod-1', name: 'Hambúrguer de Carne', price: 12.50, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[0], popular: true },
+    { id: 'prod-2', name: 'Fatia de Pizza', price: 8.00, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[1] },
+    { id: 'prod-3', name: 'Refrigerante Lata', price: 5.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[2] },
+];
+
+const mockOrderHistory: Order[] = [
+    { id: '#PED-001', date: '2024-07-22T10:00:00Z', studentId: 'user-001', status: 'Entregue', total: 17.50, items: [
+        { product: mockProducts[0], quantity: 1 },
+        { product: mockProducts[2], quantity: 1 },
+    ]},
+    { id: '#PED-002', date: '2024-07-23T12:15:00Z', studentId: 'user-001', status: 'Pendente', total: 8.00, items: [
+        { product: mockProducts[1], quantity: 1 },
+    ]},
+    { id: '#PED-003', date: '2024-07-21T09:45:00Z', studentId: 'user-001', status: 'Cancelado', total: 12.50, items: [
+        { product: mockProducts[0], quantity: 1 },
+    ]},
+];
+
 
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
 
@@ -151,20 +172,11 @@ export default function StudentOrdersPage() {
     useEffect(() => {
         const fetchOrders = async () => {
             setIsLoading(true);
-            try {
-                // The backend will identify the student based on the Firebase token
-                const response = await api.get('/pedidos'); 
-                setOrderHistory(response.data);
-            } catch (error) {
-                console.error('Failed to fetch order history:', error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Erro ao buscar pedidos',
-                    description: 'Não foi possível carregar seu histórico de pedidos.'
-                })
-            } finally {
+            // Simulate API Call
+            setTimeout(() => {
+                setOrderHistory(mockOrderHistory);
                 setIsLoading(false);
-            }
+            }, 1000);
         };
         fetchOrders();
     }, [toast]);
@@ -354,7 +366,7 @@ export default function StudentOrdersPage() {
                             {order.items.slice(0, 3).map((item, index) => (
                                 <Image 
                                     key={index}
-                                    src={item.product.image.imageUrl} 
+                                    src={item.product.image.imageUrl} p
                                     alt={item.product.name} 
                                     width={32} 
                                     height={32} 

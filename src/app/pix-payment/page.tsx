@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { CopyButton } from '@/components/shared/copy-button';
 import { QRCode } from '@/components/shared/qr-code';
 import { Label } from '@/components/ui/label';
-import api from '@/lib/api';
 
 function PixPaymentContent() {
   const router = useRouter();
@@ -36,18 +35,21 @@ function PixPaymentContent() {
       }
       try {
         setIsLoading(true);
-        const response = await api.post('/pix/generate', {
-          amount: Number(amount),
-          targetId,
-          targetType,
-        });
-        setPixDetails(response.data);
+        // MOCK PIX GENERATION
+        setTimeout(() => {
+             setPixDetails({
+                qrCode: `pix-qrcode-for-${Number(amount).toFixed(2)}`,
+                code: `00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540${Number(amount).toFixed(2).replace('.','')}5802BR5913${targetType}-${targetId}6009SAO PAULO62070503***6304E7DF`
+            });
+            setIsLoading(false);
+        }, 1500)
+
       } catch (error) {
         console.error('Failed to generate PIX:', error);
         toast({ variant: 'destructive', title: 'Erro ao gerar PIX', description: 'Não foi possível criar a cobrança PIX. Tente novamente.' });
         router.back();
       } finally {
-        setIsLoading(false);
+        // setIsLoading(false); // Done in setTimeout
       }
     };
     generatePix();
@@ -71,7 +73,7 @@ function PixPaymentContent() {
     }, 3000);
 
     setTimeout(() => {
-      const redirectPath = targetType === 'guardian' ? '/guardian/dashboard' : '/student/dashboard';
+      const redirectPath = targetType === 'guardian' ? '/guardian/dashboard' : (targetType === 'employee' ? '/employee/dashboard' : '/student/dashboard');
       router.push(redirectPath);
     }, 5000);
   };

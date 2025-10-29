@@ -8,10 +8,8 @@ export default function ProfileSelectionPage() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-2xl text-center">
-        <div className="mb-12 flex flex-col items-center">
-          <Logo />
-        </div>
-        <h2 className="mb-6 text-2xl font-semibold">Quem está usando?</h2>
+        <Logo />
+        <h2 className="mb-6 mt-12 text-2xl font-semibold">Quem está usando?</h2>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <Link href="/auth/student" className="flex">
             <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">

@@ -8,7 +8,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase';
-import api from '@/lib/api';
 import { type School } from '@/lib/data';
 import { Logo } from '@/components/shared/logo';
 
@@ -88,17 +87,11 @@ export default function StudentAuthPage() {
     setIsSubmitting(true);
     
     try {
-      // Step 1: Call Laravel backend to create user in DB and Firebase
-      await api.post('/cadastrar-aluno', {
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        ra: data.ra,
-        id_escola: data.schoolId,
-      });
-
-      // Step 2: Sign in the user on the frontend to establish session
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      // Step 1: Create user directly in Firebase Authentication
+      await createUserWithEmailAndPassword(auth, data.email, data.password);
+      
+      // Step 2 (in a real app): You would now save the extra student data
+      // (name, ra, schoolId) to your Firestore database.
 
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
       router.push('/student/dashboard');
@@ -109,11 +102,7 @@ export default function StudentAuthPage() {
 
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
-      } else if (error.response) { // Error from Laravel API
-        description = error.response.data?.message || `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
-      } else if (error.request) { // Network error
-        description = "Não foi possível conectar ao servidor. Verifique sua conexão e se a API está online.";
-      }
+      } 
       
       toast({
         variant: 'destructive',

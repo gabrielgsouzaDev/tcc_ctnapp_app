@@ -8,7 +8,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword }from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase';
-import api from '@/lib/api';
 import { Logo } from '@/components/shared/logo';
 
 const loginSchema = z.object({
@@ -77,16 +76,11 @@ export default function EmployeeAuthPage() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Call Laravel backend to create user in DB and Firebase
-      await api.post('/cadastrar-funcionario', {
-        name: data.name,
-        email: data.email,
-        password: data.password,
-      });
-
-      // Step 2: Sign in the user on the frontend to establish session
-      await signInWithEmailAndPassword(auth, data.email, data.password);
-
+       await createUserWithEmailAndPassword(auth, data.email, data.password);
+      
+      // After successful Firebase user creation, you would typically
+      // save additional user info to Firestore here.
+      
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
       router.push('/employee/dashboard');
 
@@ -96,11 +90,7 @@ export default function EmployeeAuthPage() {
 
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
-      } else if (error.response) {
-        description = error.response.data?.message || `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
-      } else if (error.request) {
-        description = "Não foi possível conectar ao servidor. Verifique sua conexão e se a API está online.";
-      }
+      } 
       
       toast({
         variant: 'destructive',
