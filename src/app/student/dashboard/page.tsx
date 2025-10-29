@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { type Product, type Canteen, mockCanteens, mockProducts } from '@/lib/data';
+import { type Product, type Canteen, mockCanteens, mockProducts, type Order, type OrderItem } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -207,10 +207,29 @@ export default function StudentDashboard() {
         return;
     }
     
-    // Simulate API call
+    // Create a new order object
+    const newOrder: Order = {
+        id: `#PED-${Math.floor(Math.random() * 900) + 100}`,
+        date: new Date().toISOString(),
+        studentId: 'student-001', // Mock student ID
+        status: 'Pendente',
+        total: Number(cartTotal),
+        items: cart,
+    };
+
+    // Retrieve existing orders from localStorage, add the new one, and save back
+    try {
+        const existingOrdersJSON = localStorage.getItem('studentOrderHistory');
+        const existingOrders: Order[] = existingOrdersJSON ? JSON.parse(existingOrdersJSON) : [];
+        const updatedOrders = [newOrder, ...existingOrders];
+        localStorage.setItem('studentOrderHistory', JSON.stringify(updatedOrders));
+    } catch (error) {
+        console.error("Failed to save order to localStorage", error);
+    }
+    
     toast({
         title: "Pedido realizado com sucesso!",
-        description: `Você pode acompanhar o status em 'Meus Pedidos'.`,
+        description: `Você pode acompanhar o status em 'Pedidos'.`,
     });
     setCart([]);
   }

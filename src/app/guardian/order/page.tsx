@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 
-import { type Product, type Canteen, type User, mockCanteens, mockProducts, mockGuardianProfile } from '@/lib/data';
+import { type Product, type Canteen, type User, mockCanteens, mockProducts, mockGuardianProfile, type Order, type OrderItem } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
 type Category = 'Todos' | 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
@@ -189,10 +189,29 @@ export default function GuardianOrderPage() {
       return;
     }
     
-    // Simulate checkout
+    // Create a new order object
+    const newOrder: Order = {
+        id: `#PED-${Math.floor(Math.random() * 900) + 100}`,
+        date: new Date().toISOString(),
+        studentId: studentForOrder,
+        status: 'Pendente',
+        total: Number(cartTotal),
+        items: cart,
+    };
+
+    // Retrieve existing orders from localStorage, add the new one, and save back
+    try {
+        const existingOrdersJSON = localStorage.getItem('guardianOrderHistory');
+        const existingOrders: Order[] = existingOrdersJSON ? JSON.parse(existingOrdersJSON) : [];
+        const updatedOrders = [newOrder, ...existingOrders];
+        localStorage.setItem('guardianOrderHistory', JSON.stringify(updatedOrders));
+    } catch (error) {
+        console.error("Failed to save order to localStorage", error);
+    }
+    
     toast({
         title: "Pedido realizado com sucesso!",
-        description: `O pedido foi feito para ${studentsMap.get(studentForOrder)} e pode ser acompanhado no histórico.`,
+        description: `O pedido para ${studentsMap.get(studentForOrder)} pode ser acompanhado em 'Dashboard'.`,
     });
     setCart([]);
   }

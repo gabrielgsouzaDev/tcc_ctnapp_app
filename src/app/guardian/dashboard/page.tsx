@@ -144,19 +144,28 @@ export default function GuardianDashboard() {
         return;
     }
       
-    const fetchData = async () => {
+    const fetchData = () => {
       setIsLoading(true);
-      // Simulate API calls
-      setTimeout(() => {
-        setGuardianProfile(mockGuardianProfile);
-        setOrderHistory(mockGuardianOrderHistory);
-        setTransactionHistory(mockGuardianTransactionHistory);
+      
+      setGuardianProfile(mockGuardianProfile);
+      setTransactionHistory(mockGuardianTransactionHistory);
 
-        if (mockGuardianProfile?.students?.length > 0) {
-            setActiveStudentAccordion(mockGuardianProfile.students[0].id);
-        }
-        setIsLoading(false);
-      }, 500);
+      try {
+          const storedOrdersJSON = localStorage.getItem('guardianOrderHistory');
+          const storedOrders: Order[] = storedOrdersJSON ? JSON.parse(storedOrdersJSON) : [];
+          // Combine stored orders with initial mock data, ensuring no duplicates
+          const combined = [...storedOrders, ...mockGuardianOrderHistory];
+          const uniqueOrders = Array.from(new Map(combined.map(order => [order.id, order])).values());
+          setOrderHistory(uniqueOrders);
+      } catch (error) {
+          console.error("Failed to load orders from localStorage", error);
+          setOrderHistory(mockGuardianOrderHistory);
+      }
+      
+      if (mockGuardianProfile?.students?.length > 0) {
+          setActiveStudentAccordion(mockGuardianProfile.students[0].id);
+      }
+      setIsLoading(false);
     };
 
     fetchData();

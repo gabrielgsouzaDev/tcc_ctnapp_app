@@ -148,13 +148,21 @@ export default function EmployeeOrdersPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const fetchOrders = async () => {
+        const fetchOrders = () => {
             setIsLoading(true);
-            // Simulate API call
-            setTimeout(() => {
+            try {
+                const storedOrdersJSON = localStorage.getItem('employeeOrderHistory');
+                const storedOrders: Order[] = storedOrdersJSON ? JSON.parse(storedOrdersJSON) : [];
+                // Combine stored orders with initial mock data, ensuring no duplicates
+                const combined = [...storedOrders, ...mockEmployeeOrderHistory];
+                const uniqueOrders = Array.from(new Map(combined.map(order => [order.id, order])).values());
+                setOrderHistory(uniqueOrders);
+            } catch (error) {
+                console.error("Failed to load orders from localStorage", error);
                 setOrderHistory(mockEmployeeOrderHistory);
+            } finally {
                 setIsLoading(false);
-            }, 500);
+            }
         };
         fetchOrders();
     }, []);
