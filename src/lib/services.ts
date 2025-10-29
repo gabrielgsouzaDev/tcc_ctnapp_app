@@ -8,9 +8,11 @@ import {
   query,
   where,
   setDoc,
-  Timestamp
+  Timestamp,
+  collectionGroup,
+  limit
 } from 'firebase/firestore';
-import { type School, type StudentProfile, type GuardianProfile, type UserProfile } from '@/lib/data';
+import { type School, type StudentProfile, type GuardianProfile, type UserProfile, Canteen, Product } from '@/lib/data';
 
 // School Services
 export const getSchools = async (db: ReturnType<typeof getFirestore>): Promise<School[]> => {
@@ -21,18 +23,15 @@ export const getSchools = async (db: ReturnType<typeof getFirestore>): Promise<S
     return schoolList;
   } catch (error) {
     console.error("Error fetching schools:", error);
-    // Return an empty array or handle the error as appropriate
     return [];
   }
 };
 
-// Profile Creation Services
 
+// Profile Services
 const ensureUserDocument = async (db: ReturnType<typeof getFirestore>, firebaseUid: string) => {
     const userRef = doc(db, 'users', firebaseUid);
-    // Use set with merge to create the document if it doesn't exist, or do nothing if it does.
-    // This can be used to store top-level user info later if needed.
-    await setDoc(userRef, {}, { merge: true });
+    await setDoc(userRef, { lastLogin: Timestamp.now() }, { merge: true });
 }
 
 export const createStudentProfile = async (
@@ -81,3 +80,78 @@ export const createUserProfile = async (
   };
    await addDoc(profileCollectionRef, profileData);
 };
+
+export const getStudentProfile = async (db: ReturnType<typeof getFirestore>, firebaseUid: string): Promise<StudentProfile | null> => {
+    const q = query(collection(db, `users/${firebaseUid}/studentProfiles`), limit(1));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+        return null;
+    }
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as StudentProfile;
+}
+
+export const getGuardianProfile = async (db: ReturnType<typeof getFirestore>, firebaseUid: string): Promise<GuardianProfile | null> => {
+    const q = query(collection(db, `users/${firebaseUid}/guardianProfiles`), limit(1));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+        return null;
+    }
+    const doc = snapshot.docs[0];
+    
+    // Fetch linked students
+    const studentsQuery = query(collectionGroup(db, 'studentProfiles'), where('ra', '==', (doc.data() as any).studentRa));
+    const studentsSnapshot = await getDocs(studentsQuery);
+    const students = studentsSnapshot.docs.map(sDoc => ({ id: sDoc.id, ...sDoc.data() } as StudentProfile));
+    
+    return { id: doc.id, ...doc.data(), students } as GuardianProfile;
+}
+
+export const getEmployeeProfile = async (db: ReturnType<typeof getFirestore>, firebaseUid: string): Promise<UserProfile | null> => {
+    const q = query(collection(db, `users/${firebaseUid}/userProfiles`), limit(1));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+        return null;
+    }
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as UserProfile;
+}
+
+
+// Canteen / Product Services
+export const getCanteensBySchool = async (db: ReturnType<typeof getFirestore>, schoolId: string): Promise<Canteen[]> => {
+    const q = query(collection(db, 'canteens'), where('schoolId', '==', schoolId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Canteen));
+}
+
+export const getProductsByCanteen = (db: ReturnType<typeof getFirestore>, canteenId: string) => {
+    return query(collection(db, 'products'), where('canteenId', '==', canteenId));
+}
+
+// Transaction and Order Services
+export const getOrdersByUser = (db: ReturnType<typeof getFirestore>, userId: string) => {
+    return query(collection(db, 'orders'), where('userId', '==', userId));
+}
+
+export const getTransactionsByUser = (db: ReturnType<typeof getFirestore>, userId: string) => {
+    return query(collection(db, 'transactions'), where('userId', '==', userId));
+}
+
+export const getOrdersByGuardian = (db: ReturnType<typeof getFirestore>, studentIds: string[]) => {
+    if (studentIds.length === 0) return null;
+    return query(collection(db, 'orders'), where('studentId', 'in', studentIds));
+}
+
+export const getTransactionsByGuardian = (db: ReturnType<typeof getFirestore>, userId: string, studentIds: string[]) => {
+    // This query is complex and might not be efficient.
+    // It requires fetching transactions for the guardian AND all their students.
+    // Firestore does not support logical OR in a single query across different fields.
+    // For now, we will fetch guardian transactions only. A better solution would be to duplicate data or use multiple queries.
+    if (studentIds.length === 0) {
+       return query(collection(db, 'transactions'), where('userId', '==', userId));
+    }
+    return query(collection(db, 'transactions'), where('userId', '==', userId)); // Simplified for now
+}
+
+    

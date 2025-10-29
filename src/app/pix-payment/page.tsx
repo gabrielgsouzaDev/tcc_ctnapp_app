@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { CheckCircle, Clock, Copy, Loader2, QrCode } from 'lucide-react';
+import { getFirestore, doc, writeBatch, collection, increment } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,10 +18,12 @@ function PixPaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const firestore = getFirestore();
 
   const amount = searchParams.get('amount') || '0';
   const targetId = searchParams.get('targetId');
-  const targetType = searchParams.get('targetType'); // 'student' or 'guardian'
+  const userId = searchParams.get('userId');
+  const targetType = searchParams.get('targetType'); // 'student', 'guardian', or 'employee'
 
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'confirmed'>('pending');
   const [pixDetails, setPixDetails] = useState<{ qrCode: string; code: string } | null>(null);
@@ -28,7 +31,7 @@ function PixPaymentContent() {
 
   useEffect(() => {
     const generatePix = async () => {
-      if (!amount || Number(amount) <= 0 || !targetId || !targetType) {
+      if (!amount || Number(amount) <= 0 || !targetId || !targetType || !userId) {
         toast({ variant: 'destructive', title: 'Dados inválidos para gerar PIX.' });
         router.back();
         return;
@@ -48,34 +51,72 @@ function PixPaymentContent() {
         console.error('Failed to generate PIX:', error);
         toast({ variant: 'destructive', title: 'Erro ao gerar PIX', description: 'Não foi possível criar a cobrança PIX. Tente novamente.' });
         router.back();
-      } finally {
-        // setIsLoading(false); // Done in setTimeout
       }
     };
     generatePix();
-  }, [amount, targetId, targetType, router, toast]);
+  }, [amount, targetId, targetType, userId, router, toast]);
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
+    if (!amount || Number(amount) <= 0 || !targetId || !targetType || !userId) return;
+
     setPaymentStatus('processing');
     toast({
-      title: 'Aguardando Confirmação...',
-      description: 'Estamos verificando o status do seu pagamento PIX. Isso pode levar um instante.',
+      title: 'Confirmando Pagamento...',
+      description: 'Estamos atualizando o saldo. Isso pode levar um instante.',
     });
 
-    // In a real application, this would be a webhook or polling mechanism.
-    // We simulate it here.
-    setTimeout(() => {
-      setPaymentStatus('confirmed');
-      toast({
-        title: 'Pagamento Confirmado!',
-        description: 'O saldo foi atualizado com sucesso.',
-      });
-    }, 3000);
+    try {
+        const batch = writeBatch(firestore);
 
-    setTimeout(() => {
-      const redirectPath = targetType === 'guardian' ? '/guardian/dashboard' : (targetType === 'employee' ? '/employee/dashboard' : '/student/dashboard');
-      router.push(redirectPath);
-    }, 5000);
+        // 1. Determine profile path
+        let profilePath = '';
+        if (targetType === 'student') {
+            profilePath = `users/${userId}/studentProfiles/${targetId}`;
+        } else if (targetType === 'guardian') {
+            profilePath = `users/${userId}/guardianProfiles/${targetId}`;
+        } else if (targetType === 'employee') {
+            profilePath = `users/${userId}/userProfiles/${targetId}`;
+        } else {
+            throw new Error('Invalid target type');
+        }
+        const profileRef = doc(firestore, profilePath);
+
+        // 2. Update balance
+        batch.update(profileRef, { balance: increment(Number(amount)) });
+
+        // 3. Create transaction log
+        const transactionRef = doc(collection(firestore, 'transactions'));
+        batch.set(transactionRef, {
+            date: new Date().toISOString(),
+            description: 'Recarga via PIX',
+            amount: Number(amount),
+            type: 'credit',
+            origin: 'PIX',
+            userId: userId,
+            studentId: targetType === 'student' ? targetId : undefined,
+        });
+
+        await batch.commit();
+
+        setPaymentStatus('confirmed');
+        toast({
+            title: 'Pagamento Confirmado!',
+            description: 'O saldo foi atualizado com sucesso.',
+        });
+
+        setTimeout(() => {
+          let redirectPath = '/';
+          if (targetType === 'guardian') redirectPath = '/guardian/dashboard';
+          if (targetType === 'employee') redirectPath = '/employee/dashboard';
+          if (targetType === 'student') redirectPath = '/student/dashboard';
+          router.push(redirectPath);
+        }, 3000);
+
+    } catch (error) {
+        console.error("Payment confirmation error:", error);
+        toast({ variant: 'destructive', title: 'Erro na Confirmação', description: 'Não foi possível atualizar o saldo.' });
+        setPaymentStatus('pending');
+    }
   };
   
   if (isLoading) {
@@ -174,3 +215,5 @@ export default function PixPaymentPage() {
         </div>
     )
 }
+
+    

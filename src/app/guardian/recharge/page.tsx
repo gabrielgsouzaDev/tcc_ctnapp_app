@@ -11,16 +11,22 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { type User, type Guardian, mockGuardianProfile } from '@/lib/data';
+import { type UserProfile, type GuardianProfile } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { useUser } from '@/firebase';
+import { getGuardianProfile } from '@/lib/services';
+import { getFirestore, doc, writeBatch, collection, increment } from 'firebase/firestore';
+
 
 type RechargeTarget = {
-  id: string;
+  id: string; // This is the profile document ID
   name: string;
   balance: number;
+  firebaseUid: string; // The user's firebase auth UID
+  profileSubcollection: 'studentProfiles' | 'guardianProfiles';
   isGuardian?: boolean;
 };
 
@@ -29,8 +35,10 @@ const quickAmounts = [20, 50, 100];
 export default function GuardianRechargePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const firestore = getFirestore();
 
-  const [guardianProfile, setGuardianProfile] = useState<Guardian | null>(null);
+  const [guardianProfile, setGuardianProfile] = useState<GuardianProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTarget, setSelectedTarget] = useState<RechargeTarget | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState('');
@@ -38,41 +46,56 @@ export default function GuardianRechargePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-        setIsLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            setGuardianProfile(mockGuardianProfile);
-            if (mockGuardianProfile) {
+        if (user) {
+            setIsLoading(true);
+            const profile = await getGuardianProfile(firestore, user.uid);
+            setGuardianProfile(profile);
+            if (profile) {
                 // Pre-select the guardian by default
                 setSelectedTarget({
-                    id: mockGuardianProfile.id,
-                    name: mockGuardianProfile.name,
-                    balance: mockGuardianProfile.balance,
+                    id: profile.id,
+                    name: profile.name,
+                    balance: profile.balance,
+                    firebaseUid: profile.firebaseUid,
+                    profileSubcollection: 'guardianProfiles',
                     isGuardian: true,
                 });
             }
             setIsLoading(false);
-        }, 500);
+        }
     };
-    fetchProfile();
-  }, []);
+    if (!isUserLoading) {
+      fetchProfile();
+    }
+  }, [user, isUserLoading, firestore]);
 
-
-  const guardianAsTarget: RechargeTarget | null = guardianProfile ? {
-      id: guardianProfile.id,
-      name: guardianProfile.name,
-      balance: guardianProfile.balance,
-      isGuardian: true,
-  } : null;
-
-  const allTargets: RechargeTarget[] = guardianAsTarget && guardianProfile ? [guardianAsTarget, ...guardianProfile.students] : [];
+  const allTargets: RechargeTarget[] = guardianProfile ? [
+      { 
+        id: guardianProfile.id, 
+        name: guardianProfile.name, 
+        balance: guardianProfile.balance, 
+        firebaseUid: guardianProfile.firebaseUid,
+        profileSubcollection: 'guardianProfiles',
+        isGuardian: true 
+      },
+      ...guardianProfile.students.map(s => ({
+          id: s.id,
+          name: s.name,
+          balance: s.balance,
+          firebaseUid: s.firebaseUid,
+          profileSubcollection: 'studentProfiles' as const,
+          isGuardian: false
+      }))
+  ] : [];
 
   const handleAmountSelect = (amount: number) => {
     setRechargeAmount(amount.toString());
   };
   
   const handleInternalTransfer = async () => {
-     if (!selectedTarget || selectedTarget.isGuardian || !rechargeAmount || Number(rechargeAmount) <= 0) {
+     const amountValue = Number(rechargeAmount);
+
+     if (!selectedTarget || selectedTarget.isGuardian || !rechargeAmount || amountValue <= 0) {
       toast({
         variant: 'destructive',
         title: 'Dados inválidos',
@@ -81,7 +104,7 @@ export default function GuardianRechargePage() {
       return;
     }
 
-    if (!guardianProfile || Number(rechargeAmount) > guardianProfile.balance) {
+    if (!guardianProfile || amountValue > guardianProfile.balance) {
       toast({
         variant: 'destructive',
         title: 'Saldo insuficiente',
@@ -91,22 +114,62 @@ export default function GuardianRechargePage() {
     }
 
     setIsProcessing(true);
-    // Simulate API call
-    setTimeout(() => {
-         toast({
+    
+    try {
+        const batch = writeBatch(firestore);
+
+        // 1. Debit from Guardian
+        const guardianRef = doc(firestore, `users/${guardianProfile.firebaseUid}/guardianProfiles`, guardianProfile.id);
+        batch.update(guardianRef, { balance: increment(-amountValue) });
+
+        // 2. Credit Student
+        const studentRef = doc(firestore, `users/${selectedTarget.firebaseUid}/studentProfiles`, selectedTarget.id);
+        batch.update(studentRef, { balance: increment(amountValue) });
+
+        // 3. Create Transaction Log for Guardian (Debit)
+        const guardianTransactionRef = doc(collection(firestore, 'transactions'));
+        batch.set(guardianTransactionRef, {
+            date: new Date().toISOString(),
+            description: `Transferência para ${selectedTarget.name}`,
+            amount: amountValue,
+            type: 'debit',
+            origin: 'Transferência',
+            userId: guardianProfile.firebaseUid,
+        });
+
+        // 4. Create Transaction Log for Student (Credit)
+        const studentTransactionRef = doc(collection(firestore, 'transactions'));
+        batch.set(studentTransactionRef, {
+            date: new Date().toISOString(),
+            description: `Recebido de ${guardianProfile.name}`,
+            amount: amountValue,
+            type: 'credit',
+            origin: 'Transferência',
+            userId: selectedTarget.firebaseUid,
+            studentId: selectedTarget.id,
+        });
+
+        await batch.commit();
+
+        toast({
           title: 'Transferência Concluída!',
           description: `O saldo de ${selectedTarget.name} foi atualizado com sucesso.`,
         });
         router.push('/guardian/dashboard');
+
+    } catch (error) {
+        console.error("Transfer error:", error);
+        toast({ variant: 'destructive', title: 'Erro na Transferência' });
+    } finally {
         setIsProcessing(false);
-    }, 1500);
+    }
   }
 
   const amountValue = Number(rechargeAmount);
   const isPixButtonDisabled = !selectedTarget || !amountValue || amountValue <= 0 || isProcessing;
   const isTransferDisabled = isPixButtonDisabled || (guardianProfile && amountValue > guardianProfile.balance) || selectedTarget?.isGuardian;
 
-  if (isLoading) {
+  if (isLoading || isUserLoading) {
     return (
         <div className="container mx-auto max-w-2xl space-y-8 px-4 py-6 animate-pulse">
             <div className="h-10 bg-muted rounded w-1/2"></div>
@@ -255,7 +318,7 @@ export default function GuardianRechargePage() {
             </AlertDialog>
 
             <Link 
-                href={`/pix-payment?amount=${amountValue}&targetId=${selectedTarget?.id}&targetType=${selectedTarget?.isGuardian ? 'guardian' : 'student'}`}
+                href={`/pix-payment?amount=${amountValue}&targetId=${selectedTarget?.id}&targetType=${selectedTarget?.isGuardian ? 'guardian' : 'student'}&userId=${selectedTarget?.firebaseUid}`}
                 passHref
                 className={cn('w-full', isPixButtonDisabled && 'pointer-events-none opacity-50')}
             >
@@ -277,3 +340,5 @@ export default function GuardianRechargePage() {
     </div>
   );
 }
+
+    

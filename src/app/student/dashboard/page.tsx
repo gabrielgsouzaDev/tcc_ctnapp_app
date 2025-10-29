@@ -4,6 +4,7 @@
 import { ShoppingCart, Trash2, Search, MinusCircle, PlusCircle, Heart, Check, Star, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useMemo, useEffect } from 'react';
+import { collection, query, where, getFirestore } from 'firebase/firestore';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,10 +45,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { type Product, type Canteen, mockCanteens, mockProducts, type Order, type OrderItem } from '@/lib/data';
+import { type Product, type Canteen, type Order, type OrderItem, type StudentProfile } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { useAuth, useCollection, useDoc, useMemoFirebase, useUser } from '@/firebase';
+import { addDoc, doc, updateDoc, increment, writeBatch } from 'firebase/firestore';
+import { getStudentProfile, getCanteensBySchool, getProductsByCanteen } from '@/lib/services';
 
 type CartItem = {
   product: Product;
@@ -62,51 +66,52 @@ type AddToCartState = {
 
 export default function StudentDashboard() {
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const firestore = getFirestore();
   
-  const [products, setProducts] = useState<Product[]>([]);
-  const [canteens, setCanteens] = useState<Canteen[]>([]);
-  const [schoolId, setSchoolId] = useState<string>('school-1'); // Mock school ID
-  const [isLoading, setIsLoading] = useState(true);
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
 
+  const [canteens, setCanteens] = useState<Canteen[]>([]);
   const [selectedCanteen, setSelectedCanteen] = useState('');
+  
+  const productsQuery = useMemoFirebase(() => {
+    if (!selectedCanteen) return null;
+    return getProductsByCanteen(firestore, selectedCanteen);
+  }, [firestore, selectedCanteen]);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+
+  const [isLoading, setIsLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [favorites, setFavorites] = useState<string[]>(['prod-1', 'prod-7']); // Mock favorites
+  const [favorites, setFavorites] = useState<string[]>([]); // Mock favorites
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
   const [favoriteCategory, setFavoriteCategory] = useState<Category>('Todos');
 
    useEffect(() => {
-    const fetchInitialData = async () => {
-      setIsLoading(true);
-      // Simulate API calls with setTimeout
-      setTimeout(() => {
-        setCanteens(mockCanteens);
-        if (mockCanteens.length > 0) {
-          setSelectedCanteen(mockCanteens[0].id);
+    const fetchProfileAndCanteens = async () => {
+      if (user) {
+        setIsLoading(true);
+        const profile = await getStudentProfile(firestore, user.uid);
+        if (profile) {
+          setStudentProfile(profile);
+          const canteenList = await getCanteensBySchool(firestore, profile.schoolId);
+          setCanteens(canteenList);
+          if (canteenList.length > 0) {
+            setSelectedCanteen(canteenList[0].id);
+          }
         }
         setIsLoading(false);
-      }, 500); // Reduced delay for faster loading
+      }
     };
-    fetchInitialData();
-  }, []);
-
-  useEffect(() => {
-    if (!selectedCanteen) {
-        setProducts([]);
-        return;
-    };
-
-    // Simulate fetching products for the selected canteen
-    const fetchProducts = async () => {
-        const canteenProducts = mockProducts.filter(p => p.canteenId === selectedCanteen);
-        setProducts(canteenProducts);
-    };
-    fetchProducts();
-  }, [selectedCanteen]);
+    if (!isUserLoading) {
+        fetchProfileAndCanteens();
+    }
+  }, [user, isUserLoading, firestore]);
 
 
   const filteredProducts = useMemo(() => {
+    if (!products) return [];
     return products
       .filter((p) =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -165,7 +170,7 @@ export default function StudentDashboard() {
 
   const toggleFavorite = (productId: string) => {
     const isFavorited = favorites.includes(productId);
-    const product = mockProducts.find(p => p.id === productId);
+    const product = products?.find(p => p.id === productId);
     if (!product) return;
   
     setFavorites(prev => {
@@ -191,47 +196,77 @@ export default function StudentDashboard() {
   const isFavorite = (productId: string) => favorites.includes(productId);
   
   const favoriteProducts = useMemo(() => {
-    return mockProducts
-      .filter(p => favorites.includes(p.id))
-      .filter(p => favoriteCategory === 'Todos' || p.category === favoriteCategory);
-  }, [favorites, favoriteCategory]);
+    return products?.filter(p => favorites.includes(p.id))
+      .filter(p => favoriteCategory === 'Todos' || p.category === favoriteCategory) || [];
+  }, [favorites, favoriteCategory, products]);
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart
-    .reduce((sum, item) => sum + item.product.price * item.quantity, 0)
-    .toFixed(2);
+    .reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   
   const handleCheckout = async () => {
     if (cart.length === 0) {
         toast({ variant: "destructive", title: "Carrinho vazio!" });
         return;
     }
-    
-    // Create a new order object
-    const newOrder: Order = {
-        id: `#PED-${Math.floor(Math.random() * 900) + 100}`,
-        date: new Date().toISOString(),
-        studentId: 'student-001', // Mock student ID
-        status: 'Pendente',
-        total: Number(cartTotal),
-        items: cart,
-    };
-
-    // Retrieve existing orders from localStorage, add the new one, and save back
-    try {
-        const existingOrdersJSON = localStorage.getItem('studentOrderHistory');
-        const existingOrders: Order[] = existingOrdersJSON ? JSON.parse(existingOrdersJSON) : [];
-        const updatedOrders = [newOrder, ...existingOrders];
-        localStorage.setItem('studentOrderHistory', JSON.stringify(updatedOrders));
-    } catch (error) {
-        console.error("Failed to save order to localStorage", error);
+    if (!studentProfile || !user) {
+        toast({ variant: "destructive", title: "Perfil não encontrado!" });
+        return;
     }
-    
-    toast({
-        title: "Pedido realizado com sucesso!",
-        description: `Você pode acompanhar o status em 'Pedidos'.`,
+    if (studentProfile.balance < cartTotal) {
+        toast({ variant: "destructive", title: "Saldo insuficiente!" });
+        return;
+    }
+
+    const batch = writeBatch(firestore);
+
+    // 1. Create Order
+    const orderCollectionRef = collection(firestore, 'orders');
+    const newOrderRef = doc(orderCollectionRef);
+    const newOrder: Omit<Order, 'id'> = {
+        date: new Date().toISOString(),
+        studentId: studentProfile.id,
+        userId: user.uid,
+        status: 'Pendente',
+        total: cartTotal,
+        items: cart.map(item => ({
+          productId: item.product.id,
+          productName: item.product.name,
+          quantity: item.quantity,
+          unitPrice: item.product.price,
+          image: item.product.image
+        })),
+    };
+    batch.set(newOrderRef, newOrder);
+
+    // 2. Create Transaction
+    const transactionCollectionRef = collection(firestore, 'transactions');
+    const newTransactionRef = doc(transactionCollectionRef);
+    batch.set(newTransactionRef, {
+        date: new Date().toISOString(),
+        description: `Compra de Pedido #${newOrderRef.id.substring(0, 6).toUpperCase()}`,
+        amount: cartTotal,
+        type: 'debit',
+        origin: 'Cantina',
+        userId: user.uid,
+        studentId: studentProfile.id,
     });
-    setCart([]);
+    
+    // 3. Update Balance
+    const profileRef = doc(firestore, `users/${user.uid}/studentProfiles`, studentProfile.id);
+    batch.update(profileRef, { balance: increment(-cartTotal) });
+
+    try {
+        await batch.commit();
+        toast({
+            title: "Pedido realizado com sucesso!",
+            description: `Você pode acompanhar o status em 'Pedidos'.`,
+        });
+        setCart([]);
+    } catch(error) {
+        console.error("Checkout Error:", error);
+        toast({ variant: 'destructive', title: 'Erro ao finalizar pedido.'});
+    }
   }
 
   const getCartItemQuantity = (productId: string) => {
@@ -240,7 +275,7 @@ export default function StudentDashboard() {
 
   const categories: Category[] = ['Todos', 'Salgado', 'Doce', 'Bebida', 'Almoço'];
   
-  if (isLoading) {
+  if (isLoading || isUserLoading) {
     return (
         <div className="space-y-6 animate-pulse">
              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -434,7 +469,7 @@ export default function StudentDashboard() {
                 <div className="w-full space-y-4 border-t pt-4">
                     <div className="flex justify-between font-bold text-lg">
                         <span>Total:</span>
-                        <span>R$ {cartTotal}</span>
+                        <span>R$ {cartTotal.toFixed(2)}</span>
                     </div>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -461,7 +496,7 @@ export default function StudentDashboard() {
                             <Separator className="my-4"/>
                              <div className="flex justify-between font-bold text-lg">
                                 <span>Total:</span>
-                                <span>R$ {cartTotal}</span>
+                                <span>R$ {cartTotal.toFixed(2)}</span>
                             </div>
                         </div>
                         <AlertDialogFooter>
@@ -499,71 +534,77 @@ export default function StudentDashboard() {
             ))}
           </div>
       </div>
-
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredProducts.map((product) => {
-          const quantityInCart = getCartItemQuantity(product.id);
-          const isAdded = addToCartState[product.id] === 'added';
-          return (
-          <Card key={product.id} className="relative flex flex-col overflow-hidden transition-shadow hover:shadow-lg">
-             {product.popular && (
-                <Badge className="absolute top-2 left-2 z-10 bg-amber-400 text-amber-900 gap-1 hover:bg-amber-400">
-                    <Star className="h-3 w-3" /> Popular
-                </Badge>
-             )}
-             <Button 
-                size="icon" 
-                variant="ghost" 
-                className="absolute top-2 right-2 z-10 rounded-full bg-background/70 h-8 w-8 hover:bg-background"
-                onClick={() => toggleFavorite(product.id)}
-            >
-                <Heart className={cn("h-4 w-4 transition-colors", isFavorite(product.id) ? "text-red-500 fill-red-500" : "text-foreground")}/>
-             </Button>
-            <CardHeader className="p-0">
-              <Image
-                src={product.image.imageUrl}
-                alt={product.name}
-                width={400}
-                height={200}
-                className="h-48 w-full rounded-t-lg object-cover"
-                data-ai-hint={product.image.imageHint}
-              />
-            </CardHeader>
-            <CardContent className="flex flex-1 flex-col justify-between p-4">
-              <div>
-                <CardTitle className="text-lg">{product.name}</CardTitle>
-                <div className="flex items-center justify-between">
-                  <CardDescription className="text-md font-semibold text-primary">
-                    R$ {product.price.toFixed(2)}
-                  </CardDescription>
-                  {quantityInCart > 0 && (
-                    <Badge variant="secondary">
-                      No carrinho: {quantityInCart}
+      
+      {isLoadingProducts ? (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-pulse">
+            {[...Array(8)].map((_, i) => <Card key={i} className="h-80"><CardHeader className="p-0 h-48 bg-muted rounded-t-lg"></CardHeader><CardContent className="p-4 space-y-2"><div className="h-6 w-3/4 bg-muted rounded"></div><div className="h-4 w-1/4 bg-muted rounded"></div></CardContent><CardFooter className='p-4 pt-0'><div className="h-10 w-full bg-muted rounded-md"></div></CardFooter></Card>)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredProducts.map((product) => {
+            const quantityInCart = getCartItemQuantity(product.id);
+            const isAdded = addToCartState[product.id] === 'added';
+            return (
+            <Card key={product.id} className="relative flex flex-col overflow-hidden transition-shadow hover:shadow-lg">
+                {product.popular && (
+                    <Badge className="absolute top-2 left-2 z-10 bg-amber-400 text-amber-900 gap-1 hover:bg-amber-400">
+                        <Star className="h-3 w-3" /> Popular
                     </Badge>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="p-4 pt-0">
-              <Button 
-                className="w-full" 
-                onClick={() => {updateCart(product, 1); handleAddToCartVisuals(product);}}
-                variant={isAdded ? 'secondary' : 'default'}
-              >
-                 {isAdded ? (
-                  <>
-                    <Check className="mr-2 h-4 w-4" />
-                    Adicionado!
-                  </>
-                ) : (
-                  "Adicionar ao Carrinho"
                 )}
-              </Button>
-            </CardFooter>
-          </Card>
-        )})}
-      </div>
-       {filteredProducts.length === 0 && !isLoading && (
+                <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="absolute top-2 right-2 z-10 rounded-full bg-background/70 h-8 w-8 hover:bg-background"
+                    onClick={() => toggleFavorite(product.id)}
+                >
+                    <Heart className={cn("h-4 w-4 transition-colors", isFavorite(product.id) ? "text-red-500 fill-red-500" : "text-foreground")}/>
+                </Button>
+                <CardHeader className="p-0">
+                <Image
+                    src={product.image.imageUrl}
+                    alt={product.name}
+                    width={400}
+                    height={200}
+                    className="h-48 w-full rounded-t-lg object-cover"
+                    data-ai-hint={product.image.imageHint}
+                />
+                </CardHeader>
+                <CardContent className="flex flex-1 flex-col justify-between p-4">
+                <div>
+                    <CardTitle className="text-lg">{product.name}</CardTitle>
+                    <div className="flex items-center justify-between">
+                    <CardDescription className="text-md font-semibold text-primary">
+                        R$ {product.price.toFixed(2)}
+                    </CardDescription>
+                    {quantityInCart > 0 && (
+                        <Badge variant="secondary">
+                        No carrinho: {quantityInCart}
+                        </Badge>
+                    )}
+                    </div>
+                </div>
+                </CardContent>
+                <CardFooter className="p-4 pt-0">
+                <Button 
+                    className="w-full" 
+                    onClick={() => {updateCart(product, 1); handleAddToCartVisuals(product);}}
+                    variant={isAdded ? 'secondary' : 'default'}
+                >
+                    {isAdded ? (
+                    <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Adicionado!
+                    </>
+                    ) : (
+                    "Adicionar ao Carrinho"
+                    )}
+                </Button>
+                </CardFooter>
+            </Card>
+            )})}
+        </div>
+      )}
+       {(filteredProducts.length === 0 && !isLoadingProducts) && (
         <div className="col-span-full text-center text-muted-foreground py-10">
           <p>Nenhum produto encontrado para os filtros selecionados.</p>
         </div>
@@ -571,3 +612,5 @@ export default function StudentDashboard() {
     </div>
   );
 }
+
+    

@@ -3,7 +3,7 @@
 
 import { Wallet, CreditCard, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-import { type Transaction, type Student, mockStudentProfile, mockStudentTransactions } from '@/lib/data';
+import { type Transaction, type StudentProfile } from '@/lib/data';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -32,10 +32,14 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useUser, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { getStudentProfile, getTransactionsByUser } from '@/lib/services';
+import { getFirestore, doc } from 'firebase/firestore';
+
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 type FilterTypeKey = 'all' | 'credit' | 'debit';
-type FilterOriginKey = 'all' | 'Aluno' | 'Responsável' | 'Cantina' | 'PIX';
+type FilterOriginKey = 'all' | 'Aluno' | 'Responsável' | 'Cantina' | 'PIX' | 'Transferência';
 
 const quickAmounts = [20, 50, 100];
 
@@ -47,7 +51,7 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
                 <DialogDescription>
                     ID da transação: {transaction.id}
                 </DialogDescription>
-            </DialogHeader>
+            </Header>
             <div className="space-y-4 py-4">
                 <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Data e Hora</span>
@@ -92,33 +96,49 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
 
 
 export default function StudentBalancePage() {
-    const [studentProfile, setStudentProfile] = useState<Student | null>(null);
-    const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { user, isUserLoading } = useUser();
+    const firestore = getFirestore();
+
+    const [profileId, setProfileId] = useState<string | null>(null);
+
+    // Fetch the profile ID first
+    useEffect(() => {
+        const fetchProfile = async () => {
+            if (user) {
+                const profile = await getStudentProfile(firestore, user.uid);
+                if (profile) {
+                    setProfileId(profile.id);
+                }
+            }
+        };
+        if (!isUserLoading) {
+            fetchProfile();
+        }
+    }, [user, isUserLoading, firestore]);
+    
+    // Reactive hook for profile data
+    const profileRef = useMemoFirebase(() => {
+        if (!user || !profileId) return null;
+        return doc(firestore, `users/${user.uid}/studentProfiles`, profileId);
+    }, [user, profileId, firestore]);
+    const { data: studentProfile, isLoading: isProfileLoading } = useDoc<StudentProfile>(profileRef);
+
+    // Reactive hook for transaction data
+    const transactionsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return getTransactionsByUser(firestore, user.uid);
+    }, [user, firestore]);
+    const { data: transactionHistory, isLoading: areTransactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [filterType, setFilterType] = useState<FilterTypeKey>('all');
     const [filterOrigin, setFilterOrigin] = useState<FilterOriginKey>('all');
     const [rechargeAmount, setRechargeAmount] = useState('');
     
-    // For prototype purposes, we assume the student has permission to recharge.
-    // In a real app, this would be based on a property from the student's profile.
     const canRecharge = true; 
 
-    useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            // Simulate API Call
-            setTimeout(() => {
-                setStudentProfile(mockStudentProfile);
-                setTransactionHistory(mockStudentTransactions);
-                setIsLoading(false);
-            }, 500);
-        };
-        fetchData();
-    }, []);
-    
     const filteredHistory = useMemo(() => {
+        if (!transactionHistory) return [];
         let processedTransactions = [...transactionHistory];
 
         if (filterType !== 'all') {
@@ -154,6 +174,8 @@ export default function StudentBalancePage() {
     
     const amountValue = Number(rechargeAmount);
     const isButtonDisabled = !amountValue || amountValue <= 0;
+
+    const isLoading = isUserLoading || isProfileLoading || areTransactionsLoading;
 
     if (isLoading) {
         return (
@@ -245,7 +267,7 @@ export default function StudentBalancePage() {
                             </Button>
                             ))}
                         </div>
-                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&targetType=student`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
+                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&targetType=student&userId=${user?.uid}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
                             <Button 
                                 className="w-full"
                                 disabled={isButtonDisabled}
@@ -287,6 +309,7 @@ export default function StudentBalancePage() {
                                 <SelectItem value="Responsável">Responsável</SelectItem>
                                 <SelectItem value="Cantina">Cantina</SelectItem>
                                 <SelectItem value="PIX">PIX</SelectItem>
+                                <SelectItem value="Transferência">Transferência</SelectItem>
                             </SelectContent>
                         </Select>
                         <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterTypeKey)}>
@@ -368,3 +391,5 @@ export default function StudentBalancePage() {
         </div>
     );
 }
+
+    
