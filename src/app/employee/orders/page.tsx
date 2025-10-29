@@ -38,10 +38,12 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { type Order, type OrderItem, mockEmployeeOrderHistory } from '@/lib/data';
+import { type Order, type OrderItem } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useUser, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
+import { getOrdersByUser } from '@/lib/services';
 
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
 
@@ -74,7 +76,7 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
     return (
   <DialogContent className="sm:max-w-[425px]">
     <DialogHeader>
-      <DialogTitle>Detalhes do Pedido {order.id}</DialogTitle>
+      <DialogTitle>Detalhes do Pedido #{order.id.substring(0,6).toUpperCase()}</DialogTitle>
       <DialogDescription>
         Realizado em {new Date(order.date).toLocaleDateString('pt-BR')}
       </DialogDescription>
@@ -98,22 +100,22 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
           <div key={index} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
                <Image 
-                src={item.product.image.imageUrl} 
-                alt={item.product.name} 
+                src={item.image.imageUrl} 
+                alt={item.productName} 
                 width={40} 
                 height={40} 
                 className="rounded-md object-cover h-10 w-10"
-                data-ai-hint={item.product.image.imageHint}
+                data-ai-hint={item.image.imageHint}
               />
               <div>
-                <p className="font-medium">{item.product.name}</p>
+                <p className="font-medium">{item.productName}</p>
                 <p className="text-sm text-muted-foreground">
-                  {item.quantity} x R$ {item.product.price.toFixed(2)}
+                  {item.quantity} x R$ {item.unitPrice.toFixed(2)}
                 </p>
               </div>
             </div>
             <p className="font-medium">
-              R$ {(item.quantity * item.product.price).toFixed(2)}
+              R$ {(item.quantity * item.unitPrice).toFixed(2)}
             </p>
           </div>
         ))}
@@ -142,32 +144,21 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
 
 export default function EmployeeOrdersPage() {
     const { toast } = useToast();
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+    
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [searchTerm, setSearchTerm] = useState('');
-    const [orderHistory, setOrderHistory] = useState<Order[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    
+    const ordersQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return getOrdersByUser(firestore, user.uid);
+    }, [firestore, user]);
 
-    useEffect(() => {
-        const fetchOrders = () => {
-            setIsLoading(true);
-            try {
-                const storedOrdersJSON = localStorage.getItem('employeeOrderHistory');
-                const storedOrders: Order[] = storedOrdersJSON ? JSON.parse(storedOrdersJSON) : [];
-                // Combine stored orders with initial mock data, ensuring no duplicates
-                const combined = [...storedOrders, ...mockEmployeeOrderHistory];
-                const uniqueOrders = Array.from(new Map(combined.map(order => [order.id, order])).values());
-                setOrderHistory(uniqueOrders);
-            } catch (error) {
-                console.error("Failed to load orders from localStorage", error);
-                setOrderHistory(mockEmployeeOrderHistory);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchOrders();
-    }, []);
+    const { data: orderHistory, isLoading } = useCollection<Order>(ordersQuery);
 
     const filteredHistory = useMemo(() => {
+        if (!orderHistory) return [];
         let processedOrders = [...orderHistory];
 
         if (searchTerm) {
@@ -196,8 +187,6 @@ export default function EmployeeOrdersPage() {
 
 
     const handleRepeatOrder = (items: OrderItem[]) => {
-        // NOTE: This is a placeholder. In a real app, this would update a shared state (e.g., React Context or Zustand)
-        // that manages the cart, and then likely navigate to the dashboard.
         console.log('Repeating order with items:', items);
         toast({
             title: "Pedido repetido!",
@@ -205,7 +194,7 @@ export default function EmployeeOrdersPage() {
         });
     };
     
-    if (isLoading) {
+    if (isLoading || isUserLoading) {
         return (
             <div className="space-y-6">
                 <div>
@@ -292,7 +281,7 @@ export default function EmployeeOrdersPage() {
                           <Card className={cn("p-4", order.status === 'Pendente' && 'bg-yellow-50/50 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-600')}>
                               <div className="flex justify-between items-start">
                                   <div>
-                                      <p className="font-bold">{order.id}</p>
+                                      <p className="font-bold">#{order.id.substring(0, 6).toUpperCase()}</p>
                                       <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleDateString('pt-BR')}</p>
                                   </div>
                                   <OrderStatusBadge status={order.status} />
@@ -303,13 +292,13 @@ export default function EmployeeOrdersPage() {
                                     {order.items.slice(0, 3).map((item, index) => (
                                         <Image 
                                             key={index}
-                                            src={item.product.image.imageUrl} 
-                                            alt={item.product.name} 
+                                            src={item.image.imageUrl} 
+                                            alt={item.productName} 
                                             width={24} 
                                             height={24} 
                                             className="rounded-full object-cover border-2 border-background h-6 w-6" 
-                                            data-ai-hint={item.product.image.imageHint}
-                                            title={item.product.name}
+                                            data-ai-hint={item.image.imageHint}
+                                            title={item.productName}
                                         />
                                     ))}
                                      {order.items.length > 3 && (
@@ -345,20 +334,20 @@ export default function EmployeeOrdersPage() {
                            "cursor-pointer",
                             order.status === 'Pendente' && 'bg-yellow-50/50 border-l-4 border-yellow-400 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-600 dark:hover:bg-yellow-900/30'
                         )}>
-                        <TableCell className="font-medium">{order.id}</TableCell>
+                        <TableCell className="font-medium">#{order.id.substring(0, 6).toUpperCase()}</TableCell>
                         <TableCell>{new Date(order.date).toLocaleDateString('pt-BR')}</TableCell>
                         <TableCell>
                           <div className="flex -space-x-4">
                             {order.items.slice(0, 3).map((item, index) => (
                                 <Image 
                                     key={index}
-                                    src={item.product.image.imageUrl} 
-                                    alt={item.product.name} 
+                                    src={item.image.imageUrl} 
+                                    alt={item.productName} 
                                     width={32} 
                                     height={32} 
                                     className="rounded-full object-cover border-2 border-background h-8 w-8" 
-                                    data-ai-hint={item.product.image.imageHint}
-                                    title={item.product.name}
+                                    data-ai-hint={item.image.imageHint}
+                                    title={item.productName}
                                 />
                             ))}
                              {order.items.length > 3 && (

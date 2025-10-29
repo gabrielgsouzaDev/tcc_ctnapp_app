@@ -42,9 +42,8 @@ import { type Order, type OrderItem } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { useAuth, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { getOrdersByUser } from '@/lib/services';
-import { getFirestore } from 'firebase/firestore';
 
 
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
@@ -146,8 +145,8 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
 
 export default function StudentOrdersPage() {
     const { toast } = useToast();
-    const { user, isUserLoading } = useAuth();
-    const firestore = getFirestore();
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
 
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [searchTerm, setSearchTerm] = useState('');

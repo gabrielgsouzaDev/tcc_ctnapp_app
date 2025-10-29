@@ -44,10 +44,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { type Product, type Canteen, mockCanteens, mockProducts, type Order, type OrderItem } from '@/lib/data';
+import { type Product, type Canteen, type Order, type OrderItem, type UserProfile } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { useUser, useCollection, useMemoFirebase, useFirestore, useAdminFirestore } from '@/firebase';
+import { getEmployeeProfile, getCanteensBySchool, getProductsByCanteen } from '@/lib/services';
+import { writeBatch, collection, doc, increment } from 'firebase/firestore';
 
 type CartItem = {
   product: Product;
@@ -62,51 +65,52 @@ type AddToCartState = {
 
 export default function EmployeeDashboard() {
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const adminFirestore = useAdminFirestore();
   
-  const [products, setProducts] = useState<Product[]>([]);
+  const [employeeProfile, setEmployeeProfile] = useState<UserProfile | null>(null);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
   const [selectedCanteen, setSelectedCanteen] = useState('');
+
+  const productsQuery = useMemoFirebase(() => {
+    if (!selectedCanteen) return null;
+    return getProductsByCanteen(adminFirestore, selectedCanteen);
+  }, [adminFirestore, selectedCanteen]);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+
+  const [isLoading, setIsLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [favorites, setFavorites] = useState<string[]>(['prod-1', 'prod-7']);
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
   const [favoriteCategory, setFavoriteCategory] = useState<Category>('Todos');
 
    useEffect(() => {
-    const fetchInitialData = async () => {
-      setIsLoading(true);
-      // Simulate API calls with setTimeout
-      setTimeout(() => {
-        setCanteens(mockCanteens);
-        if (mockCanteens.length > 0) {
-          setSelectedCanteen(mockCanteens[0].id);
+    const fetchProfileAndCanteens = async () => {
+      if (user) {
+        setIsLoading(true);
+        const profile = await getEmployeeProfile(firestore, user.uid);
+        if (profile) {
+          setEmployeeProfile(profile);
+          const canteenList = await getCanteensBySchool(adminFirestore, profile.schoolId);
+          setCanteens(canteenList);
+          if (canteenList.length > 0) {
+            setSelectedCanteen(canteenList[0].id);
+          }
         }
         setIsLoading(false);
-      }, 500);
+      }
     };
-    fetchInitialData();
-  }, []);
-
-  useEffect(() => {
-    // Fetch products whenever the selected canteen changes
-    if (!selectedCanteen) {
-        setProducts([]);
-        return;
-    };
-
-    // Simulate API call
-    const fetchProducts = async () => {
-        const canteenProducts = mockProducts.filter(p => p.canteenId === selectedCanteen);
-        setProducts(canteenProducts);
-    };
-    fetchProducts();
-  }, [selectedCanteen]);
+    if (!isUserLoading) {
+        fetchProfileAndCanteens();
+    }
+  }, [user, isUserLoading, firestore, adminFirestore]);
 
 
   const filteredProducts = useMemo(() => {
+    if (!products) return [];
     return products
       .filter((p) =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -165,7 +169,7 @@ export default function EmployeeDashboard() {
 
   const toggleFavorite = (productId: string) => {
     const isFavorited = favorites.includes(productId);
-    const product = products.find(p => p.id === productId);
+    const product = products?.find(p => p.id === productId);
     if (!product) return;
   
     setFavorites(prev => {
@@ -191,47 +195,78 @@ export default function EmployeeDashboard() {
   const isFavorite = (productId: string) => favorites.includes(productId);
   
   const favoriteProducts = useMemo(() => {
-    return mockProducts
+    if (!products) return [];
+    return products
       .filter(p => favorites.includes(p.id))
       .filter(p => favoriteCategory === 'Todos' || p.category === favoriteCategory);
-  }, [favorites, favoriteCategory]);
+  }, [favorites, favoriteCategory, products]);
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart
-    .reduce((sum, item) => sum + item.product.price * item.quantity, 0)
-    .toFixed(2);
+    .reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   
   const handleCheckout = async () => {
     if (cart.length === 0) {
         toast({ variant: "destructive", title: "Carrinho vazio!" });
         return;
     }
-    
-    // Create a new order object
-    const newOrder: Order = {
-        id: `#PED-${Math.floor(Math.random() * 900) + 100}`,
-        date: new Date().toISOString(),
-        studentId: 'emp-001', // Mock employee ID
-        status: 'Pendente',
-        total: Number(cartTotal),
-        items: cart,
-    };
-
-    // Retrieve existing orders from localStorage, add the new one, and save back
-    try {
-        const existingOrdersJSON = localStorage.getItem('employeeOrderHistory');
-        const existingOrders: Order[] = existingOrdersJSON ? JSON.parse(existingOrdersJSON) : [];
-        const updatedOrders = [newOrder, ...existingOrders];
-        localStorage.setItem('employeeOrderHistory', JSON.stringify(updatedOrders));
-    } catch (error) {
-        console.error("Failed to save order to localStorage", error);
+     if (!employeeProfile || !user) {
+        toast({ variant: "destructive", title: "Perfil não encontrado!" });
+        return;
     }
-    
-    toast({
-        title: "Pedido realizado com sucesso!",
-        description: `Você pode acompanhar o status em 'Pedidos'.`,
+    if (employeeProfile.balance < cartTotal) {
+        toast({ variant: "destructive", title: "Saldo insuficiente!" });
+        return;
+    }
+
+    const batch = writeBatch(firestore);
+
+    // 1. Create Order
+    const orderCollectionRef = collection(firestore, 'orders');
+    const newOrderRef = doc(orderCollectionRef);
+    const newOrder: Omit<Order, 'id'> = {
+        date: new Date().toISOString(),
+        studentId: employeeProfile.id, // Using profile ID as identifier
+        userId: user.uid,
+        status: 'Pendente',
+        total: cartTotal,
+        items: cart.map(item => ({
+          productId: item.product.id,
+          productName: item.product.name,
+          quantity: item.quantity,
+          unitPrice: item.product.price,
+          image: item.product.image
+        })),
+    };
+    batch.set(newOrderRef, newOrder);
+
+    // 2. Create Transaction
+    const transactionCollectionRef = collection(firestore, 'transactions');
+    const newTransactionRef = doc(transactionCollectionRef);
+    batch.set(newTransactionRef, {
+        date: new Date().toISOString(),
+        description: `Compra de Pedido #${newOrderRef.id.substring(0, 6).toUpperCase()}`,
+        amount: cartTotal,
+        type: 'debit',
+        origin: 'Cantina',
+        userId: user.uid,
     });
-    setCart([]);
+    
+    // 3. Update Balance
+    const profileRef = doc(firestore, `users/${user.uid}/userProfiles`, employeeProfile.id);
+    batch.update(profileRef, { balance: increment(-cartTotal) });
+
+    try {
+        await batch.commit();
+        toast({
+            title: "Pedido realizado com sucesso!",
+            description: `Você pode acompanhar o status em 'Pedidos'.`,
+        });
+        setCart([]);
+    } catch(error) {
+        console.error("Checkout Error:", error);
+        toast({ variant: 'destructive', title: 'Erro ao finalizar pedido.'});
+    }
   }
 
   const getCartItemQuantity = (productId: string) => {
@@ -240,7 +275,7 @@ export default function EmployeeDashboard() {
 
   const categories: Category[] = ['Todos', 'Salgado', 'Doce', 'Bebida', 'Almoço'];
   
-  if (isLoading) {
+  if (isLoading || isUserLoading) {
     return (
         <div className="space-y-6 animate-pulse">
              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -434,7 +469,7 @@ export default function EmployeeDashboard() {
                 <div className="w-full space-y-4 border-t pt-4">
                     <div className="flex justify-between font-bold text-lg">
                         <span>Total:</span>
-                        <span>R$ {cartTotal}</span>
+                        <span>R$ {cartTotal.toFixed(2)}</span>
                     </div>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -461,7 +496,7 @@ export default function EmployeeDashboard() {
                             <Separator className="my-4"/>
                              <div className="flex justify-between font-bold text-lg">
                                 <span>Total:</span>
-                                <span>R$ {cartTotal}</span>
+                                <span>R$ {cartTotal.toFixed(2)}</span>
                             </div>
                         </div>
                         <AlertDialogFooter>
@@ -500,6 +535,11 @@ export default function EmployeeDashboard() {
           </div>
       </div>
 
+       {isLoadingProducts ? (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-pulse">
+            {[...Array(8)].map((_, i) => <Card key={i} className="h-80"><CardHeader className="p-0 h-48 bg-muted rounded-t-lg"></CardHeader><CardContent className="p-4 space-y-2"><div className="h-6 w-3/4 bg-muted rounded"></div><div className="h-4 w-1/4 bg-muted rounded"></div></CardContent><CardFooter className='p-4 pt-0'><div className="h-10 w-full bg-muted rounded-md"></div></CardFooter></Card>)}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredProducts.map((product) => {
           const quantityInCart = getCartItemQuantity(product.id);
@@ -563,7 +603,8 @@ export default function EmployeeDashboard() {
           </Card>
         )})}
       </div>
-       {filteredProducts.length === 0 && !isLoading && (
+      )}
+       {filteredProducts.length === 0 && !isLoadingProducts && (
         <div className="col-span-full text-center text-muted-foreground py-10">
           <p>Nenhum produto encontrado para os filtros selecionados.</p>
         </div>

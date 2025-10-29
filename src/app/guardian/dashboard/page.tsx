@@ -23,10 +23,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
-import { type Order, type OrderItem, type User, type Guardian, type Transaction, mockGuardianProfile, mockGuardianOrderHistory, mockGuardianTransactionHistory } from '@/lib/data';
+import { type Order, type OrderItem, type UserProfile, type GuardianProfile, type Transaction } from '@/lib/data';
 import { StudentFilter } from '@/components/shared/student-filter';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { getGuardianProfile, getOrdersByGuardian, getTransactionsByGuardian } from '@/lib/services';
+import { onSnapshot, query, collection, limit } from 'firebase/firestore';
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   const variant = {
@@ -57,7 +59,7 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
     return (
   <DialogContent className="sm:max-w-[425px]">
     <DialogHeader>
-      <DialogTitle>Detalhes do Pedido {order.id}</DialogTitle>
+      <DialogTitle>Detalhes do Pedido #{order.id.substring(0,6).toUpperCase()}</DialogTitle>
       <DialogDescription>
         Realizado em {new Date(order.date).toLocaleDateString('pt-BR')}
       </DialogDescription>
@@ -81,22 +83,22 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
           <div key={index} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
                <Image 
-                src={item.product.image.imageUrl} 
-                alt={item.product.name} 
+                src={item.image.imageUrl} 
+                alt={item.productName} 
                 width={40} 
                 height={40} 
                 className="rounded-md object-cover h-10 w-10"
-                data-ai-hint={item.product.image.imageHint}
+                data-ai-hint={item.image.imageHint}
               />
               <div>
-                <p className="font-medium">{item.product.name}</p>
+                <p className="font-medium">{item.productName}</p>
                 <p className="text-sm text-muted-foreground">
-                  {item.quantity} x R$ {item.product.price.toFixed(2)}
+                  {item.quantity} x R$ {item.unitPrice.toFixed(2)}
                 </p>
               </div>
             </div>
             <p className="font-medium">
-              R$ {(item.quantity * item.product.price).toFixed(2)}
+              R$ {(item.quantity * item.unitPrice).toFixed(2)}
             </p>
           </div>
         ))}
@@ -125,12 +127,11 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
 
 export default function GuardianDashboard() {
   const { toast } = useToast();
-  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   
-  const [guardianProfile, setGuardianProfile] = useState<Guardian | null>(null);
-  const [orderHistory, setOrderHistory] = useState<Order[]>([]);
-  const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
+  const [guardianProfile, setGuardianProfile] = useState<GuardianProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [activeStudentAccordion, setActiveStudentAccordion] = useState<string | undefined>();
@@ -138,42 +139,48 @@ export default function GuardianDashboard() {
   const [searchTermHistory, setSearchTermHistory] = useState('');
   const [date, setDate] = useState<Date>(new Date());
 
-  useEffect(() => {
-    if (!auth?.currentUser && process.env.NODE_ENV === 'production') {
-        router.replace('/auth/guardian');
-        return;
-    }
-      
-    const fetchData = () => {
-      setIsLoading(true);
-      
-      setGuardianProfile(mockGuardianProfile);
-      setTransactionHistory(mockGuardianTransactionHistory);
+   useEffect(() => {
+        if (isUserLoading) return;
+        if (!user) {
+            router.replace('/auth/guardian');
+            return;
+        }
 
-      try {
-          const storedOrdersJSON = localStorage.getItem('guardianOrderHistory');
-          const storedOrders: Order[] = storedOrdersJSON ? JSON.parse(storedOrdersJSON) : [];
-          // Combine stored orders with initial mock data, ensuring no duplicates
-          const combined = [...storedOrders, ...mockGuardianOrderHistory];
-          const uniqueOrders = Array.from(new Map(combined.map(order => [order.id, order])).values());
-          setOrderHistory(uniqueOrders);
-      } catch (error) {
-          console.error("Failed to load orders from localStorage", error);
-          setOrderHistory(mockGuardianOrderHistory);
-      }
-      
-      if (mockGuardianProfile?.students?.length > 0) {
-          setActiveStudentAccordion(mockGuardianProfile.students[0].id);
-      }
-      setIsLoading(false);
-    };
+        const fetchProfile = async () => {
+             const profile = await getGuardianProfile(firestore, user.uid);
+             setGuardianProfile(profile);
+             if (profile?.students?.length) {
+                setActiveStudentAccordion(profile.students[0].id);
+             }
+             setIsLoading(false);
+        }
+        fetchProfile();
 
-    fetchData();
-  }, [auth, router]);
+        // Listener for real-time updates on guardian profile (including students)
+        const profileQuery = query(collection(firestore, `users/${user.uid}/guardianProfiles`), limit(1));
+        const unsubscribe = onSnapshot(profileQuery, async (snapshot) => {
+             if (!snapshot.empty) {
+                const updatedProfile = await getGuardianProfile(firestore, user.uid);
+                setGuardianProfile(updatedProfile);
+             }
+        });
+        
+        return () => unsubscribe();
+    }, [user, isUserLoading, firestore, router]);
 
+
+  const studentIds = useMemo(() => guardianProfile?.students.map(s => s.id) || [], [guardianProfile]);
+  const allUserIds = useMemo(() => user?.uid ? [user.uid, ...(guardianProfile?.students.map(s => s.firebaseUid) || [])] : [], [user, guardianProfile]);
+
+  const ordersQuery = useMemoFirebase(() => getOrdersByGuardian(firestore, studentIds), [firestore, studentIds]);
+  const { data: orderHistory, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
+
+  const transactionsQuery = useMemoFirebase(() => getTransactionsByGuardian(firestore, allUserIds), [firestore, allUserIds]);
+  const { data: transactionHistory, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
+  
 
   const studentsMap = useMemo(() => {
-    const map = new Map<string, User>();
+    const map = new Map<string, UserProfile>();
     guardianProfile?.students.forEach(student => {
       map.set(student.id, student);
     });
@@ -181,6 +188,7 @@ export default function GuardianDashboard() {
   }, [guardianProfile]);
 
   const filteredOrders = useMemo(() => {
+    if (!orderHistory) return [];
     let processedOrders = [...orderHistory];
     
     if (selectedStudentId !== 'all') {
@@ -198,27 +206,33 @@ export default function GuardianDashboard() {
   }, [searchTermHistory, selectedStudentId, orderHistory]);
 
    const filteredTransactions = useMemo(() => {
+    if (!transactionHistory) return [];
     let processedTransactions = [...transactionHistory];
     
     if (selectedStudentId !== 'all') {
-      processedTransactions = processedTransactions.filter(t => selectedStudentId === t.studentId);
+        const selectedStudent = studentsMap.get(selectedStudentId);
+        // This will filter transactions for the selected student OR the guardian
+        processedTransactions = processedTransactions.filter(t => 
+            (selectedStudent && t.userId === selectedStudent.firebaseUid) || 
+            (t.userId === user?.uid && !t.studentId) // Guardian's own transactions
+        );
     }
 
     processedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return processedTransactions;
-  }, [selectedStudentId, transactionHistory]);
+  }, [selectedStudentId, transactionHistory, studentsMap, user]);
 
   const dashboardMetrics = useMemo(() => {
     const selectedMonth = date.getMonth();
     const selectedYear = date.getFullYear();
 
-    const ordersInMonth = filteredOrders.filter(order => {
+    const ordersInMonth = (filteredOrders || []).filter(order => {
         const orderDate = new Date(order.date);
         return orderDate.getMonth() === selectedMonth && orderDate.getFullYear() === selectedYear;
     });
 
-    const transactionsInMonth = filteredTransactions.filter(tx => {
+    const transactionsInMonth = (filteredTransactions || []).filter(tx => {
         const txDate = new Date(tx.date);
         return txDate.getMonth() === selectedMonth && txDate.getFullYear() === selectedYear;
     });
@@ -241,8 +255,6 @@ export default function GuardianDashboard() {
   }, [filteredOrders, filteredTransactions, selectedStudentId, studentsMap, date, guardianProfile]);
 
   const handleRepeatOrder = (items: OrderItem[]) => {
-      // In a real app, this would likely update a global cart state (e.g., via Context or Zustand)
-      // and then navigate the user to the order page.
       localStorage.setItem('cart-repeat', JSON.stringify(items));
       toast({
           title: "Itens no Carrinho!",
@@ -250,7 +262,7 @@ export default function GuardianDashboard() {
       });
   };
 
-  if (isLoading) {
+  if (isLoading || isUserLoading || isLoadingOrders || isLoadingTransactions) {
     return (
         <div className="space-y-8 animate-pulse">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -399,7 +411,7 @@ export default function GuardianDashboard() {
               onValueChange={(value) => setActiveStudentAccordion(value)}
               className="space-y-2"
             >
-                {guardianProfile.students.map((student: User) => (
+                {guardianProfile.students.map((student: UserProfile) => (
                     <AccordionItem value={student.id} key={student.id} className="border-b-0 rounded-lg bg-background">
                         <AccordionTrigger className="p-4 hover:no-underline">
                             <div className="flex items-center gap-4">
@@ -457,7 +469,7 @@ export default function GuardianDashboard() {
                                 <Card className={cn("p-4", order.status === 'Pendente' && 'bg-yellow-50/50 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-600')}>
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <p className="font-bold">{order.id}</p>
+                                            <p className="font-bold">#{order.id.substring(0,6).toUpperCase()}</p>
                                             <p className="text-sm text-muted-foreground">{studentsMap.get(order.studentId)?.name || 'N/A'}</p>
                                             <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleDateString('pt-BR')}</p>
                                         </div>
@@ -469,13 +481,13 @@ export default function GuardianDashboard() {
                                             {order.items.slice(0, 3).map((item, index) => (
                                                 <Image 
                                                     key={index}
-                                                    src={item.product.image.imageUrl} 
-                                                    alt={item.product.name} 
+                                                    src={item.image.imageUrl} 
+                                                    alt={item.productName} 
                                                     width={24} 
                                                     height={24} 
                                                     className="rounded-full object-cover border-2 border-background h-6 w-6" 
-                                                    data-ai-hint={item.product.image.imageHint}
-                                                    title={item.product.name}
+                                                    data-ai-hint={item.image.imageHint}
+                                                    title={item.productName}
                                                 />
                                             ))}
                                             {order.items.length > 3 && (
@@ -512,7 +524,7 @@ export default function GuardianDashboard() {
                                 "cursor-pointer",
                                 order.status === 'Pendente' && 'bg-yellow-50/50 border-l-4 border-yellow-400 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-600 dark:hover:bg-yellow-900/30'
                                 )}>
-                                <TableCell className="font-medium">{order.id}</TableCell>
+                                <TableCell className="font-medium">#{order.id.substring(0,6).toUpperCase()}</TableCell>
                                 <TableCell>{studentsMap.get(order.studentId)?.name || 'N/A'}</TableCell>
                                 <TableCell>{new Date(order.date).toLocaleDateString('pt-BR')}</TableCell>
                                 <TableCell>
@@ -520,13 +532,13 @@ export default function GuardianDashboard() {
                                     {order.items.slice(0, 3).map((item, index) => (
                                         <Image 
                                             key={index}
-                                            src={item.product.image.imageUrl} 
-                                            alt={item.product.name} 
+                                            src={item.image.imageUrl} 
+                                            alt={item.productName} 
                                             width={32} 
                                             height={32} 
                                             className="rounded-full object-cover border-2 border-background h-8 w-8" 
-                                            data-ai-hint={item.product.image.imageHint}
-                                            title={item.product.name}
+                                            data-ai-hint={item.image.imageHint}
+                                            title={item.productName}
                                         />
                                     ))}
                                     {order.items.length > 3 && (
@@ -548,7 +560,7 @@ export default function GuardianDashboard() {
                     </TableBody>
                     </Table>
                 </div>
-                 {filteredOrders.length === 0 && !isLoading && (
+                 {(filteredOrders.length === 0 && !isLoading) && (
                     <div className="text-center text-muted-foreground py-10">
                         {searchTermHistory ? 
                         <p>Nenhum pedido encontrado para a busca "{searchTermHistory}".</p> :
@@ -604,7 +616,7 @@ export default function GuardianDashboard() {
                             </TableBody>
                         </Table>
                     </div>
-                    {filteredTransactions.length === 0 && !isLoading && (
+                    {(filteredTransactions.length === 0 && !isLoading) && (
                         <div className="text-center text-muted-foreground py-10">
                             <p>Nenhuma transação encontrada para os filtros selecionados.</p>
                         </div>

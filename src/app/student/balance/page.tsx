@@ -31,9 +31,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useUser, useFirestore } from '@/firebase';
-import { getStudentProfile, getTransactionsByUser } from '@/lib/services';
-import { onSnapshot } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { getTransactionsByUser } from '@/lib/services';
+import { onSnapshot, query, collection, limit } from 'firebase/firestore';
 
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
@@ -99,62 +99,37 @@ export default function StudentBalancePage() {
     const firestore = useFirestore();
 
     const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
-    const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
-    
     const [isLoading, setIsLoading] = useState(true);
     
     useEffect(() => {
-        if (isUserLoading) return;
-        if (!user) {
-            setIsLoading(false);
+        if (isUserLoading || !user) {
+            if (!isUserLoading) setIsLoading(false);
             return;
         }
 
-        setIsLoading(true);
-        let unsubProfile: (() => void) | null = null;
-        let unsubTransactions: (() => void) | null = null;
-
-        const fetchProfile = async () => {
-            try {
-                const profile = await getStudentProfile(firestore, user.uid);
-                setStudentProfile(profile);
-
-                // Now setup listeners after we have the profile
-                // Listener for profile changes (e.g. balance updates)
-                const profileQuery = getStudentProfileQuery(firestore, user.uid);
-                unsubProfile = onSnapshot(profileQuery, (snapshot) => {
-                     if (!snapshot.empty) {
-                        const doc = snapshot.docs[0];
-                        setStudentProfile({ id: doc.id, ...doc.data() } as StudentProfile);
-                     } else {
-                        setStudentProfile(null);
-                     }
-                });
-                
-                // Listener for transactions
-                const transactionsQuery = getTransactionsByUser(firestore, user.uid);
-                unsubTransactions = onSnapshot(transactionsQuery, (snapshot) => {
-                    const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
-                    setTransactionHistory(transactions);
-                    setIsLoading(false); // Only stop loading after transactions are also loaded
-                }, (error) => {
-                    console.error("Error fetching transactions:", error);
-                    setIsLoading(false);
-                });
-
-            } catch (error) {
-                console.error("Error fetching initial profile:", error);
-                setIsLoading(false);
+        const profileQuery = query(collection(firestore, `users/${user.uid}/studentProfiles`), limit(1));
+        const unsubscribeProfile = onSnapshot(profileQuery, (snapshot) => {
+            if (!snapshot.empty) {
+                const doc = snapshot.docs[0];
+                setStudentProfile({ id: doc.id, ...doc.data() } as StudentProfile);
+            } else {
+                setStudentProfile(null);
             }
-        };
+            setIsLoading(false); // Stop loading after profile is fetched or not found
+        }, (error) => {
+            console.error("Error fetching student profile:", error);
+            setIsLoading(false);
+        });
 
-        fetchProfile();
-
-        return () => {
-            unsubProfile?.();
-            unsubTransactions?.();
-        };
+        return () => unsubscribeProfile();
     }, [user, isUserLoading, firestore]);
+    
+    const transactionsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return getTransactionsByUser(firestore, user.uid);
+    }, [firestore, user]);
+
+    const { data: transactionHistory, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
     
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [filterType, setFilterType] = useState<FilterTypeKey>('all');
@@ -164,6 +139,7 @@ export default function StudentBalancePage() {
     const canRecharge = true; 
 
     const filteredHistory = useMemo(() => {
+        if (!transactionHistory) return [];
         let processedTransactions = [...transactionHistory];
 
         if (filterType !== 'all') {
@@ -200,7 +176,7 @@ export default function StudentBalancePage() {
     const amountValue = Number(rechargeAmount);
     const isButtonDisabled = !amountValue || amountValue <= 0;
 
-    if (isLoading) {
+    if (isLoading || isUserLoading || isLoadingTransactions) {
         return (
              <div className="space-y-6 animate-pulse">
                 <div className="space-y-1">
@@ -290,7 +266,7 @@ export default function StudentBalancePage() {
                             </Button>
                             ))}
                         </div>
-                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&targetType=student&userId=${user?.uid}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
+                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&targetType=studentProfiles&userId=${user?.uid}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
                             <Button 
                                 className="w-full"
                                 disabled={isButtonDisabled}
@@ -414,12 +390,3 @@ export default function StudentBalancePage() {
         </div>
     );
 }
-
-// Helper function to get student profile query
-const getStudentProfileQuery = (firestore: ReturnType<typeof useFirestore>, firebaseUid: string) => {
-    const { query, collection, limit } = require("firebase/firestore");
-    return query(collection(firestore, `users/${firebaseUid}/studentProfiles`), limit(1));
-};
-
-
-    

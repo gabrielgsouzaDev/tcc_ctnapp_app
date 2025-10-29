@@ -3,7 +3,7 @@
 
 import { Wallet, CreditCard, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-import { type Transaction, type User, mockEmployeeProfile, mockEmployeeTransactions } from '@/lib/data';
+import { type Transaction, type UserProfile } from '@/lib/data';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -31,10 +31,14 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { getEmployeeProfile, getTransactionsByUser } from '@/lib/services';
+import { onSnapshot, query, collection, limit } from 'firebase/firestore';
+
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 type FilterTypeKey = 'all' | 'credit' | 'debit';
-type FilterOriginKey = 'all' | 'Aluno' | 'Responsável' | 'Cantina' | 'PIX';
+type FilterOriginKey = 'all' | 'Aluno' | 'Responsável' | 'Cantina' | 'PIX' | 'Transferência';
 
 const quickAmounts = [20, 50, 100];
 
@@ -91,8 +95,10 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
 
 
 export default function EmployeeBalancePage() {
-    const [employeeProfile, setEmployeeProfile] = useState<User | null>(null); // Reusing User type for simplicity
-    const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+
+    const [employeeProfile, setEmployeeProfile] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
@@ -103,19 +109,37 @@ export default function EmployeeBalancePage() {
     const canRecharge = true; 
 
     useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            // Simulate API call
-            setTimeout(() => {
-                setEmployeeProfile(mockEmployeeProfile);
-                setTransactionHistory(mockEmployeeTransactions);
-                setIsLoading(false);
-            }, 500);
-        };
-        fetchData();
-    }, []);
+        if (isUserLoading || !user) {
+            if (!isUserLoading) setIsLoading(false);
+            return;
+        }
+
+        const profileQuery = query(collection(firestore, `users/${user.uid}/userProfiles`), limit(1));
+        const unsubscribeProfile = onSnapshot(profileQuery, (snapshot) => {
+            if (!snapshot.empty) {
+                const doc = snapshot.docs[0];
+                setEmployeeProfile({ id: doc.id, ...doc.data() } as UserProfile);
+            } else {
+                setEmployeeProfile(null);
+            }
+            setIsLoading(false); // Stop loading after profile is fetched or not found
+        }, (error) => {
+            console.error("Error fetching employee profile:", error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribeProfile();
+    }, [user, isUserLoading, firestore]);
     
+    const transactionsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return getTransactionsByUser(firestore, user.uid);
+    }, [firestore, user]);
+
+    const { data: transactionHistory, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
+
     const filteredHistory = useMemo(() => {
+        if (!transactionHistory) return [];
         let processedTransactions = [...transactionHistory];
 
         if (filterType !== 'all') {
@@ -152,7 +176,7 @@ export default function EmployeeBalancePage() {
     const amountValue = Number(rechargeAmount);
     const isButtonDisabled = !amountValue || amountValue <= 0;
 
-    if (isLoading) {
+    if (isLoading || isUserLoading || isLoadingTransactions) {
         return (
              <div className="space-y-6 animate-pulse">
                 <div className="space-y-1">
@@ -242,7 +266,7 @@ export default function EmployeeBalancePage() {
                             </Button>
                             ))}
                         </div>
-                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${employeeProfile.id}&targetType=employee`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
+                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${employeeProfile.id}&targetType=userProfiles&userId=${user?.uid}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
                             <Button 
                                 className="w-full"
                                 disabled={isButtonDisabled}
@@ -284,6 +308,7 @@ export default function EmployeeBalancePage() {
                                 <SelectItem value="Responsável">Responsável</SelectItem>
                                 <SelectItem value="Cantina">Cantina</SelectItem>
                                 <SelectItem value="PIX">PIX</SelectItem>
+                                <SelectItem value="Transferência">Transferência</SelectItem>
                             </SelectContent>
                         </Select>
                         <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterTypeKey)}>
@@ -365,3 +390,4 @@ export default function EmployeeBalancePage() {
         </div>
     );
 }
+

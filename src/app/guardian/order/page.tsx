@@ -16,8 +16,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 
-import { type Product, type Canteen, type User, mockCanteens, mockProducts, mockGuardianProfile, type Order, type OrderItem } from '@/lib/data';
+import { type Product, type Canteen, type UserProfile, type Order, type OrderItem } from '@/lib/data';
 import { cn } from '@/lib/utils';
+import { useUser, useFirestore, useAdminFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { getGuardianProfile, getCanteensBySchool, getProductsByCanteen } from '@/lib/services';
+import { writeBatch, collection, doc, increment } from 'firebase/firestore';
 
 type Category = 'Todos' | 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
 type CartItem = {
@@ -30,10 +33,12 @@ type AddToCartState = {
 
 export default function GuardianOrderPage() {
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const adminFirestore = useAdminFirestore();
   
-  const [products, setProducts] = useState<Product[]>([]);
+  const [students, setStudents] = useState<UserProfile[]>([]);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
-  const [students, setStudents] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -42,50 +47,61 @@ export default function GuardianOrderPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
   const [studentForOrder, setStudentForOrder] = useState<string>('');
+  
+  const productsQuery = useMemoFirebase(() => {
+    if (!selectedCanteen) return null;
+    return getProductsByCanteen(adminFirestore, selectedCanteen);
+  }, [adminFirestore, selectedCanteen]);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      setIsLoading(true);
-      // Simulate API calls
-      setTimeout(() => {
-        setStudents(mockGuardianProfile.students);
-        setCanteens(mockCanteens);
-        if (mockGuardianProfile.students.length > 0) {
-          setStudentForOrder(mockGuardianProfile.students[0].id);
+        if (user) {
+            setIsLoading(true);
+            const profile = await getGuardianProfile(firestore, user.uid);
+            if (profile) {
+                setStudents(profile.students);
+                if (profile.students.length > 0) {
+                    setStudentForOrder(profile.students[0].id);
+                    const canteenList = await getCanteensBySchool(adminFirestore, profile.students[0].schoolId);
+                    setCanteens(canteenList);
+                    if (canteenList.length > 0) {
+                        setSelectedCanteen(canteenList[0].id);
+                    }
+                }
+            }
+            setIsLoading(false);
         }
-        if (mockCanteens.length > 0) {
-          setSelectedCanteen(mockCanteens[0].id);
-        }
-        setIsLoading(false);
-      }, 500);
     };
-    fetchInitialData();
-  }, []);
-
-  useEffect(() => {
-    // Fetch products whenever the selected canteen changes
-    if (!selectedCanteen) {
-      setProducts([]);
-      return;
+    if (!isUserLoading) {
+      fetchInitialData();
     }
-
-    // Simulate product fetching
-    const fetchProducts = async () => {
-        const canteenProducts = mockProducts.filter(p => p.canteenId === selectedCanteen);
-        setProducts(canteenProducts);
-    };
-    fetchProducts();
-  }, [selectedCanteen]);
+  }, [user, isUserLoading, firestore, adminFirestore]);
 
   useEffect(() => {
     // Check for items to repeat from local storage (e.g., from order history)
     const itemsToRepeat = localStorage.getItem('cart-repeat');
     if (itemsToRepeat) {
       try {
-        const parsedItems: { product: Product; quantity: number }[] = JSON.parse(itemsToRepeat);
+        const parsedItems: OrderItem[] = JSON.parse(itemsToRepeat);
+        const newCartItems: CartItem[] = parsedItems.map(item => ({
+            product: { 
+                id: item.productId, 
+                name: item.productName, 
+                price: item.unitPrice, 
+                image: item.image,
+                // These are placeholders as they are not stored in the order item
+                canteenId: '', 
+                schoolId: '',
+                category: 'Salgado'
+            },
+            quantity: item.quantity,
+        }));
+
         setCart(currentCart => {
           const newCart = [...currentCart];
-          parsedItems.forEach(itemToRepeat => {
+          newCartItems.forEach(itemToRepeat => {
             const existingItemIndex = newCart.findIndex(
               cartItem => cartItem.product.id === itemToRepeat.product.id
             );
@@ -97,6 +113,7 @@ export default function GuardianOrderPage() {
           });
           return newCart;
         });
+
       } catch (e) {
         console.error("Failed to parse repeat items from storage", e);
       } finally {
@@ -114,6 +131,7 @@ export default function GuardianOrderPage() {
   }, [students]);
 
   const filteredProducts = useMemo(() => {
+    if (!products) return [];
     return products
       .filter((p) =>
         p.name.toLowerCase().includes(searchTermProducts.toLowerCase())
@@ -172,15 +190,14 @@ export default function GuardianOrderPage() {
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart
-    .reduce((sum, item) => sum + item.product.price * item.quantity, 0)
-    .toFixed(2);
+    .reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   
   const handleCheckout = async () => {
     if (cart.length === 0) {
         toast({ variant: "destructive", title: "Carrinho vazio!" });
         return;
     }
-    if (!studentForOrder) {
+    if (!studentForOrder || !user) {
        toast({
           variant: "destructive",
           title: "Selecione um aluno",
@@ -189,31 +206,66 @@ export default function GuardianOrderPage() {
       return;
     }
     
-    // Create a new order object
-    const newOrder: Order = {
-        id: `#PED-${Math.floor(Math.random() * 900) + 100}`,
+    const studentProfile = students.find(s => s.id === studentForOrder);
+    if (!studentProfile) {
+        toast({ variant: "destructive", title: "Aluno não encontrado!"});
+        return;
+    }
+
+    if (studentProfile.balance < cartTotal) {
+        toast({ variant: "destructive", title: "Saldo do aluno insuficiente!"});
+        return;
+    }
+
+    const batch = writeBatch(firestore);
+
+    // 1. Create Order
+    const orderCollectionRef = collection(firestore, 'orders');
+    const newOrderRef = doc(orderCollectionRef);
+    const newOrder: Omit<Order, 'id'> = {
         date: new Date().toISOString(),
         studentId: studentForOrder,
+        userId: user.uid, // Guardian's UID
         status: 'Pendente',
-        total: Number(cartTotal),
-        items: cart,
+        total: cartTotal,
+        items: cart.map(item => ({
+          productId: item.product.id,
+          productName: item.product.name,
+          quantity: item.quantity,
+          unitPrice: item.product.price,
+          image: item.product.image
+        })),
     };
+    batch.set(newOrderRef, newOrder);
 
-    // Retrieve existing orders from localStorage, add the new one, and save back
-    try {
-        const existingOrdersJSON = localStorage.getItem('guardianOrderHistory');
-        const existingOrders: Order[] = existingOrdersJSON ? JSON.parse(existingOrdersJSON) : [];
-        const updatedOrders = [newOrder, ...existingOrders];
-        localStorage.setItem('guardianOrderHistory', JSON.stringify(updatedOrders));
-    } catch (error) {
-        console.error("Failed to save order to localStorage", error);
-    }
-    
-    toast({
-        title: "Pedido realizado com sucesso!",
-        description: `O pedido para ${studentsMap.get(studentForOrder)} pode ser acompanhado em 'Dashboard'.`,
+    // 2. Create Transaction for student
+    const transactionCollectionRef = collection(firestore, 'transactions');
+    const newTransactionRef = doc(transactionCollectionRef);
+    batch.set(newTransactionRef, {
+        date: new Date().toISOString(),
+        description: `Compra de Pedido #${newOrderRef.id.substring(0, 6).toUpperCase()}`,
+        amount: cartTotal,
+        type: 'debit',
+        origin: 'Responsável',
+        userId: studentProfile.firebaseUid,
+        studentId: studentForOrder,
     });
-    setCart([]);
+    
+    // 3. Update student's balance
+    const profileRef = doc(firestore, `users/${studentProfile.firebaseUid}/studentProfiles`, studentForOrder);
+    batch.update(profileRef, { balance: increment(-cartTotal) });
+
+    try {
+      await batch.commit();
+      toast({
+          title: "Pedido realizado com sucesso!",
+          description: `O pedido para ${studentsMap.get(studentForOrder)} pode ser acompanhado no seu Dashboard.`,
+      });
+      setCart([]);
+    } catch (error) {
+      console.error("Checkout Error:", error);
+      toast({ variant: 'destructive', title: 'Erro ao finalizar pedido.'});
+    }
   }
 
   const getCartItemQuantity = (productId: string) => {
@@ -222,7 +274,7 @@ export default function GuardianOrderPage() {
 
   const categories: Category[] = ['Todos', 'Salgado', 'Doce', 'Bebida', 'Almoço'];
 
-  if (isLoading) {
+  if (isLoading || isUserLoading) {
     return (
         <div className="space-y-6 animate-pulse">
              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -337,7 +389,7 @@ export default function GuardianOrderPage() {
                 <div className="w-full space-y-4 border-t pt-4">
                     <div className="flex justify-between font-bold text-lg">
                         <span>Total:</span>
-                        <span>R$ {cartTotal}</span>
+                        <span>R$ {cartTotal.toFixed(2)}</span>
                     </div>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -378,7 +430,7 @@ export default function GuardianOrderPage() {
                             <Separator/>
                              <div className="flex justify-between font-bold text-lg">
                                 <span>Total:</span>
-                                <span>R$ {cartTotal}</span>
+                                <span>R$ {cartTotal.toFixed(2)}</span>
                             </div>
                         </div>
                         <AlertDialogFooter>
@@ -417,6 +469,11 @@ export default function GuardianOrderPage() {
           </div>
       </div>
 
+       {isLoadingProducts ? (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-pulse">
+            {[...Array(8)].map((_, i) => <Card key={i} className="h-80"><CardHeader className="p-0 h-48 bg-muted rounded-t-lg"></CardHeader><CardContent className="p-4 space-y-2"><div className="h-6 w-3/4 bg-muted rounded"></div><div className="h-4 w-1/4 bg-muted rounded"></div></CardContent><CardFooter className='p-4 pt-0'><div className="h-10 w-full bg-muted rounded-md"></div></CardFooter></Card>)}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredProducts.map((product) => {
           const quantityInCart = getCartItemQuantity(product.id);
@@ -472,7 +529,8 @@ export default function GuardianOrderPage() {
           </Card>
         )})}
       </div>
-      {filteredProducts.length === 0 && !isLoading && (
+       )}
+      {(filteredProducts.length === 0 && !isLoading) && (
         <div className="col-span-full text-center text-muted-foreground py-10">
           <p>Nenhum produto encontrado para os filtros selecionados.</p>
         </div>
