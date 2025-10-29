@@ -16,33 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 
-import { type Product, type Canteen, type User } from '@/lib/data';
+import { type Product, type Canteen, type User, mockCanteens, mockProducts, mockGuardianProfile } from '@/lib/data';
 import { cn } from '@/lib/utils';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-// Mock Data
-const mockCanteens: Canteen[] = [
-    { id: 'canteen-1', name: 'Cantina Central' },
-    { id: 'canteen-2', name: 'Ponto do Lanche' },
-];
-
-const mockProducts: Product[] = [
-    { id: 'prod-1', name: 'Hambúrguer de Carne', price: 12.50, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[0], popular: true },
-    { id: 'prod-2', name: 'Fatia de Pizza', price: 8.00, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[1] },
-    { id: 'prod-3', name: 'Refrigerante Lata', price: 5.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[2] },
-    { id: 'prod-4', name: 'Suco de Caixa', price: 4.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[3] },
-    { id: 'prod-5', name: 'Salada Simples', price: 15.00, canteenId: 'canteen-1', category: 'Almoço', image: PlaceHolderImages[4] },
-    { id: 'prod-6', name: 'Misto Quente', price: 7.50, canteenId: 'canteen-2', category: 'Salgado', image: PlaceHolderImages[5] },
-    { id: 'prod-7', name: 'Prato do Dia', price: 22.00, canteenId: 'canteen-2', category: 'Almoço', image: PlaceHolderImages[6], popular: true },
-    { id: 'prod-8', name: 'Brigadeiro', price: 3.00, canteenId: 'canteen-1', category: 'Doce', image: PlaceHolderImages[7] },
-    { id: 'prod-9', name: 'Pudim', price: 6.00, canteenId: 'canteen-2', category: 'Doce', image: PlaceHolderImages[8] },
-];
-
-const mockStudents: User[] = [
-    { id: 'student-001', uid_firebase: 'firebase-student-001', name: 'João Silva', email: 'joao.silva@aluno.com', schoolId: '1', balance: 50.25, ra: '12345' },
-    { id: 'student-002', uid_firebase: 'firebase-student-002', name: 'Ana Silva', email: 'ana.silva@aluno.com', schoolId: '1', balance: 30.50, ra: '67890' },
-];
-
 
 type Category = 'Todos' | 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
 type CartItem = {
@@ -59,7 +34,6 @@ export default function GuardianOrderPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
   const [students, setStudents] = useState<User[]>([]);
-  const [schoolId, setSchoolId] = useState<string>('school-1');
   const [isLoading, setIsLoading] = useState(true);
 
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -74,19 +48,19 @@ export default function GuardianOrderPage() {
       setIsLoading(true);
       // Simulate API calls
       setTimeout(() => {
-        setStudents(mockStudents);
+        setStudents(mockGuardianProfile.students);
         setCanteens(mockCanteens);
-        if (mockStudents.length > 0) {
-          setStudentForOrder(mockStudents[0].id);
+        if (mockGuardianProfile.students.length > 0) {
+          setStudentForOrder(mockGuardianProfile.students[0].id);
         }
         if (mockCanteens.length > 0) {
           setSelectedCanteen(mockCanteens[0].id);
         }
         setIsLoading(false);
-      }, 1000);
+      }, 500);
     };
     fetchInitialData();
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     // Fetch products whenever the selected canteen changes
@@ -101,7 +75,7 @@ export default function GuardianOrderPage() {
         setProducts(canteenProducts);
     };
     fetchProducts();
-  }, [selectedCanteen, toast]);
+  }, [selectedCanteen]);
 
   useEffect(() => {
     // Check for items to repeat from local storage (e.g., from order history)

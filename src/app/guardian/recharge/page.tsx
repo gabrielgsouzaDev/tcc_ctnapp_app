@@ -11,26 +11,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { type User, type Guardian } from '@/lib/data';
+import { type User, type Guardian, mockGuardianProfile } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-
-// Mock Data
-const mockGuardianProfile: Guardian = {
-    id: 'guardian-001',
-    uid_firebase: 'firebase-guardian-001',
-    name: 'Maria Silva',
-    email: 'maria.silva@example.com',
-    schoolId: '1',
-    balance: 150.00,
-    students: [
-        { id: 'student-001', uid_firebase: 'firebase-student-001', name: 'João Silva', email: 'joao.silva@aluno.com', schoolId: '1', balance: 50.25, ra: '12345' },
-        { id: 'student-002', uid_firebase: 'firebase-student-002', name: 'Ana Silva', email: 'ana.silva@aluno.com', schoolId: '1', balance: 30.50, ra: '67890' },
-    ]
-};
-
 
 type RechargeTarget = {
   id: string;
@@ -57,11 +42,20 @@ export default function GuardianRechargePage() {
         // Simulate API call
         setTimeout(() => {
             setGuardianProfile(mockGuardianProfile);
+            if (mockGuardianProfile) {
+                // Pre-select the guardian by default
+                setSelectedTarget({
+                    id: mockGuardianProfile.id,
+                    name: mockGuardianProfile.name,
+                    balance: mockGuardianProfile.balance,
+                    isGuardian: true,
+                });
+            }
             setIsLoading(false);
-        }, 1000);
+        }, 500);
     };
     fetchProfile();
-  }, [toast]);
+  }, []);
 
 
   const guardianAsTarget: RechargeTarget | null = guardianProfile ? {

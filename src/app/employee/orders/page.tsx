@@ -38,31 +38,10 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { type Order, type OrderItem, Product } from '@/lib/data';
+import { type Order, type OrderItem, mockEmployeeOrderHistory } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-// Mock Data
-const mockProducts: Product[] = [
-    { id: 'prod-1', name: 'Hambúrguer de Carne', price: 12.50, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[0], popular: true },
-    { id: 'prod-2', name: 'Fatia de Pizza', price: 8.00, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[1] },
-    { id: 'prod-3', name: 'Refrigerante Lata', price: 5.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[2] },
-];
-
-const mockOrderHistory: Order[] = [
-    { id: '#PED-001', date: '2024-07-22T10:00:00Z', studentId: 'user-001', status: 'Entregue', total: 17.50, items: [
-        { product: mockProducts[0], quantity: 1 },
-        { product: mockProducts[2], quantity: 1 },
-    ]},
-    { id: '#PED-002', date: '2024-07-23T12:15:00Z', studentId: 'user-001', status: 'Pendente', total: 8.00, items: [
-        { product: mockProducts[1], quantity: 1 },
-    ]},
-    { id: '#PED-003', date: '2024-07-21T09:45:00Z', studentId: 'user-001', status: 'Cancelado', total: 12.50, items: [
-        { product: mockProducts[0], quantity: 1 },
-    ]},
-];
 
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
 
@@ -173,12 +152,12 @@ export default function EmployeeOrdersPage() {
             setIsLoading(true);
             // Simulate API call
             setTimeout(() => {
-                setOrderHistory(mockOrderHistory);
+                setOrderHistory(mockEmployeeOrderHistory);
                 setIsLoading(false);
-            }, 1000);
+            }, 500);
         };
         fetchOrders();
-    }, [toast]);
+    }, []);
 
     const filteredHistory = useMemo(() => {
         let processedOrders = [...orderHistory];

@@ -3,7 +3,7 @@
 
 import { Wallet, CreditCard, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-import { type Transaction, type Student } from '@/lib/data';
+import { type Transaction, type Student, mockStudentProfile, mockStudentTransactions } from '@/lib/data';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -32,24 +32,6 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-// Mock Data
-const mockStudentProfile: Student = {
-    id: 'student-001',
-    uid_firebase: 'firebase-student-001',
-    name: 'João Silva',
-    email: 'joao.silva@aluno.com',
-    schoolId: '1',
-    balance: 50.25,
-    ra: '12345'
-};
-
-const mockTransactions: Transaction[] = [
-    { id: 'tx-1', date: '2024-07-23T12:15:00Z', description: 'Compra de Pedido #PED-002', amount: 8.00, type: 'debit', origin: 'Cantina', studentId: 'student-001' },
-    { id: 'tx-2', date: '2024-07-22T10:00:00Z', description: 'Compra de Pedido #PED-001', amount: 17.50, type: 'debit', origin: 'Cantina', studentId: 'student-001' },
-    { id: 'tx-3', date: '2024-07-22T08:00:00Z', description: 'Recarga do Responsável', amount: 50.00, type: 'credit', origin: 'Responsável', studentId: 'student-001' },
-];
-
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 type FilterTypeKey = 'all' | 'credit' | 'debit';
@@ -110,7 +92,6 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
 
 
 export default function StudentBalancePage() {
-    const { toast } = useToast();
     const [studentProfile, setStudentProfile] = useState<Student | null>(null);
     const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -130,12 +111,12 @@ export default function StudentBalancePage() {
             // Simulate API Call
             setTimeout(() => {
                 setStudentProfile(mockStudentProfile);
-                setTransactionHistory(mockTransactions);
+                setTransactionHistory(mockStudentTransactions);
                 setIsLoading(false);
-            }, 1000);
+            }, 500);
         };
         fetchData();
-    }, [toast]);
+    }, []);
     
     const filteredHistory = useMemo(() => {
         let processedTransactions = [...transactionHistory];
@@ -210,7 +191,7 @@ export default function StudentBalancePage() {
     return (
         <div className="space-y-6">
             <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight font-headline">Saldo e Extrato</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Saldo e Extrato</h1>
                 <p className="text-muted-foreground">
                     Consulte seu saldo atual e o histórico de transações.
                 </p>

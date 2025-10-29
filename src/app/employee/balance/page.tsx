@@ -3,7 +3,7 @@
 
 import { Wallet, CreditCard, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-import { type Transaction, type User } from '@/lib/data';
+import { type Transaction, type User, mockEmployeeProfile, mockEmployeeTransactions } from '@/lib/data';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,27 +29,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-// Mock Data
-const mockEmployeeProfile: User = {
-    id: 'emp-001',
-    uid_firebase: 'firebase-emp-001',
-    name: 'Carlos Antunes',
-    email: 'carlos.antunes@escola.com',
-    schoolId: '1',
-    balance: 15.75,
-    cargo: 'Professor',
-};
-
-const mockTransactions: Transaction[] = [
-    { id: 'tx-emp-1', date: '2024-07-22T10:00:00Z', description: 'Compra na Cantina Central', amount: 12.50, type: 'debit', origin: 'Cantina' },
-    { id: 'tx-emp-2', date: '2024-07-21T12:00:00Z', description: 'Recarga via PIX', amount: 50.00, type: 'credit', origin: 'PIX' },
-    { id: 'tx-emp-3', date: '2024-07-20T09:30:00Z', description: 'Compra de Café', amount: 3.25, type: 'debit', origin: 'Cantina' },
-];
-
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 type FilterTypeKey = 'all' | 'credit' | 'debit';
@@ -110,7 +91,6 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
 
 
 export default function EmployeeBalancePage() {
-    const { toast } = useToast();
     const [employeeProfile, setEmployeeProfile] = useState<User | null>(null); // Reusing User type for simplicity
     const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -128,12 +108,12 @@ export default function EmployeeBalancePage() {
             // Simulate API call
             setTimeout(() => {
                 setEmployeeProfile(mockEmployeeProfile);
-                setTransactionHistory(mockTransactions);
+                setTransactionHistory(mockEmployeeTransactions);
                 setIsLoading(false);
-            }, 1000);
+            }, 500);
         };
         fetchData();
-    }, [toast]);
+    }, []);
     
     const filteredHistory = useMemo(() => {
         let processedTransactions = [...transactionHistory];

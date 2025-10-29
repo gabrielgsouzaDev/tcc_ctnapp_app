@@ -44,30 +44,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { type Product, type Canteen } from '@/lib/data';
+import { type Product, type Canteen, mockCanteens, mockProducts } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-// Mock Data
-const mockCanteens: Canteen[] = [
-    { id: 'canteen-1', name: 'Cantina Central' },
-    { id: 'canteen-2', name: 'Ponto do Lanche' },
-];
-
-const mockProducts: Product[] = [
-    { id: 'prod-1', name: 'Hambúrguer de Carne', price: 12.50, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[0], popular: true },
-    { id: 'prod-2', name: 'Fatia de Pizza', price: 8.00, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[1] },
-    { id: 'prod-3', name: 'Refrigerante Lata', price: 5.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[2] },
-    { id: 'prod-4', name: 'Suco de Caixa', price: 4.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[3] },
-    { id: 'prod-5', name: 'Salada Simples', price: 15.00, canteenId: 'canteen-1', category: 'Almoço', image: PlaceHolderImages[4] },
-    { id: 'prod-6', name: 'Misto Quente', price: 7.50, canteenId: 'canteen-2', category: 'Salgado', image: PlaceHolderImages[5] },
-    { id: 'prod-7', name: 'Prato do Dia', price: 22.00, canteenId: 'canteen-2', category: 'Almoço', image: PlaceHolderImages[6], popular: true },
-    { id: 'prod-8', name: 'Brigadeiro', price: 3.00, canteenId: 'canteen-1', category: 'Doce', image: PlaceHolderImages[7] },
-    { id: 'prod-9', name: 'Pudim', price: 6.00, canteenId: 'canteen-2', category: 'Doce', image: PlaceHolderImages[8] },
-];
-
 
 type CartItem = {
   product: Product;
@@ -106,10 +86,10 @@ export default function StudentDashboard() {
           setSelectedCanteen(mockCanteens[0].id);
         }
         setIsLoading(false);
-      }, 1000);
+      }, 500); // Reduced delay for faster loading
     };
     fetchInitialData();
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     if (!selectedCanteen) {
@@ -123,7 +103,7 @@ export default function StudentDashboard() {
         setProducts(canteenProducts);
     };
     fetchProducts();
-  }, [selectedCanteen, toast]);
+  }, [selectedCanteen]);
 
 
   const filteredProducts = useMemo(() => {

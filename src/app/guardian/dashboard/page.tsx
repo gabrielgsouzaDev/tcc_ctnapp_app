@@ -23,52 +23,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
-import { type Order, type OrderItem, type User, type Guardian, type Transaction, type Product } from '@/lib/data';
+import { type Order, type OrderItem, type User, type Guardian, type Transaction, mockGuardianProfile, mockGuardianOrderHistory, mockGuardianTransactionHistory } from '@/lib/data';
 import { StudentFilter } from '@/components/shared/student-filter';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/firebase';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-// Mock Data
-const mockGuardianProfile: Guardian = {
-    id: 'guardian-001',
-    uid_firebase: 'firebase-guardian-001',
-    name: 'Maria Silva',
-    email: 'maria.silva@example.com',
-    schoolId: '1',
-    balance: 150.00,
-    students: [
-        { id: 'student-001', uid_firebase: 'firebase-student-001', name: 'João Silva', email: 'joao.silva@aluno.com', schoolId: '1', balance: 50.25, ra: '12345' },
-        { id: 'student-002', uid_firebase: 'firebase-student-002', name: 'Ana Silva', email: 'ana.silva@aluno.com', schoolId: '1', balance: 30.50, ra: '67890' },
-    ]
-};
-
-const mockProducts: Product[] = [
-    { id: 'prod-1', name: 'Hambúrguer de Carne', price: 12.50, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[0], popular: true },
-    { id: 'prod-2', name: 'Fatia de Pizza', price: 8.00, canteenId: 'canteen-1', category: 'Salgado', image: PlaceHolderImages[1] },
-    { id: 'prod-3', name: 'Refrigerante Lata', price: 5.00, canteenId: 'canteen-1', category: 'Bebida', image: PlaceHolderImages[2] },
-];
-
-const mockOrderHistory: Order[] = [
-    { id: '#PED-001', date: '2024-07-22T10:00:00Z', studentId: 'student-001', status: 'Entregue', total: 17.50, items: [
-        { product: mockProducts[0], quantity: 1 },
-        { product: mockProducts[2], quantity: 1 },
-    ]},
-    { id: '#PED-002', date: '2024-07-23T12:15:00Z', studentId: 'student-002', status: 'Pendente', total: 8.00, items: [
-        { product: mockProducts[1], quantity: 1 },
-    ]},
-    { id: '#PED-003', date: '2024-07-21T09:45:00Z', studentId: 'student-001', status: 'Cancelado', total: 12.50, items: [
-        { product: mockProducts[0], quantity: 1 },
-    ]},
-];
-
-const mockTransactionHistory: Transaction[] = [
-    { id: 'tx-1', date: '2024-07-23T12:15:00Z', description: 'Compra de Pedido #PED-002', amount: 8.00, type: 'debit', origin: 'Cantina', studentId: 'student-002' },
-    { id: 'tx-2', date: '2024-07-22T10:00:00Z', description: 'Compra de Pedido #PED-001', amount: 17.50, type: 'debit', origin: 'Cantina', studentId: 'student-001' },
-    { id: 'tx-3', date: '2024-07-22T08:00:00Z', description: 'Recarga do Responsável', amount: 50.00, type: 'credit', origin: 'Responsável', studentId: 'student-001' },
-    { id: 'tx-4', date: '2024-07-20T15:00:00Z', description: 'Recarga via PIX', amount: 100.00, type: 'credit', origin: 'PIX' },
-];
-
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   const variant = {
@@ -191,18 +149,18 @@ export default function GuardianDashboard() {
       // Simulate API calls
       setTimeout(() => {
         setGuardianProfile(mockGuardianProfile);
-        setOrderHistory(mockOrderHistory);
-        setTransactionHistory(mockTransactionHistory);
+        setOrderHistory(mockGuardianOrderHistory);
+        setTransactionHistory(mockGuardianTransactionHistory);
 
         if (mockGuardianProfile?.students?.length > 0) {
             setActiveStudentAccordion(mockGuardianProfile.students[0].id);
         }
         setIsLoading(false);
-      }, 1000);
+      }, 500);
     };
 
     fetchData();
-  }, [toast, auth, router]);
+  }, [auth, router]);
 
 
   const studentsMap = useMemo(() => {
@@ -234,7 +192,7 @@ export default function GuardianDashboard() {
     let processedTransactions = [...transactionHistory];
     
     if (selectedStudentId !== 'all') {
-      processedTransactions = processedTransactions.filter(t => selectedStudentId === (t as any).studentId);
+      processedTransactions = processedTransactions.filter(t => selectedStudentId === t.studentId);
     }
 
     processedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -597,7 +555,7 @@ export default function GuardianDashboard() {
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <p className="font-semibold">{transaction.description}</p>
-                                        <p className="text-sm text-muted-foreground">{studentsMap.get((transaction as any).studentId)?.name || 'N/A'}</p>
+                                        <p className="text-sm text-muted-foreground">{studentsMap.get(transaction.studentId!)?.name || 'Responsável'}</p>
                                     </div>
                                     <p className={cn("font-bold text-lg", transaction.type === 'credit' ? 'text-green-600' : 'text-red-600')}>
                                         {transaction.type === 'credit' ? '+' : '-'} R$ {transaction.amount.toFixed(2)}
@@ -611,7 +569,7 @@ export default function GuardianDashboard() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Aluno</TableHead>
+                                    <TableHead>Destinatário</TableHead>
                                     <TableHead>Data</TableHead>
                                     <TableHead>Descrição</TableHead>
                                     <TableHead className="text-right">Valor</TableHead>
@@ -620,7 +578,7 @@ export default function GuardianDashboard() {
                             <TableBody>
                                 {filteredTransactions.map((transaction) => (
                                     <TableRow key={transaction.id}>
-                                        <TableCell>{studentsMap.get((transaction as any).studentId)?.name || 'N/A'}</TableCell>
+                                        <TableCell>{studentsMap.get(transaction.studentId!)?.name || 'Responsável'}</TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {new Date(transaction.date).toLocaleDateString('pt-BR')}
                                         </TableCell>
