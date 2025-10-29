@@ -8,7 +8,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,41 +86,32 @@ export default function StudentAuthPage() {
   const onSignupSubmit = async (data: SignupFormValues) => {
     if (!auth) return;
     setIsSubmitting(true);
-    let userCredential;
-
+    
     try {
-      userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
-
+      // Step 1: Call Laravel backend to create user in DB and Firebase
       await api.post('/cadastrar-aluno', {
-        uid_firebase: user.uid,
         name: data.name,
         email: data.email,
+        password: data.password,
         ra: data.ra,
         id_escola: data.schoolId,
       });
+
+      // Step 2: Sign in the user on the frontend to establish session
+      await signInWithEmailAndPassword(auth, data.email, data.password);
 
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
       router.push('/student/dashboard');
 
     } catch (error: any) {
-       console.error("Signup Error:", error);
+      console.error("Signup Error:", error);
       let description = 'Ocorreu um erro ao criar a conta. Tente novamente.';
 
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
-      } else if (error.response) {
+      } else if (error.response) { // Error from Laravel API
         description = error.response.data?.message || `Erro do servidor: ${error.response.statusText || 'Erro desconhecido'}`;
-        if (userCredential) {
-          try {
-            await userCredential.user.delete();
-            console.log('Orphaned Firebase user deleted due to API registration failure.');
-          } catch (deleteError) {
-            console.error('CRITICAL: Failed to delete orphaned Firebase user.', deleteError);
-            description = "Ocorreu um erro crítico no cadastro. Por favor, contate o suporte.";
-          }
-        }
-      } else if (error.request) {
+      } else if (error.request) { // Network error
         description = "Não foi possível conectar ao servidor. Verifique sua conexão e se a API está online.";
       }
       
