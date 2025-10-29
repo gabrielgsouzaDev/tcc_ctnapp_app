@@ -29,12 +29,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useUser, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { getStudentProfile, getTransactionsByUser } from '@/lib/services';
-import { getFirestore, doc } from 'firebase/firestore';
 
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
@@ -51,7 +49,7 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
                 <DialogDescription>
                     ID da transação: {transaction.id}
                 </DialogDescription>
-            </Header>
+            </DialogHeader>
             <div className="space-y-4 py-4">
                 <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Data e Hora</span>
@@ -97,31 +95,25 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
 
 export default function StudentBalancePage() {
     const { user, isUserLoading } = useUser();
-    const firestore = getFirestore();
+    const firestore = useFirestore();
 
-    const [profileId, setProfileId] = useState<string | null>(null);
-
-    // Fetch the profile ID first
+    const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
+    const [isProfileLoading, setIsProfileLoading] = useState(true);
+    
+    // Use a single useEffect to fetch the profile data
     useEffect(() => {
         const fetchProfile = async () => {
             if (user) {
+                setIsProfileLoading(true);
                 const profile = await getStudentProfile(firestore, user.uid);
-                if (profile) {
-                    setProfileId(profile.id);
-                }
+                setStudentProfile(profile);
+                setIsProfileLoading(false);
             }
         };
         if (!isUserLoading) {
             fetchProfile();
         }
     }, [user, isUserLoading, firestore]);
-    
-    // Reactive hook for profile data
-    const profileRef = useMemoFirebase(() => {
-        if (!user || !profileId) return null;
-        return doc(firestore, `users/${user.uid}/studentProfiles`, profileId);
-    }, [user, profileId, firestore]);
-    const { data: studentProfile, isLoading: isProfileLoading } = useDoc<StudentProfile>(profileRef);
 
     // Reactive hook for transaction data
     const transactionsQuery = useMemoFirebase(() => {
@@ -391,5 +383,3 @@ export default function StudentBalancePage() {
         </div>
     );
 }
-
-    
