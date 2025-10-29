@@ -9,7 +9,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore, useAdminFirestore } from '@/firebase';
 import { type School } from '@/lib/data';
 import { Logo } from '@/components/shared/logo';
 import { getSchools, createStudentProfile } from '@/lib/services';
@@ -42,7 +41,8 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 export default function StudentAuthPage() {
   const router = useRouter();
   const auth = useAuth();
-  const firestore = getFirestore();
+  const firestore = useFirestore();
+  const adminFirestore = useAdminFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
@@ -50,27 +50,19 @@ export default function StudentAuthPage() {
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const schoolList = await getSchools(firestore);
-        // Temporary mock data if firestore is empty
+        const schoolList = await getSchools(adminFirestore);
         if (schoolList.length === 0) {
-          setSchools([
-            { id: '1', name: 'Escola Padrão A', address: 'Rua Exemplo, 123' },
-            { id: '2', name: 'Escola Padrão B', address: 'Avenida Teste, 456' },
-          ]);
+          toast({ variant: 'destructive', title: 'Nenhuma escola encontrada no banco de dados admin.' });
         } else {
           setSchools(schoolList);
         }
       } catch (error) {
         console.error("Failed to fetch schools:", error);
         toast({ variant: 'destructive', title: 'Erro ao buscar escolas' });
-         setSchools([
-            { id: '1', name: 'Escola Padrão A', address: 'Rua Exemplo, 123' },
-            { id: '2', name: 'Escola Padrão B', address: 'Avenida Teste, 456' },
-         ]);
       }
     };
     fetchSchools();
-  }, [firestore, toast]);
+  }, [adminFirestore, toast]);
 
 
   const loginForm = useForm<LoginFormValues>({
@@ -106,7 +98,7 @@ export default function StudentAuthPage() {
   };
 
   const onSignupSubmit = async (data: SignupFormValues) => {
-    if (!auth) return;
+    if (!auth || !firestore) return;
     setIsSubmitting(true);
     
     try {

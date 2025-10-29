@@ -5,7 +5,7 @@ import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { CheckCircle, Clock, Copy, Loader2, QrCode } from 'lucide-react';
-import { getFirestore, doc, writeBatch, collection, increment } from 'firebase/firestore';
+import { doc, writeBatch, collection, increment } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,17 +13,18 @@ import { useToast } from '@/hooks/use-toast';
 import { CopyButton } from '@/components/shared/copy-button';
 import { QRCode } from '@/components/shared/qr-code';
 import { Label } from '@/components/ui/label';
+import { useFirestore } from '@/firebase';
 
 function PixPaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const firestore = getFirestore();
+  const firestore = useFirestore();
 
   const amount = searchParams.get('amount') || '0';
   const targetId = searchParams.get('targetId');
   const userId = searchParams.get('userId');
-  const targetType = searchParams.get('targetType'); // 'student', 'guardian', or 'employee'
+  const targetType = searchParams.get('targetType'); // 'studentProfiles', 'guardianProfiles', or 'userProfiles'
 
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'confirmed'>('pending');
   const [pixDetails, setPixDetails] = useState<{ qrCode: string; code: string } | null>(null);
@@ -69,16 +70,7 @@ function PixPaymentContent() {
         const batch = writeBatch(firestore);
 
         // 1. Determine profile path
-        let profilePath = '';
-        if (targetType === 'student') {
-            profilePath = `users/${userId}/studentProfiles/${targetId}`;
-        } else if (targetType === 'guardian') {
-            profilePath = `users/${userId}/guardianProfiles/${targetId}`;
-        } else if (targetType === 'employee') {
-            profilePath = `users/${userId}/userProfiles/${targetId}`;
-        } else {
-            throw new Error('Invalid target type');
-        }
+        const profilePath = `users/${userId}/${targetType}/${targetId}`;
         const profileRef = doc(firestore, profilePath);
 
         // 2. Update balance
@@ -93,7 +85,7 @@ function PixPaymentContent() {
             type: 'credit',
             origin: 'PIX',
             userId: userId,
-            studentId: targetType === 'student' ? targetId : undefined,
+            studentId: targetType === 'studentProfiles' ? targetId : undefined,
         });
 
         await batch.commit();
@@ -106,9 +98,9 @@ function PixPaymentContent() {
 
         setTimeout(() => {
           let redirectPath = '/';
-          if (targetType === 'guardian') redirectPath = '/guardian/dashboard';
-          if (targetType === 'employee') redirectPath = '/employee/dashboard';
-          if (targetType === 'student') redirectPath = '/student/dashboard';
+          if (targetType === 'guardianProfiles') redirectPath = '/guardian/dashboard';
+          if (targetType === 'userProfiles') redirectPath = '/employee/dashboard';
+          if (targetType === 'studentProfiles') redirectPath = '/student/dashboard';
           router.push(redirectPath);
         }, 3000);
 
@@ -215,5 +207,3 @@ export default function PixPaymentPage() {
         </div>
     )
 }
-
-    

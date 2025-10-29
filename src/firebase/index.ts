@@ -1,35 +1,33 @@
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
+import { firebaseAdminConfig } from '@/firebase/admin-config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
+// Nomes para as instâncias do Firebase
+const CLIENT_APP_NAME = 'DEFAULT';
+const ADMIN_APP_NAME = 'adminApp';
+
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
-  if (!getApps().length) {
-    // Important! initializeApp() is called without any arguments because Firebase App Hosting
-    // integrates with the initializeApp() function to provide the environment variables needed to
-    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
-    // without arguments.
-    let firebaseApp;
-    try {
-      // Attempt to initialize via Firebase App Hosting environment variables
-      firebaseApp = initializeApp();
-    } catch (e) {
-      // Only warn in production because it's normal to use the firebaseConfig to initialize
-      // during development
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
-      firebaseApp = initializeApp(firebaseConfig);
-    }
+  const apps = getApps();
+  
+  // Inicializa a app cliente (padrão) se ainda não existir
+  const clientApp = apps.find(app => app.name === CLIENT_APP_NAME)
+    ? getApp(CLIENT_APP_NAME)
+    : initializeApp(firebaseConfig, CLIENT_APP_NAME);
 
-    return getSdks(firebaseApp);
-  }
-
-  // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
+  // Inicializa a app admin se ainda não existir
+  const adminApp = apps.find(app => app.name === ADMIN_APP_NAME)
+    ? getApp(ADMIN_APP_NAME)
+    : initializeApp(firebaseAdminConfig, ADMIN_APP_NAME);
+  
+  return {
+    client: getSdks(clientApp),
+    admin: getSdks(adminApp),
+  };
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {

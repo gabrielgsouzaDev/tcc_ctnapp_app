@@ -11,14 +11,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { type UserProfile, type GuardianProfile } from '@/lib/data';
+import { type UserProfile, type GuardianProfile, StudentProfile } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { getGuardianProfile } from '@/lib/services';
-import { getFirestore, doc, writeBatch, collection, increment } from 'firebase/firestore';
+import { doc, writeBatch, collection, increment } from 'firebase/firestore';
 
 
 type RechargeTarget = {
@@ -26,7 +26,7 @@ type RechargeTarget = {
   name: string;
   balance: number;
   firebaseUid: string; // The user's firebase auth UID
-  profileSubcollection: 'studentProfiles' | 'guardianProfiles';
+  profileSubcollection: 'studentProfiles' | 'guardianProfiles' | 'userProfiles';
   isGuardian?: boolean;
 };
 
@@ -36,7 +36,7 @@ export default function GuardianRechargePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
-  const firestore = getFirestore();
+  const firestore = useFirestore();
 
   const [guardianProfile, setGuardianProfile] = useState<GuardianProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -78,7 +78,7 @@ export default function GuardianRechargePage() {
         profileSubcollection: 'guardianProfiles',
         isGuardian: true 
       },
-      ...guardianProfile.students.map(s => ({
+      ...guardianProfile.students.map((s: StudentProfile) => ({
           id: s.id,
           name: s.name,
           balance: s.balance,
@@ -318,7 +318,7 @@ export default function GuardianRechargePage() {
             </AlertDialog>
 
             <Link 
-                href={`/pix-payment?amount=${amountValue}&targetId=${selectedTarget?.id}&targetType=${selectedTarget?.isGuardian ? 'guardian' : 'student'}&userId=${selectedTarget?.firebaseUid}`}
+                href={`/pix-payment?amount=${amountValue}&targetId=${selectedTarget?.id}&targetType=${selectedTarget?.profileSubcollection}&userId=${selectedTarget?.firebaseUid}`}
                 passHref
                 className={cn('w-full', isPixButtonDisabled && 'pointer-events-none opacity-50')}
             >
@@ -340,5 +340,3 @@ export default function GuardianRechargePage() {
     </div>
   );
 }
-
-    

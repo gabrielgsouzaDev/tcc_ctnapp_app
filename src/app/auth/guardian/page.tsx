@@ -8,8 +8,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { Logo } from '@/components/shared/logo';
 import { createGuardianProfile } from '@/lib/services';
 
@@ -39,7 +38,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 export default function GuardianAuthPage() {
   const router = useRouter();
   const auth = useAuth();
-  const firestore = getFirestore();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -81,7 +80,7 @@ export default function GuardianAuthPage() {
   };
 
   const onSignupSubmit = async (data: SignupFormValues) => {
-    if (!auth) return;
+    if (!auth || !firestore) return;
     setIsSubmitting(true);
 
     try {
