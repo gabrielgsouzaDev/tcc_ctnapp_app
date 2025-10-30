@@ -11,7 +11,6 @@ interface FirebaseProviderProps {
   clientApp: FirebaseApp;
   clientFirestore: Firestore;
   clientAuth: Auth;
-  adminFirestore: Firestore;
 }
 
 // Internal state for user authentication
@@ -27,7 +26,6 @@ export interface FirebaseContextState {
   clientApp: FirebaseApp | null;
   clientFirestore: Firestore | null;
   clientAuth: Auth | null; // The Auth service instance for the client app
-  adminFirestore: Firestore | null; // The Firestore service instance for the admin app
   // User authentication state
   user: User | null;
   isUserLoading: boolean; // True during initial auth check
@@ -39,7 +37,6 @@ export interface FirebaseServicesAndUser {
   clientApp: FirebaseApp;
   clientFirestore: Firestore;
   clientAuth: Auth;
-  adminFirestore: Firestore;
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
@@ -63,7 +60,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   clientApp,
   clientFirestore,
   clientAuth,
-  adminFirestore,
 }) => {
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
     user: null,
@@ -95,18 +91,17 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
-    const servicesAvailable = !!(clientApp && clientFirestore && clientAuth && adminFirestore);
+    const servicesAvailable = !!(clientApp && clientFirestore && clientAuth);
     return {
       areServicesAvailable: servicesAvailable,
       clientApp: servicesAvailable ? clientApp : null,
       clientFirestore: servicesAvailable ? clientFirestore : null,
       clientAuth: servicesAvailable ? clientAuth : null,
-      adminFirestore: servicesAvailable ? adminFirestore : null,
       user: userAuthState.user,
       isUserLoading: userAuthState.isUserLoading,
       userError: userAuthState.userError,
     };
-  }, [clientApp, clientFirestore, clientAuth, adminFirestore, userAuthState]);
+  }, [clientApp, clientFirestore, clientAuth, userAuthState]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -127,7 +122,7 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     throw new Error('useFirebase must be used within a FirebaseProvider.');
   }
 
-  if (!context.areServicesAvailable || !context.clientApp || !context.clientFirestore || !context.clientAuth || !context.adminFirestore) {
+  if (!context.areServicesAvailable || !context.clientApp || !context.clientFirestore || !context.clientAuth) {
     throw new Error('Firebase core services not available. Check FirebaseProvider props.');
   }
 
@@ -135,7 +130,6 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     clientApp: context.clientApp,
     clientFirestore: context.clientFirestore,
     clientAuth: context.clientAuth,
-    adminFirestore: context.adminFirestore,
     user: context.user,
     isUserLoading: context.isUserLoading,
     userError: context.userError,
@@ -154,10 +148,11 @@ export const useFirestore = (): Firestore => {
   return clientFirestore;
 };
 
-/** Hook to access Firestore instance for the admin app. */
+/** @deprecated Use useFirestore() instead as the admin firestore is removed. */
 export const useAdminFirestore = (): Firestore => {
-  const { adminFirestore } = useFirebase();
-  return adminFirestore;
+  console.warn("useAdminFirestore is deprecated. Using client Firestore instead.");
+  const { clientFirestore } = useFirebase();
+  return clientFirestore;
 };
 
 

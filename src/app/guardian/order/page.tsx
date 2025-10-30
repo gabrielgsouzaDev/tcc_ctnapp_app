@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 
 import { type Product, type Canteen, type UserProfile, type Order, type OrderItem } from '@/lib/data';
 import { cn } from '@/lib/utils';
-import { useUser, useFirestore, useAdminFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { getGuardianProfile, getCanteensBySchool, getProductsByCanteen } from '@/lib/services';
 import { writeBatch, collection, doc, increment } from 'firebase/firestore';
 
@@ -35,7 +35,6 @@ export default function GuardianOrderPage() {
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const adminFirestore = useAdminFirestore();
   
   const [students, setStudents] = useState<UserProfile[]>([]);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
@@ -49,22 +48,22 @@ export default function GuardianOrderPage() {
   const [studentForOrder, setStudentForOrder] = useState<string>('');
   
   const productsQuery = useMemoFirebase(() => {
-    if (!selectedCanteen) return null;
-    return getProductsByCanteen(adminFirestore, selectedCanteen);
-  }, [adminFirestore, selectedCanteen]);
+    if (!selectedCanteen || !firestore) return null;
+    return getProductsByCanteen(firestore, selectedCanteen);
+  }, [firestore, selectedCanteen]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
 
   useEffect(() => {
     const fetchInitialData = async () => {
-        if (user) {
+        if (user && firestore) {
             setIsLoading(true);
             const profile = await getGuardianProfile(firestore, user.uid);
             if (profile) {
                 setStudents(profile.students);
                 if (profile.students.length > 0) {
                     setStudentForOrder(profile.students[0].id);
-                    const canteenList = await getCanteensBySchool(adminFirestore, profile.students[0].schoolId);
+                    const canteenList = await getCanteensBySchool(firestore, profile.students[0].schoolId);
                     setCanteens(canteenList);
                     if (canteenList.length > 0) {
                         setSelectedCanteen(canteenList[0].id);
@@ -77,7 +76,7 @@ export default function GuardianOrderPage() {
     if (!isUserLoading) {
       fetchInitialData();
     }
-  }, [user, isUserLoading, firestore, adminFirestore]);
+  }, [user, isUserLoading, firestore]);
 
   useEffect(() => {
     // Check for items to repeat from local storage (e.g., from order history)
@@ -197,7 +196,7 @@ export default function GuardianOrderPage() {
         toast({ variant: "destructive", title: "Carrinho vazio!" });
         return;
     }
-    if (!studentForOrder || !user) {
+    if (!studentForOrder || !user || !firestore) {
        toast({
           variant: "destructive",
           title: "Selecione um aluno",

@@ -48,7 +48,7 @@ import { type Product, type Canteen, type Order, type OrderItem, type UserProfil
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { useUser, useCollection, useMemoFirebase, useFirestore, useAdminFirestore } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { getEmployeeProfile, getCanteensBySchool, getProductsByCanteen } from '@/lib/services';
 import { writeBatch, collection, doc, increment } from 'firebase/firestore';
 
@@ -67,16 +67,15 @@ export default function EmployeeDashboard() {
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const adminFirestore = useAdminFirestore();
   
   const [employeeProfile, setEmployeeProfile] = useState<UserProfile | null>(null);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
   const [selectedCanteen, setSelectedCanteen] = useState('');
 
   const productsQuery = useMemoFirebase(() => {
-    if (!selectedCanteen) return null;
-    return getProductsByCanteen(adminFirestore, selectedCanteen);
-  }, [adminFirestore, selectedCanteen]);
+    if (!selectedCanteen || !firestore) return null;
+    return getProductsByCanteen(firestore, selectedCanteen);
+  }, [firestore, selectedCanteen]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -89,12 +88,12 @@ export default function EmployeeDashboard() {
 
    useEffect(() => {
     const fetchProfileAndCanteens = async () => {
-      if (user) {
+      if (user && firestore) {
         setIsLoading(true);
         const profile = await getEmployeeProfile(firestore, user.uid);
         if (profile) {
           setEmployeeProfile(profile);
-          const canteenList = await getCanteensBySchool(adminFirestore, profile.schoolId);
+          const canteenList = await getCanteensBySchool(firestore, profile.schoolId);
           setCanteens(canteenList);
           if (canteenList.length > 0) {
             setSelectedCanteen(canteenList[0].id);
@@ -106,7 +105,7 @@ export default function EmployeeDashboard() {
     if (!isUserLoading) {
         fetchProfileAndCanteens();
     }
-  }, [user, isUserLoading, firestore, adminFirestore]);
+  }, [user, isUserLoading, firestore]);
 
 
   const filteredProducts = useMemo(() => {
@@ -210,7 +209,7 @@ export default function EmployeeDashboard() {
         toast({ variant: "destructive", title: "Carrinho vazio!" });
         return;
     }
-     if (!employeeProfile || !user) {
+     if (!employeeProfile || !user || !firestore) {
         toast({ variant: "destructive", title: "Perfil não encontrado!" });
         return;
     }

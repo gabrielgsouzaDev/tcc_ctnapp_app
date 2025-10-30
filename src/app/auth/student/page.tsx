@@ -17,7 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore, useAdminFirestore } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { type School } from '@/lib/data';
 import { Logo } from '@/components/shared/logo';
 import { getSchools, createStudentProfile } from '@/lib/services';
@@ -42,17 +42,17 @@ export default function StudentAuthPage() {
   const router = useRouter();
   const auth = useAuth();
   const firestore = useFirestore();
-  const adminFirestore = useAdminFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
 
   useEffect(() => {
     const fetchSchools = async () => {
+      if (!firestore) return;
       try {
-        const schoolList = await getSchools(adminFirestore);
+        const schoolList = await getSchools(firestore);
         if (schoolList.length === 0) {
-          toast({ variant: 'destructive', title: 'Nenhuma escola encontrada no banco de dados admin.' });
+          toast({ variant: 'destructive', title: 'Nenhuma escola encontrada no banco de dados.' });
         } else {
           setSchools(schoolList);
         }
@@ -62,7 +62,7 @@ export default function StudentAuthPage() {
       }
     };
     fetchSchools();
-  }, [adminFirestore, toast]);
+  }, [firestore, toast]);
 
 
   const loginForm = useForm<LoginFormValues>({

@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useAdminFirestore } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { Logo } from '@/components/shared/logo';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getSchools, createUserProfile } from '@/lib/services';
@@ -40,17 +40,18 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 export default function EmployeeAuthPage() {
   const router = useRouter();
   const auth = useAuth();
-  const adminFirestore = useAdminFirestore();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
 
   useEffect(() => {
     const fetchSchools = async () => {
+      if (!firestore) return;
       try {
-        const schoolList = await getSchools(adminFirestore);
+        const schoolList = await getSchools(firestore);
          if (schoolList.length === 0) {
-          toast({ variant: 'destructive', title: 'Nenhuma escola encontrada no banco de dados admin.' });
+          toast({ variant: 'destructive', title: 'Nenhuma escola encontrada no banco de dados.' });
         } else {
           setSchools(schoolList);
         }
@@ -60,7 +61,7 @@ export default function EmployeeAuthPage() {
       }
     };
     fetchSchools();
-  }, [adminFirestore, toast]);
+  }, [firestore, toast]);
 
 
   const loginForm = useForm<LoginFormValues>({
@@ -96,14 +97,14 @@ export default function EmployeeAuthPage() {
   };
 
   const onSignupSubmit = async (data: SignupFormValues) => {
-    if (!auth) return;
+    if (!auth || !firestore) return;
     setIsSubmitting(true);
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
       
-      await createUserProfile(adminFirestore, user.uid, {
+      await createUserProfile(firestore, user.uid, {
         name: data.name,
         email: data.email,
         schoolId: data.schoolId,
