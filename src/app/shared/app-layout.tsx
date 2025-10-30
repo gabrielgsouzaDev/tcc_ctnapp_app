@@ -84,7 +84,7 @@ export function AppLayout({
   userType,
 }: {
   children: ReactNode;
-  userType: "student" | "guardian" | "employee";
+  userType: "student" | "guardian";
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -143,27 +143,6 @@ export function AppLayout({
       active: pathname.startsWith("/guardian/recharge") || pathname.startsWith('/pix-payment'),
     }
   ];
-
-  const employeeNavItems: NavItem[] = [
-    {
-      href: "/employee/dashboard",
-      label: "Cardápio",
-      icon: <Home />,
-      active: pathname === "/employee/dashboard",
-    },
-    {
-      href: "/employee/orders",
-      label: "Pedidos",
-      icon: <ShoppingBasket />,
-      active: pathname === "/employee/orders",
-    },
-    {
-      href: "/employee/balance",
-      label: "Saldo",
-      icon: <Wallet />,
-      active: pathname === "/employee/balance",
-    },
-  ];
   
   const settingsNavItem = {
       href: `/${userType}/settings`,
@@ -178,8 +157,6 @@ export function AppLayout({
             return studentNavItems;
         case 'guardian':
             return guardianNavItems;
-        case 'employee':
-            return employeeNavItems;
         default:
             return [];
     }
@@ -191,7 +168,6 @@ export function AppLayout({
     switch (userType) {
         case 'student': return 'Aluno';
         case 'guardian': return 'Responsável';
-        case 'employee': return 'Funcionário';
     }
   }
   const userName = getUserName();

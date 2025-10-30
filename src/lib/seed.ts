@@ -1,3 +1,4 @@
+
 import {
   collection,
   writeBatch,
@@ -92,12 +93,14 @@ const productsData = [
 
 export const seedDatabase = async (db: Firestore) => {
   try {
-    const schoolsSnapshot = await getDocs(collection(db, 'schools'));
+    const schoolsCol = collection(db, 'schools');
+    const schoolsSnapshot = await getDocs(schoolsCol);
     if (!schoolsSnapshot.empty) {
-      console.log('Database already seeded.');
+      console.log('Database already contains schools. Seeding skipped.');
       return;
     }
 
+    console.log('Seeding database...');
     const batch = writeBatch(db);
 
     schoolsData.forEach(school => {
@@ -118,13 +121,12 @@ export const seedDatabase = async (db: Firestore) => {
     await batch.commit();
     console.log('Database seeded successfully!');
   } catch (error) {
-    const contextualError = new FirestorePermissionError({
+     console.error("Error seeding database, likely a permissions issue:", error);
+     const contextualError = new FirestorePermissionError({
       operation: 'write',
-      path: 'multiple (batch operation)',
+      path: 'batch operation (seed)',
       requestResourceData: { note: 'Batch write for seeding schools, canteens, products.' },
     });
     errorEmitter.emit('permission-error', contextualError);
-    // We also console.error the original error for debugging purposes if needed
-    console.error("Original seeding error:", error);
   }
 };

@@ -73,18 +73,6 @@ export type GuardianProfile = {
   students: StudentProfile[]; // Not in schema, but attached by service
 };
 
-// Represents a generic user profile for employees or other types
-export type UserProfile = {
-  id: string; // doc id
-  firebaseUid: string;
-  name: string;
-  email: string;
-  schoolId: string;
-  balance: number;
-  role: 'employee' | 'admin';
-};
-
-
 export type School = {
   id: string;
   name: string;
@@ -92,5 +80,3 @@ export type School = {
 };
 
 // #endregion
-
-    

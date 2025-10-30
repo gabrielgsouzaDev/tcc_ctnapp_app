@@ -13,7 +13,7 @@ import {
   limit,
   Firestore,
 } from 'firebase/firestore';
-import { type School, type StudentProfile, type GuardianProfile, type UserProfile, Canteen, Product, Transaction, Order, OrderItem } from '@/lib/data';
+import { type School, type StudentProfile, type GuardianProfile, Canteen, Product, Transaction, Order, OrderItem } from '@/lib/data';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -108,28 +108,6 @@ export const createGuardianProfile = async (
   }
 };
 
-
-export const createUserProfile = async (
-  db: Firestore,
-  firebaseUid: string,
-  data: Omit<UserProfile, 'id' | 'firebaseUid' | 'balance'>
-) => {
-  await ensureUserDocument(db, firebaseUid);
-  const profileCollectionRef = collection(db, `users/${firebaseUid}/userProfiles`);
-  const profileData: Omit<UserProfile, 'id'> = {
-    ...data,
-    firebaseUid,
-    balance: 0, // Initial balance
-  };
-   addDoc(profileCollectionRef, profileData).catch(error => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: profileCollectionRef.path,
-        operation: 'create',
-        requestResourceData: profileData
-      }));
-   });
-};
-
 export const getStudentProfile = async (db: Firestore, firebaseUid: string): Promise<StudentProfile | null> => {
     const q = query(collection(db, `users/${firebaseUid}/studentProfiles`), limit(1));
     const snapshot = await getDocs(q);
@@ -164,17 +142,6 @@ export const getGuardianProfile = async (db: Firestore, firebaseUid: string): Pr
     
     return { id: profileDoc.id, ...profileData, students } as GuardianProfile;
 }
-
-export const getEmployeeProfile = async (db: Firestore, firebaseUid: string): Promise<UserProfile | null> => {
-    const q = query(collection(db, `users/${firebaseUid}/userProfiles`), limit(1));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-        return null;
-    }
-    const doc = snapshot.docs[0];
-    return { id: doc.id, ...doc.data() } as UserProfile;
-}
-
 
 // Canteen / Product Services
 export const getCanteensBySchool = async (db: Firestore, schoolId: string): Promise<Canteen[]> => {
