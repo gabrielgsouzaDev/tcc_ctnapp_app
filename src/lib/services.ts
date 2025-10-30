@@ -63,7 +63,16 @@ export const createGuardianProfile = async (
     firebaseUid,
     balance: 100, // Initial balance for guardian
   };
-  await addDoc(profileCollectionRef, profileData);
+  const docRef = await addDoc(profileCollectionRef, profileData);
+
+  // After creating the guardian, find the student by RA and link them
+  const studentQuery = query(collectionGroup(db, 'studentProfiles'), where('ra', '==', data.studentRa));
+  const studentSnapshot = await getDocs(studentQuery);
+
+  if (!studentSnapshot.empty) {
+    const studentDoc = studentSnapshot.docs[0];
+    await setDoc(docRef, { studentId: studentDoc.id }, { merge: true });
+  }
 };
 
 
@@ -102,9 +111,17 @@ export const getGuardianProfile = async (db: Firestore, firebaseUid: string): Pr
     const profileData = profileDoc.data() as Omit<GuardianProfile, 'id' | 'students'>;
     
     // Fetch linked students
-    const studentsQuery = query(collectionGroup(db, 'studentProfiles'), where('ra', '==', profileData.studentRa));
-    const studentsSnapshot = await getDocs(studentsQuery);
-    const students = studentsSnapshot.docs.map(sDoc => ({ id: sDoc.id, ...sDoc.data() } as StudentProfile));
+    let students: StudentProfile[] = [];
+    if (profileData.studentId) {
+        const studentQuery = query(collectionGroup(db, 'studentProfiles'), where('__name__', '==', `users/${profileData.firebaseUid}/studentProfiles/${profileData.studentId}`));
+        const studentSnapshot = await getDocs(studentQuery);
+        students = studentSnapshot.docs.map(sDoc => ({ id: sDoc.id, ...sDoc.data() } as StudentProfile));
+    } else if (profileData.studentRa) {
+        // Fallback to RA if studentId is not present
+        const studentQuery = query(collectionGroup(db, 'studentProfiles'), where('ra', '==', profileData.studentRa));
+        const studentSnapshot = await getDocs(studentQuery);
+        students = studentSnapshot.docs.map(sDoc => ({ id: sDoc.id, ...sDoc.data() } as StudentProfile));
+    }
     
     return { id: profileDoc.id, ...profileData, students } as GuardianProfile;
 }
@@ -141,17 +158,13 @@ export const getTransactionsByUser = (db: Firestore, userId: string) => {
 }
 
 export const getOrdersByGuardian = (db: Firestore, studentIds: string[]) => {
-    if (studentIds.length === 0) return null;
+    if (!studentIds || studentIds.length === 0) return null;
     return query(collection(db, 'orders'), where('studentId', 'in', studentIds));
 }
 
-export const getTransactionsByGuardian = (db: Firestore, userId: string, studentIds: string[]) => {
-    // This query is complex and might not be efficient.
-    // It requires fetching transactions for the guardian AND all their students.
-    // Firestore does not support logical OR in a single query across different fields.
-    // For now, we will fetch guardian transactions only. A better solution would be to duplicate data or use multiple queries.
-    const userIds = [userId, ...studentIds];
-    if (userIds.length === 0) {
+export const getTransactionsByGuardian = (db: Firestore, guardianUid: string, studentUids: string[]) => {
+    const userIds = [guardianUid, ...studentUids];
+     if (userIds.length === 0) {
       return null;
     }
     return query(collection(db, 'transactions'), where('userId', 'in', userIds));

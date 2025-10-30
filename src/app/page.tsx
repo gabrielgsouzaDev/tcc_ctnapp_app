@@ -1,10 +1,45 @@
 
-import { User, Shield, BookUser } from 'lucide-react';
+'use client';
+
+import { User, Shield, BookUser, Database } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/shared/logo';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { useFirestore } from '@/firebase';
+import { seedDatabase } from '@/lib/seed';
+
 
 export default function ProfileSelectionPage() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeed = async () => {
+    if (!firestore) return;
+    setIsSeeding(true);
+    try {
+      const result = await seedDatabase(firestore);
+      toast({
+        title: 'Sucesso!',
+        description: result.message,
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao popular o banco de dados',
+        description: 'Verifique o console para mais detalhes.',
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-2xl text-center">
@@ -56,6 +91,15 @@ export default function ProfileSelectionPage() {
               </CardContent>
             </Card>
           </Link>
+        </div>
+        <div className="mt-12">
+          <p className="text-sm text-muted-foreground">
+            Primeira vez usando? Clique aqui para popular o banco com dados de exemplo.
+          </p>
+          <Button onClick={handleSeed} variant="outline" className="mt-2" disabled={isSeeding}>
+            <Database className="mr-2 h-4 w-4" />
+            {isSeeding ? 'Populando...' : 'Popular Banco de Dados'}
+          </Button>
         </div>
       </div>
     </div>
