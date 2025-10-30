@@ -530,7 +530,7 @@ export default function GuardianOrderPage() {
         )})}
       </div>
        )}
-      {(filteredProducts.length === 0 && !isLoading) && (
+      {(filteredProducts.length === 0 && !isLoadingProducts) && (
         <div className="col-span-full text-center text-muted-foreground py-10">
           <p>Nenhum produto encontrado para os filtros selecionados.</p>
         </div>
@@ -538,3 +538,5 @@ export default function GuardianOrderPage() {
     </div>
   );
 }
+
+    

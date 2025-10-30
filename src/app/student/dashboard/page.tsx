@@ -4,7 +4,6 @@
 import { ShoppingCart, Trash2, Search, MinusCircle, PlusCircle, Heart, Check, Star, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useMemo, useEffect } from 'react';
-import { collection, query, where, getFirestore } from 'firebase/firestore';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -50,7 +49,7 @@ import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useUser, useCollection, useMemoFirebase, useFirestore, useAdminFirestore } from '@/firebase';
-import { addDoc, doc, updateDoc, increment, writeBatch } from 'firebase/firestore';
+import { writeBatch, collection, doc, increment } from 'firebase/firestore';
 import { getStudentProfile, getCanteensBySchool, getProductsByCanteen } from '@/lib/services';
 
 type CartItem = {
@@ -197,8 +196,10 @@ export default function StudentDashboard() {
   const isFavorite = (productId: string) => favorites.includes(productId);
   
   const favoriteProducts = useMemo(() => {
-    return products?.filter(p => favorites.includes(p.id))
-      .filter(p => favoriteCategory === 'Todos' || p.category === favoriteCategory) || [];
+    if (!products) return [];
+    return products
+      .filter(p => favorites.includes(p.id))
+      .filter(p => favoriteCategory === 'Todos' || p.category === favoriteCategory);
   }, [favorites, favoriteCategory, products]);
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -261,7 +262,7 @@ export default function StudentDashboard() {
         await batch.commit();
         toast({
             title: "Pedido realizado com sucesso!",
-            description: `Você pode acompanhar o status em 'Pedidos'.`,
+            description: "Você pode acompanhar o status em 'Pedidos'.",
         });
         setCart([]);
     } catch(error) {
@@ -613,3 +614,5 @@ export default function StudentDashboard() {
     </div>
   );
 }
+
+    

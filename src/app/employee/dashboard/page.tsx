@@ -260,7 +260,7 @@ export default function EmployeeDashboard() {
         await batch.commit();
         toast({
             title: "Pedido realizado com sucesso!",
-            description: `Você pode acompanhar o status em 'Pedidos'.`,
+            description: "Você pode acompanhar o status em 'Pedidos'.",
         });
         setCart([]);
     } catch(error) {
@@ -612,3 +612,5 @@ export default function EmployeeDashboard() {
     </div>
   );
 }
+
+    
