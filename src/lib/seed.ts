@@ -6,6 +6,8 @@ import {
   Firestore,
 } from 'firebase/firestore';
 import { PlaceHolderImages } from './placeholder-images';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const schoolsData = [
   { id: 'school_1', name: 'Escola Modelo', address: 'Rua das Flores, 123' },
@@ -89,31 +91,40 @@ const productsData = [
 ];
 
 export const seedDatabase = async (db: Firestore) => {
-  const batch = writeBatch(db);
+  try {
+    const schoolsSnapshot = await getDocs(collection(db, 'schools'));
+    if (!schoolsSnapshot.empty) {
+      console.log('Database already seeded.');
+      return;
+    }
 
-  // Check if schools already exist to prevent re-seeding
-  const schoolsSnapshot = await getDocs(collection(db, 'schools'));
-  if (!schoolsSnapshot.empty) {
-    console.log('Database already seeded.');
-    return { message: 'O banco de dados já foi populado com dados de exemplo.' };
+    const batch = writeBatch(db);
+
+    schoolsData.forEach(school => {
+      const docRef = doc(db, 'schools', school.id);
+      batch.set(docRef, school);
+    });
+
+    canteensData.forEach(canteen => {
+      const docRef = doc(db, 'canteens', canteen.id);
+      batch.set(docRef, canteen);
+    });
+
+    productsData.forEach(product => {
+      const docRef = doc(collection(db, 'products')); // Auto-generate ID
+      batch.set(docRef, product);
+    });
+
+    await batch.commit();
+    console.log('Database seeded successfully!');
+  } catch (error) {
+    const contextualError = new FirestorePermissionError({
+      operation: 'write',
+      path: 'multiple (batch operation)',
+      requestResourceData: { note: 'Batch write for seeding schools, canteens, products.' },
+    });
+    errorEmitter.emit('permission-error', contextualError);
+    // We also console.error the original error for debugging purposes if needed
+    console.error("Original seeding error:", error);
   }
-
-  schoolsData.forEach(school => {
-    const docRef = doc(db, 'schools', school.id);
-    batch.set(docRef, school);
-  });
-
-  canteensData.forEach(canteen => {
-    const docRef = doc(db, 'canteens', canteen.id);
-    batch.set(docRef, canteen);
-  });
-
-  productsData.forEach(product => {
-    const docRef = doc(collection(db, 'products')); // Auto-generate ID
-    batch.set(docRef, product);
-  });
-
-  await batch.commit();
-  console.log('Database seeded successfully!');
-  return { message: 'Banco de dados populado com sucesso! Agora você pode cadastrar alunos.' };
 };

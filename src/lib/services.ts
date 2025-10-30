@@ -14,6 +14,8 @@ import {
   Firestore,
 } from 'firebase/firestore';
 import { type School, type StudentProfile, type GuardianProfile, type UserProfile, Canteen, Product, Transaction, Order, OrderItem } from '@/lib/data';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 // School Services
 export const getSchools = async (db: Firestore): Promise<School[]> => {
@@ -24,6 +26,11 @@ export const getSchools = async (db: Firestore): Promise<School[]> => {
     return schoolList;
   } catch (error) {
     console.error("Error fetching schools:", error);
+     const contextualError = new FirestorePermissionError({
+        operation: 'list',
+        path: 'schools',
+      });
+      errorEmitter.emit('permission-error', contextualError);
     return [];
   }
 };
@@ -32,7 +39,13 @@ export const getSchools = async (db: Firestore): Promise<School[]> => {
 // Profile Services
 const ensureUserDocument = async (db: Firestore, firebaseUid: string) => {
     const userRef = doc(db, 'users', firebaseUid);
-    await setDoc(userRef, { lastLogin: Timestamp.now() }, { merge: true });
+    await setDoc(userRef, { lastLogin: Timestamp.now() }, { merge: true }).catch(error => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'write',
+        requestResourceData: { lastLogin: 'SERVER_TIMESTAMP' }
+      }));
+    });
 }
 
 export const createStudentProfile = async (
@@ -47,7 +60,13 @@ export const createStudentProfile = async (
     firebaseUid,
     balance: 0, // Initial balance
   };
-  await addDoc(profileCollectionRef, profileData);
+  addDoc(profileCollectionRef, profileData).catch(error => {
+    errorEmitter.emit('permission-error', new FirestorePermissionError({
+      path: profileCollectionRef.path,
+      operation: 'create',
+      requestResourceData: profileData
+    }));
+  });
 };
 
 
@@ -63,7 +82,15 @@ export const createGuardianProfile = async (
     firebaseUid,
     balance: 100, // Initial balance for guardian
   };
-  const docRef = await addDoc(profileCollectionRef, profileData);
+  const docRef = await addDoc(profileCollectionRef, profileData).catch(error => {
+     errorEmitter.emit('permission-error', new FirestorePermissionError({
+      path: profileCollectionRef.path,
+      operation: 'create',
+      requestResourceData: profileData
+    }));
+  });
+
+  if (!docRef) return;
 
   // After creating the guardian, find the student by RA and link them
   const studentQuery = query(collectionGroup(db, 'studentProfiles'), where('ra', '==', data.studentRa));
@@ -71,7 +98,13 @@ export const createGuardianProfile = async (
 
   if (!studentSnapshot.empty) {
     const studentDoc = studentSnapshot.docs[0];
-    await setDoc(docRef, { studentId: studentDoc.id }, { merge: true });
+    setDoc(docRef, { studentId: studentDoc.id }, { merge: true }).catch(error => {
+       errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+        requestResourceData: { studentId: studentDoc.id }
+      }));
+    });
   }
 };
 
@@ -88,7 +121,13 @@ export const createUserProfile = async (
     firebaseUid,
     balance: 0, // Initial balance
   };
-   await addDoc(profileCollectionRef, profileData);
+   addDoc(profileCollectionRef, profileData).catch(error => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: profileCollectionRef.path,
+        operation: 'create',
+        requestResourceData: profileData
+      }));
+   });
 };
 
 export const getStudentProfile = async (db: Firestore, firebaseUid: string): Promise<StudentProfile | null> => {
@@ -162,10 +201,9 @@ export const getOrdersByGuardian = (db: Firestore, studentIds: string[]) => {
     return query(collection(db, 'orders'), where('studentId', 'in', studentIds));
 }
 
-export const getTransactionsByGuardian = (db: Firestore, guardianUid: string, studentUids: string[]) => {
-    const userIds = [guardianUid, ...studentUids];
-     if (userIds.length === 0) {
+export const getTransactionsByGuardian = (db: Firestore, allUserIds: string[]) => {
+     if (!allUserIds || allUserIds.length === 0) {
       return null;
     }
-    return query(collection(db, 'transactions'), where('userId', 'in', userIds));
+    return query(collection(db, 'transactions'), where('userId', 'in', allUserIds));
 }
