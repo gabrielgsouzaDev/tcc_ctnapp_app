@@ -10,8 +10,6 @@ import {
   ShoppingBasket,
   ShoppingCart,
   User,
-  Utensils,
-  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -44,7 +42,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarInset,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,

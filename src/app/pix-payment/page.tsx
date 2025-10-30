@@ -5,7 +5,7 @@ import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { CheckCircle, Clock, Copy, Loader2, QrCode } from 'lucide-react';
-import { doc, writeBatch, collection, increment } from 'firebase/firestore';
+import { doc, writeBatch, collection, increment, getFirestore } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +24,7 @@ function PixPaymentContent() {
   const amount = searchParams.get('amount') || '0';
   const targetId = searchParams.get('targetId');
   const userId = searchParams.get('userId');
-  const targetType = searchParams.get('targetType'); // 'studentProfiles', 'guardianProfiles', or 'userProfiles'
+  const targetType = searchParams.get('targetType'); // 'studentProfiles', or 'guardianProfiles'
 
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'confirmed'>('pending');
   const [pixDetails, setPixDetails] = useState<{ qrCode: string; code: string } | null>(null);
@@ -58,7 +58,7 @@ function PixPaymentContent() {
   }, [amount, targetId, targetType, userId, router, toast]);
 
   const handleConfirmPayment = async () => {
-    if (!amount || Number(amount) <= 0 || !targetId || !targetType || !userId) return;
+    if (!amount || Number(amount) <= 0 || !targetId || !targetType || !userId || !firestore) return;
 
     setPaymentStatus('processing');
     toast({
@@ -99,7 +99,6 @@ function PixPaymentContent() {
         setTimeout(() => {
           let redirectPath = '/';
           if (targetType === 'guardianProfiles') redirectPath = '/guardian/dashboard';
-          if (targetType === 'userProfiles') redirectPath = '/employee/dashboard';
           if (targetType === 'studentProfiles') redirectPath = '/student/dashboard';
           router.push(redirectPath);
         }, 3000);

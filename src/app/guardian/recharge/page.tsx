@@ -26,7 +26,7 @@ type RechargeTarget = {
   name: string;
   balance: number;
   firebaseUid: string; // The user's firebase auth UID
-  profileSubcollection: 'studentProfiles' | 'guardianProfiles' | 'userProfiles';
+  profileSubcollection: 'studentProfiles' | 'guardianProfiles';
   isGuardian?: boolean;
 };
 
