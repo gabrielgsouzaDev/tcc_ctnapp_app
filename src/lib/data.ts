@@ -53,36 +53,47 @@ export type Transaction = {
 // Represents the StudentProfile entity from backend.json
 export type StudentProfile = {
   id: string; // doc id
-  firebaseUid: string;
   name: string;
   email: string;
   schoolId: string;
   ra: string;
   balance: number;
+  // Deprecated field, will be removed
+  firebaseUid?: string;
 };
 
 // Represents the GuardianProfile entity from backend.json
 export type GuardianProfile = {
   id: string; // doc id
-  firebaseUid: string;
   name: string;
   email: string;
-  studentRa: string;
+  studentRa?: string;
   studentId?: string;
   balance: number;
   students: StudentProfile[]; // Not in schema, but attached by service
+  // Deprecated field, will be removed
+  firebaseUid?: string;
 };
 
 // Represents a generic user profile for employees or other roles.
 export type UserProfile = {
   id: string; // doc id
-  firebaseUid: string;
   name: string;
   email: string;
   schoolId: string;
   balance: number;
-  role: 'employee' | 'student' | 'guardian';
+  role: 'student' | 'guardian';
+  // Deprecated field, will be removed
+  firebaseUid?: string;
 };
+
+export type User = {
+    id: string;
+    name: string;
+    email: string;
+    role: 'student' | 'guardian';
+    profile: StudentProfile | GuardianProfile;
+}
 
 export type School = {
   id: string;

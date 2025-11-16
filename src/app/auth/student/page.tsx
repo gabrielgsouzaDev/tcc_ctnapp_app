@@ -8,7 +8,6 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,10 +16,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore } from '@/firebase';
 import { type School } from '@/lib/data';
 import { Logo } from '@/components/shared/logo';
-import { getSchools, createStudentProfile } from '@/lib/services';
+import { getSchools } from '@/lib/services';
+import { useAuth } from '@/lib/auth-provider';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -40,17 +39,15 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function StudentAuthPage() {
   const router = useRouter();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { login, register } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
 
   useEffect(() => {
     const fetchSchools = async () => {
-      if (!firestore) return;
       try {
-        const schoolList = await getSchools(firestore);
+        const schoolList = await getSchools();
         if (schoolList.length === 0) {
           toast({ variant: 'destructive', title: 'Nenhuma escola encontrada no banco de dados.' });
         } else {
@@ -62,7 +59,7 @@ export default function StudentAuthPage() {
       }
     };
     fetchSchools();
-  }, [firestore, toast]);
+  }, [toast]);
 
 
   const loginForm = useForm<LoginFormValues>({
@@ -76,21 +73,16 @@ export default function StudentAuthPage() {
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
-    if (!auth) return;
     setIsSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      await login(data.email, data.password);
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
       router.push('/student/dashboard');
     } catch (error: any) {
-      let description = 'Ocorreu um erro inesperado. Tente novamente.';
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-        description = 'E-mail ou senha inválidos. Por favor, tente novamente.';
-      }
       toast({
         variant: 'destructive',
         title: 'Falha no login',
-        description,
+        description: error.message || 'E-mail ou senha inválidos.',
       });
     } finally {
       setIsSubmitting(false);
@@ -98,20 +90,16 @@ export default function StudentAuthPage() {
   };
 
   const onSignupSubmit = async (data: SignupFormValues) => {
-    if (!auth || !firestore) return;
     setIsSubmitting(true);
     
     try {
-      // Step 1: Create user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
-
-      // Step 2: Create student profile in Firestore
-      await createStudentProfile(firestore, user.uid, {
+      await register({
         name: data.name,
         email: data.email,
+        password: data.password,
         ra: data.ra,
-        schoolId: data.schoolId,
+        school_id: data.schoolId,
+        role: 'student'
       });
       
       toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
@@ -119,16 +107,10 @@ export default function StudentAuthPage() {
 
     } catch (error: any) {
       console.error("Signup Error:", error);
-      let description = 'Ocorreu um erro ao criar a conta. Tente novamente.';
-
-      if (error.code === 'auth/email-already-in-use') {
-        description = 'Este e-mail já está em uso. Tente fazer login ou use um e-mail diferente.';
-      } 
-      
       toast({
         variant: 'destructive',
         title: 'Falha no cadastro',
-        description,
+        description: error.message || 'Ocorreu um erro ao criar a conta.',
       });
     } finally {
       setIsSubmitting(false);

@@ -10,11 +10,11 @@ import {
   ShoppingBasket,
   ShoppingCart,
   User,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useState } from "react";
-import { signOut } from "firebase/auth";
 
 import {
   AlertDialog,
@@ -49,8 +49,8 @@ import {
   SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { useAuth, useUser } from "@/firebase";
 import { Logo } from "@/components/shared/logo";
+import { useAuth } from "@/lib/auth-provider";
 
 type NavItem = {
   href: string;
@@ -85,14 +85,12 @@ export function AppLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser();
+  const { user, logout, isLoading } = useAuth();
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   const handleLogout = async () => {
-    if (!auth) return;
     try {
-      await signOut(auth);
+      await logout();
       router.push("/");
     } catch (error) {
       console.error("Logout failed", error);
@@ -160,8 +158,9 @@ export function AppLayout({
   }
 
   const navItems = getNavItems();
+  
   const getUserName = () => {
-    if (user?.displayName) return user.displayName;
+    if (user?.name) return user.name;
     switch (userType) {
         case 'student': return 'Aluno';
         case 'guardian': return 'Responsável';
@@ -227,12 +226,11 @@ export function AppLayout({
               <PanelLeft />
             </SidebarTrigger>
             <div className="flex items-center gap-4">
-              {/* Balance is now shown inside dashboard/balance pages */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src={user?.photoURL || `https://avatar.vercel.sh/${userName}.png`} alt={userName} />
+                      <AvatarImage src={`https://avatar.vercel.sh/${userName}.png`} alt={userName} />
                       <AvatarFallback>{userName.charAt(0)}</AvatarFallback>
                     </Avatar>
                   </Button>

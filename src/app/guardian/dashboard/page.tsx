@@ -26,9 +26,9 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { type Order, type OrderItem, type UserProfile, type GuardianProfile, type Transaction } from '@/lib/data';
 import { StudentFilter } from '@/components/shared/student-filter';
 import { cn } from '@/lib/utils';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { getGuardianProfile, getOrdersByGuardian, getTransactionsByGuardian } from '@/lib/services';
-import { onSnapshot, query, collection, limit } from 'firebase/firestore';
+import { useAuth } from '@/lib/auth-provider';
+
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   const variant = {
@@ -127,11 +127,13 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
 
 export default function GuardianDashboard() {
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user, isLoading: isUserLoading, logout } = useAuth();
   const router = useRouter();
   
   const [guardianProfile, setGuardianProfile] = useState<GuardianProfile | null>(null);
+  const [orderHistory, setOrderHistory] = useState<Order[]>([]);
+  const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
 
   const [activeStudentAccordion, setActiveStudentAccordion] = useState<string | undefined>();
@@ -147,37 +149,32 @@ export default function GuardianDashboard() {
         }
 
         const fetchProfile = async () => {
-             const profile = await getGuardianProfile(firestore, user.uid);
+             setIsLoading(true);
+             const profile = await getGuardianProfile(user.id);
              setGuardianProfile(profile);
-             if (profile?.students?.length) {
-                setActiveStudentAccordion(profile.students[0].id);
+
+             if (profile) {
+                if (profile.students?.length) {
+                    setActiveStudentAccordion(profile.students[0].id);
+                }
+                const studentIds = profile.students.map(s => s.id);
+                const userIds = [user.id, ...profile.students.map(s => s.id)];
+                
+                const [orders, transactions] = await Promise.all([
+                    getOrdersByGuardian(studentIds),
+                    getTransactionsByGuardian(userIds)
+                ]);
+                setOrderHistory(orders);
+                setTransactionHistory(transactions);
              }
              setIsLoading(false);
         }
         fetchProfile();
-
-        // Listener for real-time updates on guardian profile (including students)
-        const profileQuery = query(collection(firestore, `users/${user.uid}/guardianProfiles`), limit(1));
-        const unsubscribe = onSnapshot(profileQuery, async (snapshot) => {
-             if (!snapshot.empty) {
-                const updatedProfile = await getGuardianProfile(firestore, user.uid);
-                setGuardianProfile(updatedProfile);
-             }
-        });
-        
-        return () => unsubscribe();
-    }, [user, isUserLoading, firestore, router]);
+    }, [user, isUserLoading, router]);
 
 
   const studentIds = useMemo(() => guardianProfile?.students.map(s => s.id) || [], [guardianProfile]);
-  const allUserIds = useMemo(() => user?.uid ? [user.uid, ...(guardianProfile?.students.map(s => s.firebaseUid) || [])] : [], [user, guardianProfile]);
-
-  const ordersQuery = useMemoFirebase(() => getOrdersByGuardian(firestore, studentIds), [firestore, studentIds]);
-  const { data: orderHistory, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
-
-  const transactionsQuery = useMemoFirebase(() => getTransactionsByGuardian(firestore, allUserIds), [firestore, allUserIds]);
-  const { data: transactionHistory, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
-  
+  const allUserIds = useMemo(() => user?.id ? [user.id, ...studentIds] : [], [user, studentIds]);
 
   const studentsMap = useMemo(() => {
     const map = new Map<string, UserProfile>();
@@ -188,7 +185,6 @@ export default function GuardianDashboard() {
   }, [guardianProfile]);
 
   const filteredOrders = useMemo(() => {
-    if (!orderHistory) return [];
     let processedOrders = [...orderHistory];
     
     if (selectedStudentId !== 'all') {
@@ -206,15 +202,13 @@ export default function GuardianDashboard() {
   }, [searchTermHistory, selectedStudentId, orderHistory]);
 
    const filteredTransactions = useMemo(() => {
-    if (!transactionHistory) return [];
     let processedTransactions = [...transactionHistory];
     
     if (selectedStudentId !== 'all') {
         const selectedStudent = studentsMap.get(selectedStudentId);
-        // This will filter transactions for the selected student OR the guardian
         processedTransactions = processedTransactions.filter(t => 
-            (selectedStudent && t.userId === selectedStudent.firebaseUid) || 
-            (t.userId === user?.uid && !t.studentId) // Guardian's own transactions
+            (selectedStudent && t.userId === selectedStudent.id) || 
+            (t.userId === user?.id && !t.studentId) // Guardian's own transactions
         );
     }
 
@@ -262,7 +256,7 @@ export default function GuardianDashboard() {
       });
   };
 
-  if (isLoading || isUserLoading || isLoadingOrders || isLoadingTransactions) {
+  if (isLoading || isUserLoading) {
     return (
         <div className="space-y-8 animate-pulse">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

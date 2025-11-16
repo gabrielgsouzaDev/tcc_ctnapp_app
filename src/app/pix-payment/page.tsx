@@ -5,7 +5,6 @@ import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { CheckCircle, Clock, Copy, Loader2, QrCode } from 'lucide-react';
-import { doc, writeBatch, collection, increment, getFirestore } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,18 +12,18 @@ import { useToast } from '@/hooks/use-toast';
 import { CopyButton } from '@/components/shared/copy-button';
 import { QRCode } from '@/components/shared/qr-code';
 import { Label } from '@/components/ui/label';
-import { useFirestore } from '@/firebase';
+import { useAuth } from '@/lib/auth-provider';
+import { rechargeBalance } from '@/lib/services';
 
 function PixPaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const firestore = useFirestore();
+  const { user } = useAuth();
 
   const amount = searchParams.get('amount') || '0';
   const targetId = searchParams.get('targetId');
   const userId = searchParams.get('userId');
-  const targetType = searchParams.get('targetType'); // 'studentProfiles', or 'guardianProfiles'
 
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'confirmed'>('pending');
   const [pixDetails, setPixDetails] = useState<{ qrCode: string; code: string } | null>(null);
@@ -32,7 +31,7 @@ function PixPaymentContent() {
 
   useEffect(() => {
     const generatePix = async () => {
-      if (!amount || Number(amount) <= 0 || !targetId || !targetType || !userId) {
+      if (!amount || Number(amount) <= 0 || !targetId || !userId) {
         toast({ variant: 'destructive', title: 'Dados inválidos para gerar PIX.' });
         router.back();
         return;
@@ -43,7 +42,7 @@ function PixPaymentContent() {
         setTimeout(() => {
              setPixDetails({
                 qrCode: `pix-qrcode-for-${Number(amount).toFixed(2)}`,
-                code: `00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540${Number(amount).toFixed(2).replace('.','')}5802BR5913${targetType}-${targetId}6009SAO PAULO62070503***6304E7DF`
+                code: `00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540${Number(amount).toFixed(2).replace('.','')}5802BR5913user-${targetId}6009SAO PAULO62070503***6304E7DF`
             });
             setIsLoading(false);
         }, 1500)
@@ -55,10 +54,10 @@ function PixPaymentContent() {
       }
     };
     generatePix();
-  }, [amount, targetId, targetType, userId, router, toast]);
+  }, [amount, targetId, userId, router, toast]);
 
   const handleConfirmPayment = async () => {
-    if (!amount || Number(amount) <= 0 || !targetId || !targetType || !userId || !firestore) return;
+    if (!amount || Number(amount) <= 0 || !targetId) return;
 
     setPaymentStatus('processing');
     toast({
@@ -67,28 +66,7 @@ function PixPaymentContent() {
     });
 
     try {
-        const batch = writeBatch(firestore);
-
-        // 1. Determine profile path
-        const profilePath = `users/${userId}/${targetType}/${targetId}`;
-        const profileRef = doc(firestore, profilePath);
-
-        // 2. Update balance
-        batch.update(profileRef, { balance: increment(Number(amount)) });
-
-        // 3. Create transaction log
-        const transactionRef = doc(collection(firestore, 'transactions'));
-        batch.set(transactionRef, {
-            date: new Date().toISOString(),
-            description: 'Recarga via PIX',
-            amount: Number(amount),
-            type: 'credit',
-            origin: 'PIX',
-            userId: userId,
-            studentId: targetType === 'studentProfiles' ? targetId : undefined,
-        });
-
-        await batch.commit();
+        await rechargeBalance(targetId, Number(amount));
 
         setPaymentStatus('confirmed');
         toast({
@@ -97,9 +75,7 @@ function PixPaymentContent() {
         });
 
         setTimeout(() => {
-          let redirectPath = '/';
-          if (targetType === 'guardianProfiles') redirectPath = '/guardian/dashboard';
-          if (targetType === 'studentProfiles') redirectPath = '/student/dashboard';
+          const redirectPath = user?.role === 'student' ? '/student/dashboard' : '/guardian/dashboard';
           router.push(redirectPath);
         }, 3000);
 

@@ -42,8 +42,8 @@ import { type Order, type OrderItem } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { useUser, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { getOrdersByUser } from '@/lib/services';
+import { useAuth } from '@/lib/auth-provider';
 
 
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
@@ -145,21 +145,30 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
 
 export default function StudentOrdersPage() {
     const { toast } = useToast();
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
+    const { user, isLoading: isUserLoading } = useAuth();
+    
+    const [orderHistory, setOrderHistory] = useState<Order[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [searchTerm, setSearchTerm] = useState('');
-    
-    const ordersQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return getOrdersByUser(firestore, user.uid);
-    }, [firestore, user]);
 
-    const { data: orderHistory, isLoading } = useCollection<Order>(ordersQuery);
+    useEffect(() => {
+        const fetchOrders = async () => {
+            if (user) {
+                setIsLoading(true);
+                const orders = await getOrdersByUser(user.id);
+                setOrderHistory(orders);
+                setIsLoading(false);
+            }
+        };
+
+        if (!isUserLoading) {
+            fetchOrders();
+        }
+    }, [user, isUserLoading]);
 
     const filteredHistory = useMemo(() => {
-        if (!orderHistory) return [];
         let processedOrders = [...orderHistory];
 
         if (searchTerm) {
@@ -188,8 +197,6 @@ export default function StudentOrdersPage() {
 
 
     const handleRepeatOrder = (items: OrderItem[]) => {
-        // NOTE: This is a placeholder. In a real app, this would update a shared state (e.g., React Context or Zustand)
-        // that manages the cart, and then likely navigate to the dashboard.
         console.log('Repeating order with items:', items);
         toast({
             title: "Pedido repetido!",
@@ -382,7 +389,3 @@ export default function StudentOrdersPage() {
     </div>
   );
 }
-
-    
-
-    

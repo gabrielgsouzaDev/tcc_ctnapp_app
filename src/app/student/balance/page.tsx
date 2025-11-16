@@ -5,6 +5,7 @@ import { Wallet, CreditCard, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { type Transaction, type StudentProfile } from '@/lib/data';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -31,9 +32,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { getTransactionsByUser } from '@/lib/services';
-import { onSnapshot, query, collection, limit } from 'firebase/firestore';
+import { getTransactionsByUser, getStudentProfile } from '@/lib/services';
+import { useAuth } from '@/lib/auth-provider';
 
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
@@ -95,41 +95,31 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
 
 
 export default function StudentBalancePage() {
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
+    const { user, isLoading: isUserLoading } = useAuth();
+    const router = useRouter();
 
     const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
+    const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     
     useEffect(() => {
-        if (isUserLoading || !user) {
-            if (!isUserLoading) setIsLoading(false);
-            return;
-        }
-
-        const profileQuery = query(collection(firestore, `users/${user.uid}/studentProfiles`), limit(1));
-        const unsubscribeProfile = onSnapshot(profileQuery, (snapshot) => {
-            if (!snapshot.empty) {
-                const doc = snapshot.docs[0];
-                setStudentProfile({ id: doc.id, ...doc.data() } as StudentProfile);
-            } else {
-                setStudentProfile(null);
+        const loadData = async () => {
+            if (user) {
+                setIsLoading(true);
+                const [profile, transactions] = await Promise.all([
+                    getStudentProfile(user.id),
+                    getTransactionsByUser(user.id)
+                ]);
+                setStudentProfile(profile);
+                setTransactionHistory(transactions);
+                setIsLoading(false);
             }
-            setIsLoading(false); // Stop loading after profile is fetched or not found
-        }, (error) => {
-            console.error("Error fetching student profile:", error);
-            setIsLoading(false);
-        });
+        };
 
-        return () => unsubscribeProfile();
-    }, [user, isUserLoading, firestore]);
-    
-    const transactionsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return getTransactionsByUser(firestore, user.uid);
-    }, [firestore, user]);
-
-    const { data: transactionHistory, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
+        if (!isUserLoading) {
+            loadData();
+        }
+    }, [user, isUserLoading]);
     
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [filterType, setFilterType] = useState<FilterTypeKey>('all');
@@ -139,7 +129,6 @@ export default function StudentBalancePage() {
     const canRecharge = true; 
 
     const filteredHistory = useMemo(() => {
-        if (!transactionHistory) return [];
         let processedTransactions = [...transactionHistory];
 
         if (filterType !== 'all') {
@@ -176,7 +165,7 @@ export default function StudentBalancePage() {
     const amountValue = Number(rechargeAmount);
     const isButtonDisabled = !amountValue || amountValue <= 0;
 
-    if (isLoading || isUserLoading || isLoadingTransactions) {
+    if (isLoading || isUserLoading) {
         return (
              <div className="space-y-6 animate-pulse">
                 <div className="space-y-1">
@@ -266,7 +255,7 @@ export default function StudentBalancePage() {
                             </Button>
                             ))}
                         </div>
-                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&targetType=studentProfiles&userId=${user?.uid}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
+                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&userId=${user?.id}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
                             <Button 
                                 className="w-full"
                                 disabled={isButtonDisabled}

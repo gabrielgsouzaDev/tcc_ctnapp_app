@@ -8,7 +8,6 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,9 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore } from '@/firebase';
 import { Logo } from '@/components/shared/logo';
-import { createGuardianProfile } from '@/lib/services';
+import { useAuth } from '@/lib/auth-provider';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -37,8 +35,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function GuardianAuthPage() {
   const router = useRouter();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { login, register } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -53,26 +50,17 @@ export default function GuardianAuthPage() {
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
-    if (!auth) return;
     setIsSubmitting(true);
 
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      await login(data.email, data.password);
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
       router.push('/guardian/dashboard');
     } catch (error: any) {
-      let description = 'Ocorreu um erro inesperado. Tente novamente.';
-      if (
-        error.code === 'auth/invalid-credential' ||
-        error.code === 'auth/wrong-password' ||
-        error.code === 'auth/user-not-found'
-      ) {
-        description = 'E-mail ou senha inválidos. Por favor, tente novamente.';
-      }
       toast({
         variant: 'destructive',
         title: 'Falha no login',
-        description,
+        description: error.message || 'E-mail ou senha inválidos.',
       });
     } finally {
       setIsSubmitting(false);
@@ -80,31 +68,25 @@ export default function GuardianAuthPage() {
   };
 
   const onSignupSubmit = async (data: SignupFormValues) => {
-    if (!auth || !firestore) return;
     setIsSubmitting(true);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
-
-      await createGuardianProfile(firestore, user.uid, {
+      await register({
         name: data.name,
         email: data.email,
-        studentRa: data.studentRa,
+        password: data.password,
+        student_ra: data.studentRa,
+        role: 'guardian'
       });
 
       toast({ title: 'Conta criada com sucesso!', description: 'Redirecionando para o painel...' });
       router.push('/guardian/dashboard');
     } catch (error: any) {
       console.error('Signup Error:', error);
-      let description = 'Ocorreu um erro ao criar a conta. Tente novamente.';
-      if (error.code === 'auth/email-already-in-use') {
-        description = 'Este e-mail já está em uso. Tente fazer login ou use outro e-mail.';
-      } 
       toast({
         variant: 'destructive',
         title: 'Falha no cadastro',
-        description,
+        description: error.message || 'Ocorreu um erro ao criar a conta.',
       });
     } finally {
       setIsSubmitting(false);

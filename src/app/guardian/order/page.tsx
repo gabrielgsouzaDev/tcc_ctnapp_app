@@ -18,9 +18,8 @@ import { Badge } from '@/components/ui/badge';
 
 import { type Product, type Canteen, type UserProfile, type Order, type OrderItem } from '@/lib/data';
 import { cn } from '@/lib/utils';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { getGuardianProfile, getCanteensBySchool, getProductsByCanteen } from '@/lib/services';
-import { writeBatch, collection, doc, increment } from 'firebase/firestore';
+import { getGuardianProfile, getCanteensBySchool, getProductsByCanteen, postOrder, postTransaction, internalTransfer } from '@/lib/services';
+import { useAuth } from '@/lib/auth-provider';
 
 type Category = 'Todos' | 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
 type CartItem = {
@@ -33,8 +32,7 @@ type AddToCartState = {
 
 export default function GuardianOrderPage() {
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user, isLoading: isUserLoading } = useAuth();
   
   const [students, setStudents] = useState<UserProfile[]>([]);
   const [canteens, setCanteens] = useState<Canteen[]>([]);
@@ -47,23 +45,19 @@ export default function GuardianOrderPage() {
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
   const [studentForOrder, setStudentForOrder] = useState<string>('');
   
-  const productsQuery = useMemoFirebase(() => {
-    if (!selectedCanteen || !firestore) return null;
-    return getProductsByCanteen(firestore, selectedCanteen);
-  }, [firestore, selectedCanteen]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
   useEffect(() => {
     const fetchInitialData = async () => {
-        if (user && firestore) {
+        if (user) {
             setIsLoading(true);
-            const profile = await getGuardianProfile(firestore, user.uid);
+            const profile = await getGuardianProfile(user.id);
             if (profile) {
                 setStudents(profile.students);
                 if (profile.students.length > 0) {
                     setStudentForOrder(profile.students[0].id);
-                    const canteenList = await getCanteensBySchool(firestore, profile.students[0].schoolId);
+                    const canteenList = await getCanteensBySchool(profile.students[0].schoolId);
                     setCanteens(canteenList);
                     if (canteenList.length > 0) {
                         setSelectedCanteen(canteenList[0].id);
@@ -76,7 +70,19 @@ export default function GuardianOrderPage() {
     if (!isUserLoading) {
       fetchInitialData();
     }
-  }, [user, isUserLoading, firestore]);
+  }, [user, isUserLoading]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+        if (selectedCanteen) {
+            setIsLoadingProducts(true);
+            const productList = await getProductsByCanteen(selectedCanteen);
+            setProducts(productList);
+            setIsLoadingProducts(false);
+        }
+    };
+    fetchProducts();
+  }, [selectedCanteen]);
 
   useEffect(() => {
     // Check for items to repeat from local storage (e.g., from order history)
@@ -90,7 +96,6 @@ export default function GuardianOrderPage() {
                 name: item.productName, 
                 price: item.unitPrice, 
                 image: item.image,
-                // These are placeholders as they are not stored in the order item
                 canteenId: '', 
                 schoolId: '',
                 category: 'Salgado'
@@ -196,7 +201,7 @@ export default function GuardianOrderPage() {
         toast({ variant: "destructive", title: "Carrinho vazio!" });
         return;
     }
-    if (!studentForOrder || !user || !firestore) {
+    if (!studentForOrder || !user) {
        toast({
           variant: "destructive",
           title: "Selecione um aluno",
@@ -216,51 +221,30 @@ export default function GuardianOrderPage() {
         return;
     }
 
-    const batch = writeBatch(firestore);
-
-    // 1. Create Order
-    const orderCollectionRef = collection(firestore, 'orders');
-    const newOrderRef = doc(orderCollectionRef);
-    const newOrder: Omit<Order, 'id'> = {
-        date: new Date().toISOString(),
-        studentId: studentForOrder,
-        userId: user.uid, // Guardian's UID
-        status: 'Pendente',
-        total: cartTotal,
-        items: cart.map(item => ({
-          productId: item.product.id,
-          productName: item.product.name,
-          quantity: item.quantity,
-          unitPrice: item.product.price,
-          image: item.product.image
-        })),
-    };
-    batch.set(newOrderRef, newOrder);
-
-    // 2. Create Transaction for student
-    const transactionCollectionRef = collection(firestore, 'transactions');
-    const newTransactionRef = doc(transactionCollectionRef);
-    batch.set(newTransactionRef, {
-        date: new Date().toISOString(),
-        description: `Compra de Pedido #${newOrderRef.id.substring(0, 6).toUpperCase()}`,
-        amount: cartTotal,
-        type: 'debit',
-        origin: 'Responsável',
-        userId: studentProfile.firebaseUid,
-        studentId: studentForOrder,
-    });
-    
-    // 3. Update student's balance
-    const profileRef = doc(firestore, `users/${studentProfile.firebaseUid}/studentProfiles`, studentForOrder);
-    batch.update(profileRef, { balance: increment(-cartTotal) });
-
     try {
-      await batch.commit();
-      toast({
-          title: "Pedido realizado com sucesso!",
-          description: `O pedido para ${studentsMap.get(studentForOrder)} pode ser acompanhado no seu Dashboard.`,
-      });
-      setCart([]);
+        const orderPayload = {
+            studentId: studentForOrder,
+            userId: user.id, // Guardian's ID
+            total: cartTotal,
+            items: cart.map(item => ({
+              productId: item.product.id,
+              productName: item.product.name,
+              quantity: item.quantity,
+              unitPrice: item.product.price,
+              image: item.product.image
+            })),
+        };
+        const newOrder = await postOrder(orderPayload);
+        
+        await internalTransfer(user.id, studentForOrder, cartTotal);
+      
+        setStudents(prevStudents => prevStudents.map(s => s.id === studentForOrder ? { ...s, balance: s.balance - cartTotal } : s));
+
+        toast({
+            title: "Pedido realizado com sucesso!",
+            description: `O pedido para ${studentsMap.get(studentForOrder)} pode ser acompanhado no seu Dashboard.`,
+        });
+        setCart([]);
     } catch (error) {
       console.error("Checkout Error:", error);
       toast({ variant: 'destructive', title: 'Erro ao finalizar pedido.'});
@@ -537,5 +521,3 @@ export default function GuardianOrderPage() {
     </div>
   );
 }
-
-    

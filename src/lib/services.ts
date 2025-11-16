@@ -1,217 +1,103 @@
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  setDoc,
-  Timestamp,
-  collectionGroup,
-  limit,
-  Firestore,
-} from 'firebase/firestore';
-import { type School, type StudentProfile, type GuardianProfile, Canteen, Product, Transaction, Order, OrderItem, UserProfile } from '@/lib/data';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { type School, type StudentProfile, type GuardianProfile, Canteen, Product, Transaction, Order } from '@/lib/data';
+import { apiGet, apiPost } from './api';
+
+// # MOCK IMPLEMENTATIONS
+// These functions are temporarily using mock data.
+// They will be replaced with actual API calls to a Laravel backend.
+import { MOCK_SCHOOLS, MOCK_CANTEENS, MOCK_PRODUCTS, MOCK_ORDERS, MOCK_TRANSACTIONS, MOCK_STUDENT_PROFILE, MOCK_GUARDIAN_PROFILE } from '@/mocks/data';
 
 // School Services
-export const getSchools = async (db: Firestore): Promise<School[]> => {
-  try {
-    const schoolsCol = collection(db, 'schools');
-    const schoolSnapshot = await getDocs(schoolsCol);
-    const schoolList = schoolSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as School));
-    return schoolList;
-  } catch (error) {
-    console.error("Error fetching schools:", error);
-     const contextualError = new FirestorePermissionError({
-        operation: 'list',
-        path: 'schools',
-      });
-      errorEmitter.emit('permission-error', contextualError);
-    return [];
-  }
+export const getSchools = async (): Promise<School[]> => {
+  console.log("Fetching schools from API...");
+  // REAL: return apiGet<School[]>('/escolas');
+  return Promise.resolve(MOCK_SCHOOLS);
 };
 
 
 // Profile Services
-const ensureUserDocument = async (db: Firestore, firebaseUid: string) => {
-    const userRef = doc(db, 'users', firebaseUid);
-    try {
-      await setDoc(userRef, { lastLogin: Timestamp.now() }, { merge: true });
-    } catch(error) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: userRef.path,
-        operation: 'write',
-        requestResourceData: { lastLogin: 'SERVER_TIMESTAMP' }
-      }));
-    }
+export const getStudentProfile = async (userId: string): Promise<StudentProfile | null> => {
+  console.log(`Fetching student profile for user: ${userId}`);
+  // REAL: return apiGet<StudentProfile>(`/perfil/aluno/${userId}`);
+  return Promise.resolve(MOCK_STUDENT_PROFILE);
 }
 
-export const createStudentProfile = async (
-  db: Firestore,
-  firebaseUid: string,
-  data: Omit<StudentProfile, 'id' | 'firebaseUid' | 'balance'>
-) => {
-  await ensureUserDocument(db, firebaseUid);
-  const profileCollectionRef = collection(db, `users/${firebaseUid}/studentProfiles`);
-  const profileData: Omit<StudentProfile, 'id'> = {
-    ...data,
-    firebaseUid,
-    balance: 0, // Initial balance
-  };
-  try {
-    await addDoc(profileCollectionRef, profileData);
-  } catch(error) {
-    errorEmitter.emit('permission-error', new FirestorePermissionError({
-      path: profileCollectionRef.path,
-      operation: 'create',
-      requestResourceData: profileData
-    }));
-  }
-};
-
-export const createUserProfile = async (
-  db: Firestore,
-  firebaseUid: string,
-  data: Omit<UserProfile, 'id' | 'firebaseUid' | 'balance'>
-) => {
-  await ensureUserDocument(db, firebaseUid);
-  const profileCollectionRef = collection(db, `users/${firebaseUid}/userProfiles`);
-  const profileData: Omit<UserProfile, 'id'> = {
-    ...data,
-    firebaseUid,
-    balance: 0, // Initial balance
-  };
-   try {
-    await addDoc(profileCollectionRef, profileData);
-  } catch(error) {
-    errorEmitter.emit('permission-error', new FirestorePermissionError({
-      path: profileCollectionRef.path,
-      operation: 'create',
-      requestResourceData: profileData
-    }));
-  }
-};
-
-
-export const createGuardianProfile = async (
-  db: Firestore,
-  firebaseUid: string,
-  data: Omit<GuardianProfile, 'id' | 'firebaseUid' | 'balance' | 'students'>
-) => {
-   await ensureUserDocument(db, firebaseUid);
-   const profileCollectionRef = collection(db, `users/${firebaseUid}/guardianProfiles`);
-   const profileData: Omit<GuardianProfile, 'id' | 'students' | 'balance'> = {
-    ...data,
-    firebaseUid,
-    balance: 100, // Initial balance for guardian
-  };
-
-  try {
-    const docRef = await addDoc(profileCollectionRef, profileData);
-    if (!docRef) return;
-
-    // After creating the guardian, find the student by RA and link them
-    const studentQuery = query(collectionGroup(db, 'studentProfiles'), where('ra', '==', data.studentRa));
-    const studentSnapshot = await getDocs(studentQuery);
-
-    if (!studentSnapshot.empty) {
-      const studentDoc = studentSnapshot.docs[0];
-      try {
-        await setDoc(docRef, { studentId: studentDoc.id }, { merge: true });
-      } catch(error) {
-         errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-          requestResourceData: { studentId: studentDoc.id }
-        }));
-      }
-    }
-  } catch(error) {
-     errorEmitter.emit('permission-error', new FirestorePermissionError({
-      path: profileCollectionRef.path,
-      operation: 'create',
-      requestResourceData: profileData
-    }));
-  }
-};
-
-export const getStudentProfile = async (db: Firestore, firebaseUid: string): Promise<StudentProfile | null> => {
-    const q = query(collection(db, `users/${firebaseUid}/studentProfiles`), limit(1));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-        return null;
-    }
-    const doc = snapshot.docs[0];
-    return { id: doc.id, ...doc.data() } as StudentProfile;
-}
-
-export const getEmployeeProfile = async (db: Firestore, firebaseUid: string): Promise<UserProfile | null> => {
-    const q = query(collection(db, `users/${firebaseUid}/userProfiles`), limit(1));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-        return null;
-    }
-    const doc = snapshot.docs[0];
-    return { id: doc.id, ...doc.data() } as UserProfile;
-}
-
-export const getGuardianProfile = async (db: Firestore, firebaseUid: string): Promise<GuardianProfile | null> => {
-    const q = query(collection(db, `users/${firebaseUid}/guardianProfiles`), limit(1));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-        return null;
-    }
-    const profileDoc = snapshot.docs[0];
-    const profileData = profileDoc.data() as Omit<GuardianProfile, 'id' | 'students'>;
-    
-    // Fetch linked students
-    let students: StudentProfile[] = [];
-    if (profileData.studentId) {
-        const studentQuery = query(collectionGroup(db, 'studentProfiles'), where('__name__', '==', `users/${profileData.firebaseUid}/studentProfiles/${profileData.studentId}`));
-        const studentSnapshot = await getDocs(studentQuery);
-        students = studentSnapshot.docs.map(sDoc => ({ id: sDoc.id, ...sDoc.data() } as StudentProfile));
-    } else if (profileData.studentRa) {
-        // Fallback to RA if studentId is not present
-        const studentQuery = query(collectionGroup(db, 'studentProfiles'), where('ra', '==', profileData.studentRa));
-        const studentSnapshot = await getDocs(studentQuery);
-        students = studentSnapshot.docs.map(sDoc => ({ id: sDoc.id, ...sDoc.data() } as StudentProfile));
-    }
-    
-    return { id: profileDoc.id, ...profileData, students } as GuardianProfile;
+export const getGuardianProfile = async (userId: string): Promise<GuardianProfile | null> => {
+  console.log(`Fetching guardian profile for user: ${userId}`);
+  // REAL: return apiGet<GuardianProfile>(`/perfil/responsavel/${userId}`);
+  return Promise.resolve(MOCK_GUARDIAN_PROFILE);
 }
 
 // Canteen / Product Services
-export const getCanteensBySchool = async (db: Firestore, schoolId: string): Promise<Canteen[]> => {
-    const q = query(collection(db, 'canteens'), where('schoolId', '==', schoolId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Canteen));
+export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
+    console.log(`Fetching canteens for school: ${schoolId}`);
+    // REAL: return apiGet<Canteen[]>(`/escolas/${schoolId}/cantinas`);
+    return Promise.resolve(MOCK_CANTEENS.filter(c => c.schoolId === schoolId));
 }
 
-export const getProductsByCanteen = (db: Firestore, canteenId: string) => {
-    return query(collection(db, 'products'), where('canteenId', '==', canteenId));
+export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
+    console.log(`Fetching products for canteen: ${canteenId}`);
+    // REAL: return apiGet<Product[]>(`/cantinas/${canteenId}/produtos`);
+    return Promise.resolve(MOCK_PRODUCTS.filter(p => p.canteenId === canteenId));
 }
 
 // Transaction and Order Services
-export const getOrdersByUser = (db: Firestore, userId: string) => {
-    return query(collection(db, 'orders'), where('userId', '==', userId));
+export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
+    console.log(`Fetching orders for user: ${userId}`);
+    // REAL: return apiGet<Order[]>(`/pedidos/usuario/${userId}`);
+    return Promise.resolve(MOCK_ORDERS);
 }
 
-export const getTransactionsByUser = (db: Firestore, userId: string) => {
-    return query(collection(db, 'transactions'), where('userId', '==', userId));
+export const getTransactionsByUser = async (userId: string): Promise<Transaction[]> => {
+     console.log(`Fetching transactions for user: ${userId}`);
+    // REAL: return apiGet<Transaction[]>(`/transacoes/usuario/${userId}`);
+    return Promise.resolve(MOCK_TRANSACTIONS);
 }
 
-export const getOrdersByGuardian = (db: Firestore, studentIds: string[]) => {
-    if (!studentIds || studentIds.length === 0) return null;
-    return query(collection(db, 'orders'), where('studentId', 'in', studentIds));
+export const getOrdersByGuardian = async (studentIds: string[]): Promise<Order[]> => {
+    if (!studentIds || studentIds.length === 0) return Promise.resolve([]);
+    console.log(`Fetching orders for students: ${studentIds.join(', ')}`);
+    // REAL: return apiPost<Order[]>('/pedidos/responsavel', { student_ids: studentIds });
+    return Promise.resolve(MOCK_ORDERS.filter(o => studentIds.includes(o.studentId)));
 }
 
-export const getTransactionsByGuardian = (db: Firestore, allUserIds: string[]) => {
-     if (!allUserIds || allUserIds.length === 0) {
-      return null;
-    }
-    return query(collection(db, 'transactions'), where('userId', 'in', allUserIds));
+export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<Transaction[]> => {
+     if (!allUserIds || allUserIds.length === 0) return Promise.resolve([]);
+     console.log(`Fetching transactions for users: ${allUserIds.join(', ')}`);
+     // REAL: return apiPost<Transaction[]>('/transacoes/responsavel', { user_ids: allUserIds });
+     return Promise.resolve(MOCK_TRANSACTIONS.filter(t => allUserIds.includes(t.userId)));
+}
+
+export const postOrder = async (orderData: Omit<Order, 'id' | 'date' | 'status'>): Promise<Order> => {
+    console.log('Posting new order', orderData);
+    // REAL: return apiPost<Order>('/pedidos', orderData);
+    const newOrder: Order = {
+        id: `mock_order_${Date.now()}`,
+        date: new Date().toISOString(),
+        status: 'Pendente',
+        ...orderData,
+    };
+    return Promise.resolve(newOrder);
+}
+
+export const postTransaction = async (transactionData: Omit<Transaction, 'id' | 'date'>) : Promise<Transaction> => {
+    console.log('Posting new transaction', transactionData);
+    // REAL: return apiPost<Transaction>('/transacoes', transactionData);
+     const newTransaction: Transaction = {
+        id: `mock_tx_${Date.now()}`,
+        date: new Date().toISOString(),
+        ...transactionData,
+    };
+    return Promise.resolve(newTransaction);
+}
+
+export const rechargeBalance = async (userId: string, amount: number) => {
+    console.log(`Recharging balance for user ${userId} with amount ${amount}`);
+    // REAL: return apiPost(`/carteiras/${userId}/recarga`, { amount });
+    return Promise.resolve({ success: true, newBalance: 100 + amount });
+}
+
+export const internalTransfer = async (fromUserId: string, toUserId: string, amount: number) => {
+    console.log(`Transferring ${amount} from ${fromUserId} to ${toUserId}`);
+    // REAL: return apiPost('/transferencia-interna', { fromUserId, toUserId, amount });
+    return Promise.resolve({ success: true });
 }

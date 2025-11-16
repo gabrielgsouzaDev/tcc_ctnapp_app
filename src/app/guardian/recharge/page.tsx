@@ -16,17 +16,14 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { useUser, useFirestore } from '@/firebase';
-import { getGuardianProfile } from '@/lib/services';
-import { doc, writeBatch, collection, increment } from 'firebase/firestore';
+import { useAuth } from '@/lib/auth-provider';
+import { getGuardianProfile, internalTransfer, rechargeBalance } from '@/lib/services';
 
 
 type RechargeTarget = {
-  id: string; // This is the profile document ID
+  id: string; 
   name: string;
   balance: number;
-  firebaseUid: string; // The user's firebase auth UID
-  profileSubcollection: 'studentProfiles' | 'guardianProfiles';
   isGuardian?: boolean;
 };
 
@@ -35,8 +32,7 @@ const quickAmounts = [20, 50, 100];
 export default function GuardianRechargePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user, isLoading: isUserLoading } = useAuth();
 
   const [guardianProfile, setGuardianProfile] = useState<GuardianProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,7 +44,7 @@ export default function GuardianRechargePage() {
     const fetchProfile = async () => {
         if (user) {
             setIsLoading(true);
-            const profile = await getGuardianProfile(firestore, user.uid);
+            const profile = await getGuardianProfile(user.id);
             setGuardianProfile(profile);
             if (profile) {
                 // Pre-select the guardian by default
@@ -56,8 +52,6 @@ export default function GuardianRechargePage() {
                     id: profile.id,
                     name: profile.name,
                     balance: profile.balance,
-                    firebaseUid: profile.firebaseUid,
-                    profileSubcollection: 'guardianProfiles',
                     isGuardian: true,
                 });
             }
@@ -67,23 +61,19 @@ export default function GuardianRechargePage() {
     if (!isUserLoading) {
       fetchProfile();
     }
-  }, [user, isUserLoading, firestore]);
+  }, [user, isUserLoading]);
 
   const allTargets: RechargeTarget[] = guardianProfile ? [
       { 
         id: guardianProfile.id, 
         name: guardianProfile.name, 
         balance: guardianProfile.balance, 
-        firebaseUid: guardianProfile.firebaseUid,
-        profileSubcollection: 'guardianProfiles',
         isGuardian: true 
       },
       ...guardianProfile.students.map((s: StudentProfile) => ({
           id: s.id,
           name: s.name,
           balance: s.balance,
-          firebaseUid: s.firebaseUid,
-          profileSubcollection: 'studentProfiles' as const,
           isGuardian: false
       }))
   ] : [];
@@ -116,40 +106,7 @@ export default function GuardianRechargePage() {
     setIsProcessing(true);
     
     try {
-        const batch = writeBatch(firestore);
-
-        // 1. Debit from Guardian
-        const guardianRef = doc(firestore, `users/${guardianProfile.firebaseUid}/guardianProfiles`, guardianProfile.id);
-        batch.update(guardianRef, { balance: increment(-amountValue) });
-
-        // 2. Credit Student
-        const studentRef = doc(firestore, `users/${selectedTarget.firebaseUid}/studentProfiles`, selectedTarget.id);
-        batch.update(studentRef, { balance: increment(amountValue) });
-
-        // 3. Create Transaction Log for Guardian (Debit)
-        const guardianTransactionRef = doc(collection(firestore, 'transactions'));
-        batch.set(guardianTransactionRef, {
-            date: new Date().toISOString(),
-            description: `Transferência para ${selectedTarget.name}`,
-            amount: amountValue,
-            type: 'debit',
-            origin: 'Transferência',
-            userId: guardianProfile.firebaseUid,
-        });
-
-        // 4. Create Transaction Log for Student (Credit)
-        const studentTransactionRef = doc(collection(firestore, 'transactions'));
-        batch.set(studentTransactionRef, {
-            date: new Date().toISOString(),
-            description: `Recebido de ${guardianProfile.name}`,
-            amount: amountValue,
-            type: 'credit',
-            origin: 'Transferência',
-            userId: selectedTarget.firebaseUid,
-            studentId: selectedTarget.id,
-        });
-
-        await batch.commit();
+        await internalTransfer(guardianProfile.id, selectedTarget.id, amountValue);
 
         toast({
           title: 'Transferência Concluída!',
@@ -318,7 +275,7 @@ export default function GuardianRechargePage() {
             </AlertDialog>
 
             <Link 
-                href={`/pix-payment?amount=${amountValue}&targetId=${selectedTarget?.id}&targetType=${selectedTarget?.profileSubcollection}&userId=${selectedTarget?.firebaseUid}`}
+                href={`/pix-payment?amount=${amountValue}&targetId=${selectedTarget?.id}&userId=${user?.id}`}
                 passHref
                 className={cn('w-full', isPixButtonDisabled && 'pointer-events-none opacity-50')}
             >

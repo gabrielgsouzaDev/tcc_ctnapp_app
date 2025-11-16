@@ -4,6 +4,7 @@
 import { ShoppingCart, Trash2, Search, MinusCircle, PlusCircle, Heart, Check, Star, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,13 +45,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { type Product, type Canteen, type Order, type OrderItem, type StudentProfile } from '@/lib/data';
+import { type Product, type Canteen, type OrderItem, type StudentProfile } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { useUser, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { writeBatch, collection, doc, increment } from 'firebase/firestore';
-import { getStudentProfile, getCanteensBySchool, getProductsByCanteen } from '@/lib/services';
+import { getStudentProfile, getCanteensBySchool, getProductsByCanteen, postOrder, postTransaction } from '@/lib/services';
+import { useAuth } from '@/lib/auth-provider';
 
 type CartItem = {
   product: Product;
@@ -65,19 +65,16 @@ type AddToCartState = {
 
 export default function StudentDashboard() {
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user, isLoading: isUserLoading, logout } = useAuth();
+  const router = useRouter();
   
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
 
   const [canteens, setCanteens] = useState<Canteen[]>([]);
   const [selectedCanteen, setSelectedCanteen] = useState('');
   
-  const productsQuery = useMemoFirebase(() => {
-    if (!selectedCanteen || !firestore) return null;
-    return getProductsByCanteen(firestore, selectedCanteen);
-  }, [firestore, selectedCanteen]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
   const [isLoading, setIsLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -89,16 +86,20 @@ export default function StudentDashboard() {
 
    useEffect(() => {
     const fetchProfileAndCanteens = async () => {
-      if (user && firestore) {
+      if (user) {
         setIsLoading(true);
-        const profile = await getStudentProfile(firestore, user.uid);
+        const profile = await getStudentProfile(user.id);
         if (profile) {
           setStudentProfile(profile);
-          const canteenList = await getCanteensBySchool(firestore, profile.schoolId);
+          const canteenList = await getCanteensBySchool(profile.schoolId);
           setCanteens(canteenList);
           if (canteenList.length > 0) {
             setSelectedCanteen(canteenList[0].id);
           }
+        } else {
+            toast({ variant: 'destructive', title: 'Perfil não encontrado.' });
+            logout();
+            router.push('/auth/student');
         }
         setIsLoading(false);
       }
@@ -106,7 +107,19 @@ export default function StudentDashboard() {
     if (!isUserLoading) {
         fetchProfileAndCanteens();
     }
-  }, [user, isUserLoading, firestore]);
+  }, [user, isUserLoading, router, logout, toast]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+        if (selectedCanteen) {
+            setIsLoadingProducts(true);
+            const productList = await getProductsByCanteen(selectedCanteen);
+            setProducts(productList);
+            setIsLoadingProducts(false);
+        }
+    };
+    fetchProducts();
+  }, [selectedCanteen]);
 
 
   const filteredProducts = useMemo(() => {
@@ -210,7 +223,7 @@ export default function StudentDashboard() {
         toast({ variant: "destructive", title: "Carrinho vazio!" });
         return;
     }
-    if (!studentProfile || !user || !firestore) {
+    if (!studentProfile || !user) {
         toast({ variant: "destructive", title: "Perfil não encontrado!" });
         return;
     }
@@ -219,46 +232,34 @@ export default function StudentDashboard() {
         return;
     }
 
-    const batch = writeBatch(firestore);
-
-    // 1. Create Order
-    const orderCollectionRef = collection(firestore, 'orders');
-    const newOrderRef = doc(orderCollectionRef);
-    const newOrder: Omit<Order, 'id'> = {
-        date: new Date().toISOString(),
-        studentId: studentProfile.id,
-        userId: user.uid,
-        status: 'Pendente',
-        total: cartTotal,
-        items: cart.map(item => ({
-          productId: item.product.id,
-          productName: item.product.name,
-          quantity: item.quantity,
-          unitPrice: item.product.price,
-          image: item.product.image
-        })),
-    };
-    batch.set(newOrderRef, newOrder);
-
-    // 2. Create Transaction
-    const transactionCollectionRef = collection(firestore, 'transactions');
-    const newTransactionRef = doc(transactionCollectionRef);
-    batch.set(newTransactionRef, {
-        date: new Date().toISOString(),
-        description: `Compra de Pedido #${newOrderRef.id.substring(0, 6).toUpperCase()}`,
-        amount: cartTotal,
-        type: 'debit',
-        origin: 'Cantina',
-        userId: user.uid,
-        studentId: studentProfile.id,
-    });
-    
-    // 3. Update Balance
-    const profileRef = doc(firestore, `users/${user.uid}/studentProfiles`, studentProfile.id);
-    batch.update(profileRef, { balance: increment(-cartTotal) });
-
     try {
-        await batch.commit();
+        const orderPayload = {
+            studentId: studentProfile.id,
+            userId: user.id,
+            total: cartTotal,
+            items: cart.map(item => ({
+              productId: item.product.id,
+              productName: item.product.name,
+              quantity: item.quantity,
+              unitPrice: item.product.price,
+              image: item.product.image
+            })),
+        };
+        const newOrder = await postOrder(orderPayload);
+
+        const transactionPayload = {
+            description: `Compra de Pedido #${newOrder.id.substring(0, 6).toUpperCase()}`,
+            amount: cartTotal,
+            type: 'debit' as const,
+            origin: 'Cantina' as const,
+            userId: user.id,
+            studentId: studentProfile.id,
+        };
+        await postTransaction(transactionPayload);
+
+        // Update balance locally for immediate feedback
+        setStudentProfile(prev => prev ? ({ ...prev, balance: prev.balance - cartTotal }) : null);
+
         toast({
             title: "Pedido realizado com sucesso!",
             description: "Você pode acompanhar o status em 'Pedidos'.",
@@ -613,5 +614,3 @@ export default function StudentDashboard() {
     </div>
   );
 }
-
-    
