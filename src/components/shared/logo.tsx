@@ -16,7 +16,7 @@ export function Logo({ isSidebar = false }: { isSidebar?: boolean }) {
     <div className="text-center">
       <Link href="/" className="flex flex-col items-center">
           <div className="flex items-center justify-center gap-4">
-            <h1 className="font-subtitle text-6xl font-bold text-primary leading-none">CantApp</h1>
+            <h1 className="font-subtitle text-5xl font-bold text-primary leading-none">CantApp</h1>
           </div>
         <p className="text-muted-foreground mt-2 text-center">A cantina na palma da sua mão.</p>
       </Link>
