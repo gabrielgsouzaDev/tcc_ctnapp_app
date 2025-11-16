@@ -4,7 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/lib/auth-provider';
 
 export const metadata: Metadata = {
-  title: 'CTNAPP',
+  title: 'CantApp',
   description: 'A cantina na palma da sua mão.',
 };
 
