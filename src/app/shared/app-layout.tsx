@@ -48,6 +48,7 @@ import {
   SidebarProvider,
   SidebarSeparator,
   SidebarTrigger,
+  SidebarInset,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/shared/logo";
 import { useAuth } from "@/lib/auth-provider";
