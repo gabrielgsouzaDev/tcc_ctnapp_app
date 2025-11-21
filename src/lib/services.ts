@@ -1,20 +1,12 @@
+
 import { type School, type StudentProfile, type GuardianProfile, Canteen, Product, Transaction, Order } from '@/lib/data';
 import { apiGet, apiPost } from './api';
 
 // School Services
 export const getSchools = async (): Promise<School[]> => {
   console.log("Fetching schools from API...");
-  try {
-    // This is failing due to CORS. Returning an empty array to allow the UI to load.
-    // Once CORS is fixed on the Laravel backend, this try/catch can be removed.
-    return await apiGet<School[]>('/escolas');
-  } catch (error: any) {
-    if (error.message.includes('Failed to fetch')) {
-        console.warn('CORS or Network issue: Failed to fetch schools. Returning empty array.');
-        return []; // Return empty array to prevent app crash
-    }
-    throw error; // Re-throw other errors
-  }
+  // CORS is fixed on the backend, so we can now make the real API call.
+  return await apiGet<School[]>('/escolas');
 };
 
 
