@@ -5,7 +5,6 @@ import { apiGet, apiPost } from './api';
 // School Services
 export const getSchools = async (): Promise<School[]> => {
   console.log("Fetching schools from API...");
-  // CORS is fixed on the backend, so we can now make the real API call.
   return await apiGet<School[]>('/escolas');
 };
 
@@ -19,36 +18,36 @@ export const getStudentProfile = async (userId: string): Promise<StudentProfile 
 export const getGuardianProfile = async (userId: string): Promise<GuardianProfile | null> => {
   console.log(`Fetching guardian profile for user: ${userId}`);
   const guardian = await apiGet<GuardianProfile>(`/responsaveis/${userId}`);
-  // Assuming the backend now returns linked students within the guardian object.
-  // If not, this part needs adjustment based on final API response.
   return guardian;
 }
 
 // Canteen / Product Services
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
     console.log(`Fetching canteens for school: ${schoolId}`);
-    return apiGet<Canteen[]>(`/cantinas/escola/${schoolId}`);
+    // Adjusting to use the existing /cantinas route and filtering client-side
+    const allCanteens = await apiGet<Canteen[]>(`/cantinas`);
+    return allCanteens.filter(c => c.id_escola === schoolId);
 }
 
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
     console.log(`Fetching products for canteen: ${canteenId}`);
-    // The backend doesn't have a direct route, so we fetch all and filter client-side.
+    // Backend doesn't have a direct route, so we fetch all and filter client-side.
     const allProducts = await apiGet<Product[]>(`/produtos`);
-    return allProducts.filter(p => p.canteenId === canteenId || p.id_cantina === canteenId);
+    return allProducts.filter(p => p.id_cantina === canteenId);
 }
 
 // Transaction and Order Services
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     console.log(`Fetching orders for user: ${userId}`);
     const allOrders = await apiGet<Order[]>(`/pedidos`);
-    return allOrders.filter(o => o.userId === userId || o.studentId === userId);
+    return allOrders.filter(o => o.userId === userId || o.studentId === userId || o.responsavel_id === userId || o.aluno_id === userId);
 }
 
 export const getOrdersByGuardian = async (studentIds: string[]): Promise<Order[]> => {
     if (!studentIds || studentIds.length === 0) return Promise.resolve([]);
     console.log(`Fetching orders for students: ${studentIds.join(', ')}`);
     const allOrders = await apiGet<Order[]>('/pedidos');
-    return allOrders.filter(o => studentIds.includes(o.studentId));
+    return allOrders.filter(o => o.aluno_id && studentIds.includes(o.aluno_id));
 }
 
 // No transaction endpoints were provided. Mocking these functions for now.
