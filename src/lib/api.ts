@@ -23,7 +23,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
         throw error;
     }
     
-    // Check if the actual data is nested under a 'data' or 'user' key
+    // Check if the actual data is nested under a 'data' or 'user' key as per Laravel's ResponseHelper
     if (data && typeof data === 'object') {
         if ('data' in data) {
             return data.data as T;
