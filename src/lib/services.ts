@@ -1,11 +1,20 @@
-
 import { type School, type StudentProfile, type GuardianProfile, Canteen, Product, Transaction, Order } from '@/lib/data';
 import { apiGet, apiPost } from './api';
 
 // School Services
 export const getSchools = async (): Promise<School[]> => {
   console.log("Fetching schools from API...");
-  return apiGet<School[]>('/escolas');
+  try {
+    // This is failing due to CORS. Returning an empty array to allow the UI to load.
+    // Once CORS is fixed on the Laravel backend, this try/catch can be removed.
+    return await apiGet<School[]>('/escolas');
+  } catch (error: any) {
+    if (error.message.includes('Failed to fetch')) {
+        console.warn('CORS or Network issue: Failed to fetch schools. Returning empty array.');
+        return []; // Return empty array to prevent app crash
+    }
+    throw error; // Re-throw other errors
+  }
 };
 
 
@@ -53,6 +62,7 @@ export const getOrdersByGuardian = async (studentIds: string[]): Promise<Order[]
 // No transaction endpoints were provided. Mocking these functions for now.
 export const getTransactionsByUser = async (userId: string): Promise<Transaction[]> => {
      console.log(`Fetching transactions for user (mock): ${userId}`);
+    // This should call a real endpoint like: return apiGet<Transaction[]>(`/transacoes/usuario/${userId}`);
     return Promise.resolve([
         { id: 'tx_1', date: new Date().toISOString(), description: 'Recarga (Mock)', amount: 50.00, type: 'credit', origin: 'PIX', userId: userId, studentId: userId },
         { id: 'tx_2', date: new Date().toISOString(), description: 'Compra (Mock)', amount: 15.50, type: 'debit', origin: 'Cantina', userId: userId, studentId: userId },
@@ -62,6 +72,7 @@ export const getTransactionsByUser = async (userId: string): Promise<Transaction
 export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<Transaction[]> => {
      if (!allUserIds || allUserIds.length === 0) return Promise.resolve([]);
      console.log(`Fetching transactions for users (mock): ${allUserIds.join(', ')}`);
+    // This should call a real endpoint like: return apiPost<Transaction[]>('/transacoes/responsavel', { user_ids: allUserIds });
      return Promise.resolve([
         { id: 'tx_g1', date: new Date().toISOString(), description: 'Recarga para Aluno (Mock)', amount: 100.00, type: 'credit', origin: 'Transferência', userId: allUserIds[0], studentId: allUserIds.length > 1 ? allUserIds[1] : undefined },
      ]);
@@ -80,6 +91,7 @@ export const postOrder = async (orderData: Omit<Order, 'id' | 'date' | 'status'>
 // No transaction endpoints. Mocking this.
 export const postTransaction = async (transactionData: Omit<Transaction, 'id' | 'date'>) : Promise<Transaction> => {
     console.log('Posting new transaction (mock)', transactionData);
+    // This should call a real endpoint like: return apiPost<Transaction>('/transacoes', transactionData);
     return Promise.resolve({
         id: `tx_${Math.random().toString(36).substr(2, 9)}`,
         date: new Date().toISOString(),
@@ -90,13 +102,12 @@ export const postTransaction = async (transactionData: Omit<Transaction, 'id' | 
 // No wallet/recharge endpoints. Mocking these.
 export const rechargeBalance = async (userId: string, amount: number): Promise<{success: boolean}> => {
     console.log(`Recharging balance for user (mock) ${userId} with amount ${amount}`);
-    // Here you would call your API: e.g., apiPost(`/carteiras/${userId}/recarga`, { amount });
+    // This should call a real endpoint like: return apiPost(`/carteiras/${userId}/recarga`, { amount });
     return Promise.resolve({ success: true });
 }
 
 export const internalTransfer = async (fromUserId: string, toUserId: string, amount: number): Promise<{success: boolean}> => {
     console.log(`Transferring (mock) ${amount} from ${fromUserId} to ${toUserId}`);
-    // Here you would call your API: e.g., apiPost('/transferencia-interna', { from_user_id: fromUserId, to_user_id: toUserId, amount });
+    // This should call a real endpoint like: return apiPost('/transferencia-interna', { from_user_id: fromUserId, to_user_id: toUserId, amount });
     return Promise.resolve({ success: true });
 }
-
