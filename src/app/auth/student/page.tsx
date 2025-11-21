@@ -49,13 +49,13 @@ export default function StudentAuthPage() {
       try {
         const schoolList = await getSchools();
         if (schoolList.length === 0) {
-          toast({ variant: 'destructive', title: 'Nenhuma escola encontrada no banco de dados.' });
+          toast({ variant: 'default', title: 'Nenhuma escola encontrada para seleção.' });
         } else {
           setSchools(schoolList);
         }
       } catch (error) {
         console.error("Failed to fetch schools:", error);
-        toast({ variant: 'destructive', title: 'Erro ao buscar escolas' });
+        toast({ variant: 'destructive', title: 'Erro ao buscar escolas', description: 'Não foi possível carregar a lista de escolas do servidor.' });
       }
     };
     fetchSchools();
@@ -76,13 +76,17 @@ export default function StudentAuthPage() {
     setIsSubmitting(true);
     try {
       await login(data.email, data.password);
-      toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
+      toast({ 
+        title: 'Login bem-sucedido!', 
+        description: 'Redirecionando para o painel...',
+        variant: 'success'
+      });
       router.push('/student/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Falha no login',
-        description: error.data?.message || error.message || 'E-mail ou senha inválidos.',
+        description: error.data?.message || error.message || 'E-mail ou senha inválidos. Verifique suas credenciais.',
       });
     } finally {
       setIsSubmitting(false);
@@ -98,7 +102,11 @@ export default function StudentAuthPage() {
         role: 'student'
       });
       
-      toast({ title: 'Conta criada com sucesso!', description: 'Você será redirecionado para o painel.' });
+      toast({ 
+        title: 'Conta criada com sucesso!', 
+        description: 'Você será redirecionado para o painel.',
+        variant: 'success'
+      });
       router.push('/student/dashboard');
 
     } catch (error: any) {

@@ -54,13 +54,17 @@ export default function GuardianAuthPage() {
 
     try {
       await login(data.email, data.password);
-      toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
+      toast({ 
+        title: 'Login bem-sucedido!', 
+        description: 'Redirecionando para o painel...',
+        variant: 'success'
+      });
       router.push('/guardian/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Falha no login',
-        description: error.data?.message || error.message || 'E-mail ou senha inválidos.',
+        description: error.data?.message || error.message || 'E-mail ou senha inválidos. Verifique suas credenciais.',
       });
     } finally {
       setIsSubmitting(false);
@@ -76,7 +80,11 @@ export default function GuardianAuthPage() {
         role: 'guardian'
       });
 
-      toast({ title: 'Conta criada com sucesso!', description: 'Redirecionando para o painel...' });
+      toast({ 
+        title: 'Conta criada com sucesso!', 
+        description: 'Redirecionando para o painel...',
+        variant: 'success'
+      });
       router.push('/guardian/dashboard');
     } catch (error: any) {
       console.error('Signup Error:', error);
