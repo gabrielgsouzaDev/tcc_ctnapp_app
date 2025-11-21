@@ -53,7 +53,7 @@ export default function GuardianAuthPage() {
     setIsSubmitting(true);
 
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, 'guardian');
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
       router.push('/guardian/dashboard');
     } catch (error: any) {

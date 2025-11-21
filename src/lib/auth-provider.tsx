@@ -10,7 +10,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, role: 'student' | 'guardian') => Promise<void>;
   register: (data: Record<string, any>) => Promise<void>;
   logout: () => void;
 }
@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (storedToken) {
         setToken(storedToken);
         try {
-          // You might want a /me endpoint to verify the token and get user data
+          // Assuming a /me endpoint to verify token and get user data
           const userData = await apiGet<User>('/me'); 
           setUser(userData);
         } catch (error) {
@@ -44,21 +44,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const response = await apiPost<{ user: User; token: string }>('/login', { email, password });
+  const login = async (email: string, password: string, role: 'student' | 'guardian') => {
+    const loginPath = role === 'student' ? '/login/aluno' : '/login/responsavel';
+    const response = await apiPost<{ user: User; token: string }>(loginPath, { email, password });
     localStorage.setItem('authToken', response.token);
     setToken(response.token);
     setUser(response.user);
   };
 
   const register = async (data: Record<string, any>) => {
-    const response = await apiPost<{ user: User; token: string }>('/register', data);
+    const { role, ...payload } = data;
+    const registerPath = role === 'student' ? '/alunos' : '/responsaveis';
+    const response = await apiPost<{ user: User; token: string }>(registerPath, payload);
     localStorage.setItem('authToken', response.token);
     setToken(response.token);
     setUser(response.user);
   };
 
   const logout = () => {
+    // Optionally call a /logout endpoint on your API
+    // await apiPost('/logout', {});
     localStorage.removeItem('authToken');
     setToken(null);
     setUser(null);

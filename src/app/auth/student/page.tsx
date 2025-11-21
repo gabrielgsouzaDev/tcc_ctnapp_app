@@ -75,7 +75,7 @@ export default function StudentAuthPage() {
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, 'student');
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
       router.push('/student/dashboard');
     } catch (error: any) {
