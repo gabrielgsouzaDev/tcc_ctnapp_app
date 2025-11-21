@@ -4,6 +4,8 @@ import { apiGet, apiPost } from './api';
 type ApiResponse<T> = {
   success: boolean;
   data: T;
+  token?: string;
+  user?: any;
 }
 
 // School Services
@@ -14,7 +16,6 @@ export const getSchools = async (): Promise<School[]> => {
     return response.data;
   } catch(e) {
     console.error("Failed to fetch schools:", e);
-    // Return empty array to prevent UI from breaking
     return [];
   }
 };
@@ -36,14 +37,15 @@ export const getGuardianProfile = async (userId: string): Promise<GuardianProfil
 // Canteen / Product Services
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
     console.log(`Fetching canteens for school: ${schoolId}`);
-    // The backend route is /cantinas, and we filter client-side.
     const response = await apiGet<ApiResponse<Canteen[]>>(`/cantinas`);
+    // The backend doesn't have a direct route, so we filter client-side
     return response.data.filter(c => c.id_escola.toString() === schoolId.toString());
 }
 
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
     console.log(`Fetching products for canteen: ${canteenId}`);
     const response = await apiGet<ApiResponse<Product[]>>(`/produtos`);
+    // The backend doesn't have a direct route, so we filter client-side
     return response.data.filter(p => p.id_cantina.toString() === canteenId.toString());
 }
 
@@ -51,6 +53,7 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     console.log(`Fetching orders for user: ${userId}`);
     const response = await apiGet<ApiResponse<Order[]>>(`/pedidos`);
+    // The backend returns all orders, filter client-side
     return response.data.filter(o => o.aluno_id?.toString() === userId.toString() || o.responsavel_id?.toString() === userId.toString());
 }
 

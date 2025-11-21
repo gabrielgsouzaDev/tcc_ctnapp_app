@@ -10,20 +10,23 @@ type ApiError = {
 
 async function handleResponse<T>(response: Response): Promise<T> {
     if (response.status === 204) {
-        return { success: true } as T;
+        // No content to parse, return a success-like object
+        return { success: true } as unknown as T;
     }
-
+    
     const data = await response.json();
 
     if (!response.ok) {
+        // If response is not OK, create an error object and throw it
         const error: Error & { data?: any } = new Error(data.message || 'Ocorreu um erro na API.');
         error.data = data;
         throw error;
     }
     
-    // The responsibility of unwrapping the 'data' key is now on the service function
+    // If response is OK, return the full parsed JSON object
     return data as T;
 }
+
 
 export async function apiGet<T>(path: string): Promise<T> {
     const token = localStorage.getItem('authToken');
