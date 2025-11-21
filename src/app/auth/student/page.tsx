@@ -27,11 +27,11 @@ const loginSchema = z.object({
 });
 
 const signupSchema = z.object({
-  name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
-  ra: z.string().min(1, 'O RA é obrigatório.'),
+  nome: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
+  data_nascimento: z.string().min(1, 'A data de nascimento é obrigatória.'),
   email: z.string().email('E-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
-  schoolId: z.string({ required_error: 'Por favor, selecione uma escola.' }),
+  // schoolId: z.string({ required_error: 'Por favor, selecione uma escola.' }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -69,20 +69,20 @@ export default function StudentAuthPage() {
   
   const signupForm = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { name: '', ra: '', email: '', password: '' },
+    defaultValues: { nome: '', data_nascimento: '', email: '', password: '' },
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     try {
-      await login(data.email, data.password, 'student');
+      await login(data.email, data.password);
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
       router.push('/student/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Falha no login',
-        description: error.message || 'E-mail ou senha inválidos.',
+        description: error.data?.message || error.message || 'E-mail ou senha inválidos.',
       });
     } finally {
       setIsSubmitting(false);
@@ -94,11 +94,7 @@ export default function StudentAuthPage() {
     
     try {
       await register({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        ra: data.ra,
-        school_id: data.schoolId,
+        ...data,
         role: 'student'
       });
       
@@ -110,7 +106,7 @@ export default function StudentAuthPage() {
       toast({
         variant: 'destructive',
         title: 'Falha no cadastro',
-        description: error.message || 'Ocorreu um erro ao criar a conta.',
+        description: error.data?.message || error.message || 'Ocorreu um erro ao criar a conta.',
       });
     } finally {
       setIsSubmitting(false);
@@ -185,7 +181,7 @@ export default function StudentAuthPage() {
                   <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
                     <FormField
                       control={signupForm.control}
-                      name="name"
+                      name="nome"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Nome Completo</FormLabel>
@@ -198,18 +194,19 @@ export default function StudentAuthPage() {
                     />
                      <FormField
                       control={signupForm.control}
-                      name="ra"
+                      name="data_nascimento"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Seu RA (Registro de Aluno)</FormLabel>
+                          <FormLabel>Data de Nascimento</FormLabel>
                           <FormControl>
-                            <Input placeholder="Seu número de RA" {...field} />
+                            <Input type="date" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                     <FormField
+                    {/* A escola será associada pelo admin/responsável posteriormente */}
+                    {/* <FormField
                       control={signupForm.control}
                       name="schoolId"
                       render={({ field }) => (
@@ -234,7 +231,7 @@ export default function StudentAuthPage() {
                           <FormMessage />
                         </FormItem>
                       )}
-                    />
+                    /> */}
                     <FormField
                       control={signupForm.control}
                       name="email"

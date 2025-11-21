@@ -24,8 +24,8 @@ const loginSchema = z.object({
 });
 
 const signupSchema = z.object({
-  name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
-  studentRa: z.string().min(1, 'O RA do aluno é obrigatório.'),
+  nome: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
+  telefone: z.string().min(8, 'O telefone é obrigatório.'),
   email: z.string().email('E-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
 });
@@ -46,21 +46,21 @@ export default function GuardianAuthPage() {
 
   const signupForm = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { name: '', studentRa: '', email: '', password: '' },
+    defaultValues: { nome: '', telefone: '', email: '', password: '' },
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
 
     try {
-      await login(data.email, data.password, 'guardian');
+      await login(data.email, data.password);
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando para o painel...' });
       router.push('/guardian/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Falha no login',
-        description: error.message || 'E-mail ou senha inválidos.',
+        description: error.data?.message || error.message || 'E-mail ou senha inválidos.',
       });
     } finally {
       setIsSubmitting(false);
@@ -72,10 +72,7 @@ export default function GuardianAuthPage() {
 
     try {
       await register({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        student_ra: data.studentRa,
+        ...data,
         role: 'guardian'
       });
 
@@ -86,7 +83,7 @@ export default function GuardianAuthPage() {
       toast({
         variant: 'destructive',
         title: 'Falha no cadastro',
-        description: error.message || 'Ocorreu um erro ao criar a conta.',
+        description: error.data?.message || error.message || 'Ocorreu um erro ao criar a conta.',
       });
     } finally {
       setIsSubmitting(false);
@@ -160,7 +157,7 @@ export default function GuardianAuthPage() {
                   <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
                     <FormField
                       control={signupForm.control}
-                      name="name"
+                      name="nome"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Seu Nome Completo</FormLabel>
@@ -173,14 +170,14 @@ export default function GuardianAuthPage() {
                     />
                      <FormField
                       control={signupForm.control}
-                      name="studentRa"
+                      name="telefone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>RA do Aluno</FormLabel>
+                          <FormLabel>Telefone</FormLabel>
                           <FormControl>
-                            <Input placeholder="RA do aluno a ser vinculado" {...field} />
+                            <Input placeholder="(XX) XXXXX-XXXX" {...field} />
                           </FormControl>
-                           <p className="text-xs text-muted-foreground pt-1">Este é o Registro do Aluno que você deseja gerenciar.</p>
+                           <p className="text-xs text-muted-foreground pt-1">Este telefone será usado para contato.</p>
                           <FormMessage />
                         </FormItem>
                       )}

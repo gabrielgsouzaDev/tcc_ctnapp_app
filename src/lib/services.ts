@@ -1,19 +1,11 @@
+
 import { type School, type StudentProfile, type GuardianProfile, Canteen, Product, Transaction, Order } from '@/lib/data';
 import { apiGet, apiPost } from './api';
 
-// MOCK DATA FOR MISSING API ENDPOINTS
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-
 // School Services
 export const getSchools = async (): Promise<School[]> => {
-  // This endpoint is not in the provided api.php, assuming it will be created.
-  // Using a mock for now.
-  console.log("Fetching schools from mock...");
-  return Promise.resolve([
-    { id: '1', name: 'Escola Modelo', address: 'Rua das Flores, 123' },
-    { id: '2', name: 'Colégio Alpha', address: 'Avenida Brasil, 456' },
-  ]);
+  console.log("Fetching schools from API...");
+  return apiGet<School[]>('/escolas');
 };
 
 
@@ -25,38 +17,23 @@ export const getStudentProfile = async (userId: string): Promise<StudentProfile 
 
 export const getGuardianProfile = async (userId: string): Promise<GuardianProfile | null> => {
   console.log(`Fetching guardian profile for user: ${userId}`);
-  // This needs to also fetch the students associated with the guardian
   const guardian = await apiGet<GuardianProfile>(`/responsaveis/${userId}`);
-  if (guardian && guardian.studentRa) {
-    // Assuming you have an endpoint to find a student by RA
-    // This part is a guess and may need adjustment based on your final API structure
-    try {
-        const allStudents = await apiGet<StudentProfile[]>('/alunos');
-        const linkedStudent = allStudents.find(s => s.ra === guardian.studentRa);
-        guardian.students = linkedStudent ? [linkedStudent] : [];
-    } catch (e) {
-        console.error("Could not fetch students to link to guardian", e);
-        guardian.students = [];
-    }
-  }
+  // Assuming the backend now returns linked students within the guardian object.
+  // If not, this part needs adjustment based on final API response.
   return guardian;
 }
 
 // Canteen / Product Services
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
-    // This endpoint is not in the provided api.php, using mock.
-    console.log(`Fetching canteens for school (mock): ${schoolId}`);
-    return Promise.resolve([
-        { id: '1', name: 'Cantina da Tia Joana', schoolId: '1' },
-        { id: '2', name: 'Alpha Lanches', schoolId: '2' },
-    ]);
+    console.log(`Fetching canteens for school: ${schoolId}`);
+    return apiGet<Canteen[]>(`/cantinas/escola/${schoolId}`);
 }
 
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
     console.log(`Fetching products for canteen: ${canteenId}`);
-    // The API provides all products, so we fetch all and filter by canteenId on the client.
+    // The backend doesn't have a direct route, so we fetch all and filter client-side.
     const allProducts = await apiGet<Product[]>(`/produtos`);
-    return allProducts.filter(p => p.canteenId === canteenId);
+    return allProducts.filter(p => p.canteenId === canteenId || p.id_cantina === canteenId);
 }
 
 // Transaction and Order Services
@@ -66,7 +43,6 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     return allOrders.filter(o => o.userId === userId || o.studentId === userId);
 }
 
-// This function seems complex for the current API. Let's simplify.
 export const getOrdersByGuardian = async (studentIds: string[]): Promise<Order[]> => {
     if (!studentIds || studentIds.length === 0) return Promise.resolve([]);
     console.log(`Fetching orders for students: ${studentIds.join(', ')}`);
@@ -93,8 +69,12 @@ export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<T
 
 export const postOrder = async (orderData: Omit<Order, 'id' | 'date' | 'status'>): Promise<Order> => {
     console.log('Posting new order', orderData);
-    // Assuming the backend auto-assigns id, date, and initial status.
-    return apiPost<Order>('/pedidos', orderData);
+    const payload = {
+        aluno_id: orderData.studentId,
+        responsavel_id: orderData.userId, // User who is placing the order
+        produtos: orderData.items.map(item => ({ id: item.productId, quantidade: item.quantity })),
+    };
+    return apiPost<Order>('/pedidos', payload);
 }
 
 // No transaction endpoints. Mocking this.
@@ -110,12 +90,13 @@ export const postTransaction = async (transactionData: Omit<Transaction, 'id' | 
 // No wallet/recharge endpoints. Mocking these.
 export const rechargeBalance = async (userId: string, amount: number): Promise<{success: boolean}> => {
     console.log(`Recharging balance for user (mock) ${userId} with amount ${amount}`);
-    // Here you would update the balance in your state management
+    // Here you would call your API: e.g., apiPost(`/carteiras/${userId}/recarga`, { amount });
     return Promise.resolve({ success: true });
 }
 
 export const internalTransfer = async (fromUserId: string, toUserId: string, amount: number): Promise<{success: boolean}> => {
     console.log(`Transferring (mock) ${amount} from ${fromUserId} to ${toUserId}`);
-    // Here you would update balances in your state management
+    // Here you would call your API: e.g., apiPost('/transferencia-interna', { from_user_id: fromUserId, to_user_id: toUserId, amount });
     return Promise.resolve({ success: true });
 }
+
