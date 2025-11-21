@@ -22,6 +22,18 @@ async function handleResponse<T>(response: Response): Promise<T> {
         error.data = data;
         throw error;
     }
+    
+    // Check if the actual data is nested under a 'data' or 'user' key
+    if (data && typeof data === 'object') {
+        if ('data' in data) {
+            return data.data as T;
+        }
+        if ('user' in data) {
+             // For login/register responses that might return { user, token }
+            return data as T;
+        }
+    }
+
     return data as T;
 }
 
