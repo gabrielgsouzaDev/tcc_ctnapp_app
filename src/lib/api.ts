@@ -10,30 +10,18 @@ type ApiError = {
 
 async function handleResponse<T>(response: Response): Promise<T> {
     if (response.status === 204) {
-        // No content, return a default "success" object or similar
         return { success: true } as T;
     }
 
     const data = await response.json();
 
     if (!response.ok) {
-        // Create an error object that includes the API message
         const error: Error & { data?: any } = new Error(data.message || 'Ocorreu um erro na API.');
         error.data = data;
         throw error;
     }
     
-    // Check if the actual data is nested under a 'data' or 'user' key as per Laravel's ResponseHelper
-    if (data && typeof data === 'object') {
-        if ('data' in data) {
-            return data.data as T;
-        }
-        if ('user' in data) {
-             // For login/register responses that might return { user, token }
-            return data as T;
-        }
-    }
-
+    // The responsibility of unwrapping the 'data' key is now on the service function
     return data as T;
 }
 
