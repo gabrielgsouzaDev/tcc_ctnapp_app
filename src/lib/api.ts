@@ -23,7 +23,11 @@ async function handleResponse<T>(response: Response): Promise<T> {
         throw error;
     }
     
-    // If response is OK, return the full parsed JSON object
+    // The API wraps responses in a "data" object, so we extract it.
+    if (data && 'data' in data) {
+        return data.data as T;
+    }
+    
     return data as T;
 }
 
