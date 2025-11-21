@@ -1,5 +1,4 @@
-
-import { type School, type StudentProfile, type GuardianProfile, Canteen, Product, Transaction, Order } from '@/lib/data';
+import { type School, type StudentProfile, type GuardianProfile, type Canteen, type Product, type Transaction, type Order } from '@/lib/data';
 import { apiGet, apiPost } from './api';
 
 // School Services
@@ -17,16 +16,15 @@ export const getStudentProfile = async (userId: string): Promise<StudentProfile 
 
 export const getGuardianProfile = async (userId: string): Promise<GuardianProfile | null> => {
   console.log(`Fetching guardian profile for user: ${userId}`);
-  const guardian = await apiGet<GuardianProfile>(`/responsaveis/${userId}`);
-  return guardian;
+  // Assuming the responsavel show route returns attached students.
+  // This may need adjustment based on actual backend logic in a service layer.
+  return await apiGet<GuardianProfile>(`/responsaveis/${userId}`);
 }
 
 // Canteen / Product Services
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
     console.log(`Fetching canteens for school: ${schoolId}`);
-    // Adjusting to use the existing /cantinas route and filtering client-side
-    const allCanteens = await apiGet<Canteen[]>(`/cantinas`);
-    return allCanteens.filter(c => c.id_escola === schoolId);
+    return await apiGet<Canteen[]>(`/cantinas/escola/${schoolId}`);
 }
 
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
@@ -40,7 +38,7 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     console.log(`Fetching orders for user: ${userId}`);
     const allOrders = await apiGet<Order[]>(`/pedidos`);
-    return allOrders.filter(o => o.userId === userId || o.studentId === userId || o.responsavel_id === userId || o.aluno_id === userId);
+    return allOrders.filter(o => o.aluno_id === userId || o.responsavel_id === userId);
 }
 
 export const getOrdersByGuardian = async (studentIds: string[]): Promise<Order[]> => {
