@@ -22,7 +22,8 @@ export type Product = {
 };
 
 export type Canteen = {
-  id: string; // id_cantina from backend
+  id_cantina: string;
+  id: string; // derived from id_cantina
   nome: string;
   name: string; // derived from nome
   id_escola: string;
@@ -52,51 +53,53 @@ export type Order = {
 
 export type Transaction = {
   id: string;
-  date: string;
-  description: string;
-  amount: number;
-  type: 'credit' | 'debit';
-  origin: 'Aluno' | 'Responsável' | 'Cantina' | 'PIX' | 'Transferência';
-  userId: string; // The user initiating the transaction
-  studentId?: string; // studentId is optional as a transaction can be for the guardian
+  data: string; // from backend
+  date: string; // derived from data
+  descricao: string;
+  description: string; // derived from descricao
+  valor: number;
+  amount: number; // derived from valor
+  tipo: 'credito' | 'debito';
+  type: 'credit' | 'debit'; // derived from tipo
+  origem: 'Aluno' | 'Responsável' | 'Cantina' | 'PIX' | 'Transferência';
+  origin: 'Aluno' | 'Responsável' | 'Cantina' | 'PIX' | 'Transferência'; // derived from origem
+  user_id: string;
+  userId: string; // derived from user_id
+  studentId?: string; 
 };
 
-export type StudentProfile = {
-  id: string;
-  nome: string;
-  name: string; // derived from nome
-  email: string;
-  balance: number; // This needs to come from the backend, maybe on the user object
-  data_nascimento?: string;
-  id_escola?: string; // from backend
-  schoolId: string; // derived from id_escola
-  ra?: string; // Registration number
+export type User = {
+    id: string;
+    nome: string; 
+    name: string; // derived from nome
+    email: string;
+    role: 'student' | 'guardian' | 'admin';
+    // Profile-specific data
+    data_nascimento?: string;
+    telefone?: string;
+    balance?: number; // Should come from a wallet endpoint
+    id_escola?: string;
+    schoolId?: string; // derived from id_escola
+    ra?: string;
+    students?: User[]; // For guardians
 };
 
-export type GuardianProfile = {
-  id: string;
-  nome: string;
-  name: string; // derived from nome
-  email: string;
-  telefone?: string;
-  balance: number; // This needs to come from the backend
-  students: StudentProfile[]; // Attached by service
+
+export type StudentProfile = User & {
+  role: 'student';
+};
+
+export type GuardianProfile = User & {
+  role: 'guardian';
+  students: StudentProfile[];
 };
 
 export type UserProfile = StudentProfile | GuardianProfile;
 
-export type User = {
-    id: string;
-    nome: string; // from backend
-    name: string; // derived from nome
-    email: string;
-    role: 'student' | 'guardian' | 'admin';
-    // profile might not exist on the base user object from laravel
-    profile?: StudentProfile | GuardianProfile;
-}
 
 export type School = {
-  id: string; // id_escola from backend
+  id_escola: string; 
+  id: string; // derived from id_escola
   nome: string;
   name: string; // derived from nome
   endereco?: string;

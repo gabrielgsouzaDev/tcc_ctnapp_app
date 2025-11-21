@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter } from 'next/navigation';
 import { apiPost, apiGet } from './api';
 import { type User } from './data';
+import { getUser } from './services';
 
 interface AuthContextType {
   user: User | null;
@@ -26,26 +27,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       const storedToken = localStorage.getItem('authToken');
-      if (storedToken) {
+      const storedUserId = localStorage.getItem('userId');
+
+      if (storedToken && storedUserId) {
         setToken(storedToken);
         try {
-          // You need a /me endpoint to get user data from token
-          // const userData = await apiGet<User>('/me'); 
-          // setUser(userData);
-          // For now, we'll assume the user data is stored in localStorage too
-           const storedUser = localStorage.getItem('user');
-           if (storedUser) {
-             setUser(JSON.parse(storedUser));
+           const userData = await getUser(storedUserId);
+           if (userData) {
+             setUser(userData);
+             localStorage.setItem('user', JSON.stringify(userData));
            } else {
-             // Or fetch it if not present
-             // const userData = await apiGet<User>('/me'); 
-             // setUser(userData);
-             // localStorage.setItem('user', JSON.stringify(userData));
+             throw new Error('User not found with stored ID');
            }
         } catch (error) {
-          console.error("Failed to fetch user with stored token", error);
+          console.error("Failed to fetch user with stored token/ID", error);
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
+          localStorage.removeItem('userId');
           setToken(null);
           setUser(null);
         }
@@ -55,28 +53,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const response = await apiPost<{ user: User; token: string }>('/login', { email, senha: password });
+  const handleAuthSuccess = (response: { user: User; token: string }) => {
     localStorage.setItem('authToken', response.token);
     localStorage.setItem('user', JSON.stringify(response.user));
+    localStorage.setItem('userId', response.user.id);
     setToken(response.token);
     setUser(response.user);
+  }
+
+  const login = async (email: string, password: string) => {
+    const response = await apiPost<{ user: User; token: string }>('/login', { email, senha: password });
+    handleAuthSuccess(response);
   };
 
   const register = async (data: Record<string, any>) => {
-    const { role, ...payload } = data;
-    // The password field name must match backend validation ('senha')
-    const apiPayload = { ...payload, senha: payload.password };
-    delete apiPayload.password;
-    
-    const registerPath = role === 'student' ? '/alunos' : '/responsaveis';
+    // Backend expects 'senha', not 'password'
+    const payload = { ...data, senha: data.password };
+    delete payload.password; // remove original password field
 
-    const response = await apiPost<{ user: User; token: string }>(registerPath, apiPayload);
-    
-    localStorage.setItem('authToken', response.token);
-    localStorage.setItem('user', JSON.stringify(response.user));
-    setToken(response.token);
-    setUser(response.user);
+    // The endpoint is now /users for both roles
+    const response = await apiPost<{ user: User; token: string }>('/users', payload);
+    handleAuthSuccess(response);
   };
 
   const logout = async () => {
@@ -87,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
+        localStorage.removeItem('userId');
         setToken(null);
         setUser(null);
         router.push('/');
