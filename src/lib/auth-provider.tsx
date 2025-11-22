@@ -62,7 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const login = async (email: string, password: string) => {
-    const response = await apiPost<{ user: User; token: string }>('/login', { email, senha: password });
+    // Uses the unified /login route
+    const response = await apiPost<{ user: User; token: string }>('login', { email, senha: password });
     handleAuthSuccess(response);
   };
 
@@ -71,14 +72,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const payload = { ...data, senha: data.password };
     delete payload.password; // remove original password field
 
-    // The endpoint is now /users for both roles
-    const response = await apiPost<{ user: User; token: string }>('/users', payload);
+    // The endpoint is now a unified /users for both roles
+    const response = await apiPost<{ user: User; token: string }>('users', payload);
     handleAuthSuccess(response);
   };
 
   const logout = async () => {
     try {
-        await apiPost('/logout', {});
+        await apiPost('logout', {});
     } catch (error) {
         console.error("Logout failed on API, logging out client-side anyway.", error);
     } finally {

@@ -1,3 +1,4 @@
+
 import type { ImagePlaceholder } from './placeholder-images';
 
 // This file contains TYPE DEFINITIONS for the entire application.
@@ -6,19 +7,18 @@ import type { ImagePlaceholder } from './placeholder-images';
 // #region TYPE DEFINITIONS
 
 export type Product = {
-  id: string; // id_produto from backend
+  id_produto: string;
+  id: string; // derived
   id_cantina: string; 
   canteenId: string; // derived from id_cantina
   nome: string;
   name: string; // derived from nome
-  descricao?: string;
   preco: number;
   price: number; // derived from preco
-  estoque?: number;
-  categoria: 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
-  category: 'Salgado' | 'Doce' | 'Bebida' | 'Almoço'; // derived from categoria
+  ativo: boolean;
   image: ImagePlaceholder; // Mapped client-side
   popular?: boolean; // Mapped client-side
+  category: 'Salgado' | 'Doce' | 'Bebida' | 'Almoço'; // This needs to be present in the backend model or mapped
 };
 
 export type Canteen = {
@@ -39,11 +39,11 @@ export type OrderItem = {
 };
 
 export type Order = {
-  id: string;
+  id: string; // id_pedido
   date: string;
   items: OrderItem[]; // This is constructed on the client from the pivot table relationship
-  total: number;
-  valor_total?: number; // from backend
+  valor_total: number;
+  total: number; // derived
   status: 'Entregue' | 'Pendente' | 'Cancelado' | 'Em Preparo' | 'Recebido';
   aluno_id?: string; 
   studentId: string; // derived from aluno_id
@@ -52,20 +52,21 @@ export type Order = {
 };
 
 export type Transaction = {
-  id: string;
-  data: string; // from backend
-  date: string; // derived from data
+  id: string; // id_transacao
+  data_transacao: string; // from backend
+  date: string; // derived from data_transacao
   descricao: string;
   description: string; // derived from descricao
   valor: number;
   amount: number; // derived from valor
   tipo: 'credito' | 'debito';
   type: 'credit' | 'debit'; // derived from tipo
-  origem: 'Aluno' | 'Responsável' | 'Cantina' | 'PIX' | 'Transferência';
+  origem: 'Aluno' | 'Responsável' | 'Cantina' | 'PIX' | 'Transferência'; // Example, should match backend enum/string
   origin: 'Aluno' | 'Responsável' | 'Cantina' | 'PIX' | 'Transferência'; // derived from origem
-  user_id: string;
-  userId: string; // derived from user_id
-  studentId?: string; 
+  id_carteira: string;
+  walletId: string; // derived
+  userId: string; // derived from wallet
+  studentId?: string; // derived from wallet
 };
 
 export type User = {
@@ -106,4 +107,9 @@ export type School = {
   address?: string; // derived from endereco
 };
 
+export type Wallet = {
+    id: string; // id_carteira
+    id_user: string;
+    saldo: number;
+}
 // #endregion
