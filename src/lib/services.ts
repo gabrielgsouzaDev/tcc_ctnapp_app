@@ -1,20 +1,17 @@
 
-
 import { type School, type StudentProfile, type GuardianProfile, type Canteen, type Product, type Transaction, type Order, type User, type Wallet } from '@/lib/data';
 import { apiGet, apiPost } from './api';
 import { PlaceHolderImages } from './placeholder-images';
 
-// #region Helper Mappers
-// These functions convert backend snake_case keys to frontend camelCase keys and add any derived data.
+// #region --- Mappers (From Backend Structure to Frontend Structure) ---
+
 const mapUser = (user: any): User => ({
     ...user,
-    id: user.id.toString(),
+    id: user.id, // ID is already a number
     name: user.nome,
-    schoolId: user.id_escola?.toString() || null,
-    // The main role is determined by the first role found. This is a simplification.
-    role: user.roles?.[0]?.nome_role.toLowerCase() || 'student', 
+    schoolId: user.id_escola,
+    role: user.roles?.[0]?.nome_role || 'Aluno', 
     balance: parseFloat(user.carteira?.saldo ?? 0),
-    // `dependentes` is the array of student objects for a guardian
     students: user.dependentes?.map(mapUser) || [],
 });
 
@@ -22,7 +19,6 @@ const mapSchool = (school: any): School => ({
     ...school,
     id: school.id_escola.toString(),
     name: school.nome,
-    address: school.endereco?.logradouro || 'Endereço não informado', // Assuming endereco relationship is loaded
 });
 
 const mapCanteen = (canteen: any): Canteen => ({
@@ -40,7 +36,7 @@ const mapProduct = (product: any): Product => ({
     price: parseFloat(product.preco),
     image: PlaceHolderImages.find(img => img.id.includes(product.nome.split(' ')[0].toLowerCase())) || PlaceHolderImages[0],
     category: 'Salgado', // Placeholder - backend needs to provide this
-    popular: [2,4].includes(product.id_produto), // Mock popular items
+    popular: [2, 4].includes(product.id_produto), // Mock popular items
 });
 
 const mapOrder = (order: any): Order => ({
@@ -48,11 +44,12 @@ const mapOrder = (order: any): Order => ({
     id: order.id_pedido.toString(),
     studentId: order.id_destinatario.toString(),
     userId: order.id_comprador.toString(),
+    canteenId: order.id_cantina.toString(),
     total: parseFloat(order.valor_total),
     date: order.created_at,
     items: order.item_pedidos?.map((p: any) => ({
         productId: p.id_produto.toString(),
-        productName: p.produto.nome, // nested product data
+        productName: p.produto.nome,
         quantity: p.quantidade,
         unitPrice: parseFloat(p.preco_unitario),
         image: PlaceHolderImages.find(img => img.id.includes(p.produto.nome.split(' ')[0].toLowerCase())) || PlaceHolderImages[0],
@@ -65,7 +62,7 @@ const mapTransaction = (transaction: any): Transaction => ({
     id: transaction.id_transacao.toString(),
     walletId: transaction.id_carteira.toString(),
     date: transaction.created_at,
-    description: transaction.descricao,
+    description: transaction.descricao || 'Transação sem descrição',
     amount: parseFloat(transaction.valor),
     type: ['PIX', 'Recarregar', 'Estorno'].includes(transaction.tipo) ? 'credit' : 'debit',
     origin: transaction.tipo,
@@ -78,10 +75,13 @@ const mapWallet = (wallet: any): Wallet => ({
     userId: wallet.id_user.toString(),
     balance: parseFloat(wallet.saldo)
 });
+
 // #endregion
 
 
-// #region User, Profile, and Auth Services
+// #region --- API Service Functions ---
+
+// -- User and Profile Services --
 export const getUser = async (userId: string): Promise<User | null> => {
   try {
     const response = await apiGet<{ data: any }>(`users/${userId}`);
@@ -94,7 +94,7 @@ export const getUser = async (userId: string): Promise<User | null> => {
 
 export const getStudentProfile = async (userId: string): Promise<StudentProfile | null> => {
   const user = await getUser(userId);
-  if (user && user.role === 'student') {
+  if (user && user.role === 'Aluno') {
     return user as StudentProfile;
   }
   return null;
@@ -102,9 +102,10 @@ export const getStudentProfile = async (userId: string): Promise<StudentProfile 
 
 export const getGuardianProfile = async (userId: string): Promise<GuardianProfile | null> => {
     const user = await getUser(userId);
-    if (user && user.role === 'guardian') {
+    if (user && user.role === 'Responsavel') {
         const guardianProfile = user as GuardianProfile;
         
+        // The `dependentes` relation from the backend is mapped to `students`
         if (user.students && user.students.length > 0) {
             guardianProfile.students = user.students as StudentProfile[];
         }
@@ -113,10 +114,8 @@ export const getGuardianProfile = async (userId: string): Promise<GuardianProfil
     }
     return null;
 }
-// #endregion
 
-
-// #region School and Canteen Services
+// -- School and Canteen Services --
 export const getSchools = async (): Promise<School[]> => {
   try {
     const response = await apiGet<{ data: any[] }>('escolas');
@@ -130,6 +129,7 @@ export const getSchools = async (): Promise<School[]> => {
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
     if (!schoolId) return [];
     try {
+      // Uses the dedicated route from the final api.php
       const response = await apiGet<{ data: any[] }>(`cantinas/escola/${schoolId}`);
       return response.data.map(mapCanteen);
     } catch(e) {
@@ -137,13 +137,12 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
       return [];
     }
 }
-// #endregion
 
-
-// #region Product Services
+// -- Product Services --
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
     if (!canteenId) return [];
     try {
+      // Uses the dedicated route from the final api.php
       const response = await apiGet<{ data: any[] }>(`cantinas/${canteenId}/produtos`);
       return response.data.map(mapProduct);
     } catch(e) {
@@ -151,14 +150,13 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
       return [];
     }
 }
-// #endregion
 
-
-// #region Order Services
+// -- Order Services --
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     try {
       const response = await apiGet<{ data: any[] }>(`pedidos`);
       const allOrders = response.data.map(mapOrder);
+      // Filter orders where the user is either the buyer or the recipient
       return allOrders.filter(o => o.userId === userId || o.studentId === userId);
     } catch(e) {
       console.error(`Failed to fetch orders for user ${userId}:`, e);
@@ -171,7 +169,7 @@ export const getOrdersByGuardian = async (studentIds: string[]): Promise<Order[]
     try {
       const response = await apiGet<{ data: any[] }>('pedidos');
       const allOrders = response.data.map(mapOrder);
-      const studentIdSet = new Set(studentIds.map(String));
+      const studentIdSet = new Set(studentIds.map(id => id.toString()));
       return allOrders.filter(o => o.studentId && studentIdSet.has(o.studentId));
     } catch(e) {
       console.error(`Failed to fetch orders for students:`, e);
@@ -195,13 +193,11 @@ export const postOrder = async (orderData: any): Promise<Order> => {
     const response = await apiPost<{data: any}>('pedidos', payload);
     return mapOrder(response.data);
 }
-// #endregion
 
-
-// #region Wallet and Transaction Services
+// -- Wallet and Transaction Services --
 export const getWalletByUserId = async (userId: string): Promise<Wallet | null> => {
     try {
-        const response = await apiGet<{ data: any }>(`carteiras/${userId}`); // Assuming ID is user ID
+        const response = await apiGet<{ data: any }>(`carteiras/${userId}`);
         return mapWallet(response.data);
     } catch (e) {
         console.error(`Failed to fetch wallet for user ${userId}:`, e);
@@ -226,6 +222,7 @@ export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<T
         const response = await apiGet<{ data: any[] }>('transacoes');
         const allTransactions = response.data.map(mapTransaction);
         const userIdSet = new Set(allUserIds.map(String));
+        // A transaction belongs to a guardian view if the author is one of the users in the family
         return allTransactions.filter(t => t.userId && userIdSet.has(t.userId));
     } catch (e) {
         console.error(`Failed to fetch transactions for users:`, e);
@@ -239,8 +236,8 @@ export const postTransaction = async (transactionData: any) : Promise<Transactio
         id_user_autor: transactionData.userId,
         descricao: transactionData.description,
         valor: transactionData.amount,
-        tipo: transactionData.origin,
-        status: 'confirmada',
+        tipo: transactionData.origin, // 'PIX', 'Debito', etc.
+        status: 'confirmada', // Assuming direct confirmation for now
     };
     const response = await apiPost<{data: any}>('transacoes', payload);
     return mapTransaction(response.data);
@@ -258,16 +255,18 @@ export const rechargeBalance = async (walletId: string, userId: string, amount: 
 }
 
 export const internalTransfer = async (fromWalletId: string, fromUserId: string, toWalletId: string, toUserId: string, amount: number): Promise<{success: boolean}> => {
+    // Debit from guardian's wallet
     await postTransaction({
         walletId: fromWalletId,
         userId: fromUserId,
         description: `Transferência enviada para usuário ${toUserId}`,
-        amount: -amount,
+        amount: -amount, // Negative amount for debit
         origin: 'Debito',
     });
+    // Credit to student's wallet
     await postTransaction({
         walletId: toWalletId,
-        userId: fromUserId, 
+        userId: fromUserId, // The author is still the guardian
         description: `Transferência recebida de usuário ${fromUserId}`,
         amount: amount,
         origin: 'Recarregar',

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -17,6 +17,9 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/shared/logo';
 import { useAuth } from '@/lib/auth-provider';
+import { getSchools } from '@/lib/services';
+import { School } from '@/lib/data';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -28,6 +31,7 @@ const signupSchema = z.object({
   data_nascimento: z.string().min(1, 'A data de nascimento é obrigatória.'),
   email: z.string().email('E-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
+  id_escola: z.string().min(1, 'A escola é obrigatória.'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -38,6 +42,24 @@ export default function StudentAuthPage() {
   const { login, register } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [schools, setSchools] = useState<School[]>([]);
+
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const schoolList = await getSchools();
+        setSchools(schoolList);
+      } catch (error) {
+        console.error("Failed to fetch schools", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao buscar escolas",
+          description: "Não foi possível carregar a lista de escolas. Tente novamente.",
+        });
+      }
+    };
+    fetchSchools();
+  }, [toast]);
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -46,7 +68,7 @@ export default function StudentAuthPage() {
   
   const signupForm = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { nome: '', data_nascimento: '', email: '', password: '' },
+    defaultValues: { nome: '', data_nascimento: '', email: '', password: '', id_escola: '' },
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
@@ -76,7 +98,7 @@ export default function StudentAuthPage() {
     try {
       await register({
         ...data,
-        role: 'student'
+        role: 'Aluno' // Deve corresponder à role no backend
       });
       
       toast({ 
@@ -199,6 +221,30 @@ export default function StudentAuthPage() {
                           <FormControl>
                             <Input placeholder="seu@email.com" {...field} />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={signupForm.control}
+                      name="id_escola"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Escola</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione sua escola" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {schools.map(school => (
+                                    <SelectItem key={school.id} value={school.id_escola.toString()}>
+                                        {school.nome}
+                                    </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           <FormMessage />
                         </FormItem>
                       )}

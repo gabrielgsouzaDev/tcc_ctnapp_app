@@ -2,17 +2,82 @@
 import type { ImagePlaceholder } from './placeholder-images';
 
 // This file contains TYPE DEFINITIONS for the entire application.
-// These types should reflect the Laravel Models based on the provided DUMP.
+// These types reflect the final Laravel database DUMP.
 
-// #region TYPE DEFINITIONS
+// #region --- ENTITY TYPE DEFINITIONS ---
+
+export type User = {
+    id: number;
+    nome: string;
+    email: string;
+    telefone: string | null;
+    data_nascimento: string | null;
+    id_escola: number | null;
+    id_cantina: number | null;
+    ativo: boolean;
+    created_at: string;
+    updated_at: string;
+    // --- Relationships & Frontend Derived Fields ---
+    roles: { nome_role: string }[];
+    carteira?: Wallet;
+    dependentes?: User[]; // For guardians
+    // --- Mapped Fields for convenience ---
+    name: string; // derived from nome
+    role: 'Aluno' | 'Responsavel' | 'Admin' | 'Cantina' | 'Escola';
+    balance: number;
+    schoolId: number | null; // derived from id_escola
+    students: User[]; // Mapped from 'dependentes'
+};
+
+export type StudentProfile = User & {
+  role: 'Aluno';
+};
+
+export type GuardianProfile = User & {
+  role: 'Responsavel';
+  students: StudentProfile[];
+};
+
+export type UserProfile = StudentProfile | GuardianProfile;
+
+export type School = {
+  id_escola: number; 
+  nome: string;
+  cnpj: string | null;
+  id_endereco: number | null;
+  id_plano: number | null;
+  status: 'ativa' | 'inativa' | 'pendente';
+  qtd_alunos: number;
+  created_at: string;
+  updated_at: string;
+  // --- Mapped Fields ---
+  id: string; // derived from id_escola
+  name: string; // derived from nome
+};
+
+export type Canteen = {
+  id_cantina: number;
+  nome: string;
+  id_escola: number;
+  hr_abertura: string | null;
+  hr_fechamento: string | null;
+  created_at: string;
+  updated_at: string;
+  // --- Mapped Fields ---
+  id: string; // derived from id_cantina
+  name: string; // derived from nome
+  schoolId: string; // derived from id_escola
+};
 
 export type Product = {
-  id_produto: string;
-  id_cantina: string; 
+  id_produto: number;
+  id_cantina: number; 
   nome: string;
   preco: number;
   ativo: boolean;
-  // --- Frontend derived/mapped fields ---
+  created_at: string;
+  updated_at: string;
+  // --- Mapped Fields ---
   id: string; // derived from id_produto
   canteenId: string; // derived from id_cantina
   name: string; // derived from nome
@@ -22,20 +87,33 @@ export type Product = {
   category: 'Salgado' | 'Doce' | 'Bebida' | 'Almoço'; // This needs to be present in the backend model or mapped
 };
 
-export type Canteen = {
-  id_cantina: string;
-  nome: string;
-  id_escola: string;
-  // --- Frontend derived/mapped fields ---
-  id: string; // derived from id_cantina
-  name: string; // derived from nome
-  schoolId: string; // derived from id_escola
+export type Order = {
+  id_pedido: number;
+  id_cantina: number;
+  id_comprador: number;
+  id_destinatario: number;
+  valor_total: number;
+  status: 'pendente' | 'confirmado' | 'cancelado' | 'entregue';
+  created_at: string;
+  updated_at: string;
+  // --- Relationships & Mapped Fields ---
+  items: OrderItem[]; 
+  id: string; // from id_pedido
+  date: string; // from created_at
+  total: number; // from valor_total
+  studentId: string; // from id_destinatario
+  userId: string; // from id_comprador
+  canteenId: string; // from id_cantina
 };
 
 export type OrderItem = {
-  id_produto: string;
+  id_item: number;
+  id_pedido: number;
+  id_produto: number;
   quantidade: number;
   preco_unitario: number;
+  created_at: string;
+  updated_at: string;
   // --- Frontend derived/mapped fields ---
   productId: string;
   productName: string;
@@ -44,31 +122,20 @@ export type OrderItem = {
   image: ImagePlaceholder;
 };
 
-export type Order = {
-  id_pedido: string;
-  id_comprador: string; // user who placed the order
-  id_destinatario: string; // user who receives the items
-  valor_total: number;
-  status: 'pendente' | 'confirmado' | 'cancelado' | 'entregue';
-  created_at: string;
-  // --- Frontend derived/mapped fields ---
-  id: string; // from id_pedido
-  date: string; // from created_at
-  items: OrderItem[]; 
-  total: number; // from valor_total
-  studentId: string; // from id_destinatario
-  userId: string; // from id_comprador
-};
-
 export type Transaction = {
-  id_transacao: string;
-  id_carteira: string;
+  id_transacao: number;
+  id_carteira: number;
+  id_user_autor: number | null;
+  id_aprovador: number | null;
+  uuid: string;
   tipo: 'PIX' | 'Recarregar' | 'PagamentoEscola' | 'Debito' | 'Repasse' | 'Estorno';
   valor: number;
-  descricao: string;
+  descricao: string | null;
+  referencia: string | null;
   status: 'pendente' | 'confirmada' | 'rejeitada';
   created_at: string;
-  // --- Frontend derived/mapped fields ---
+  updated_at: string;
+  // --- Mapped Fields ---
   id: string; // from id_transacao
   walletId: string; // from id_carteira
   date: string; // from created_at
@@ -76,56 +143,19 @@ export type Transaction = {
   amount: number; // from valor
   type: 'credit' | 'debit'; // derived from tipo
   origin: string; // derived from tipo
-  userId: string; // needs to be mapped from user relationship
-  studentId?: string; // needs to be mapped from user relationship
-};
-
-export type User = {
-    id: string;
-    nome: string;
-    email: string;
-    telefone: string | null;
-    data_nascimento: string | null;
-    id_escola: string | null;
-    roles: { nome_role: string }[]; // from user->roles relationship
-    carteira?: Wallet; // from user->carteira relationship
-    dependentes?: User[]; // For guardians, from user->dependentes
-    // --- Frontend derived/mapped fields ---
-    name: string; // derived from nome
-    role: 'student' | 'guardian' | 'admin';
-    balance: number;
-    schoolId: string | null;
-    students: User[]; // Mapped from 'dependentes'
-};
-
-
-export type StudentProfile = User & {
-  role: 'student';
-};
-
-export type GuardianProfile = User & {
-  role: 'guardian';
-};
-
-export type UserProfile = StudentProfile | GuardianProfile;
-
-
-export type School = {
-  id_escola: string; 
-  nome: string;
-  // --- Frontend derived/mapped fields ---
-  id: string; // derived from id_escola
-  name: string; // derived from nome
-  address?: string; // from endereco relationship
+  userId: string; // derived from id_user_autor
+  studentId?: string; // needs to be mapped based on context
 };
 
 export type Wallet = {
-    id_carteira: string;
-    id_user: string;
+    id_carteira: number;
+    id_user: number;
     saldo: number;
-    // --- Frontend derived/mapped fields ---
+    saldo_bloqueado: number;
+    // --- Mapped Fields ---
     id: string; // from id_carteira
     userId: string; // from id_user
     balance: number; // from saldo
 }
+
 // #endregion

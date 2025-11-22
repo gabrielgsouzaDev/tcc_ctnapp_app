@@ -75,9 +75,11 @@ export default function GuardianAuthPage() {
     setIsSubmitting(true);
 
     try {
+      // Passa o 'role' junto com os dados do formulário.
+      // O backend deve usar isso para criar o tipo de usuário correto.
       await register({
         ...data,
-        role: 'guardian'
+        role: 'Responsavel' // Deve corresponder ao nome da role no backend
       });
 
       toast({ 
