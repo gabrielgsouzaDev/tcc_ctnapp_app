@@ -10,6 +10,8 @@ const mapUser = (user: any): User => ({
     id: user.id.toString(),
     name: user.nome,
     balance: user.carteira?.saldo ?? 0,
+    schoolId: user.id_escola?.toString(),
+    // The backend now sends 'dependentes' for a guardian
     students: user.dependentes?.map(mapUser) || [],
 });
 
@@ -34,7 +36,6 @@ const mapProduct = (product: any): Product => ({
     name: product.nome,
     price: parseFloat(product.preco),
     image: PlaceHolderImages.find(img => img.id.includes(product.nome.split(' ')[0].toLowerCase())) || PlaceHolderImages[0],
-    // 'category' must be present in the backend model for this to work reliably
     category: product.categoria || 'Salgado', 
 });
 
@@ -64,10 +65,15 @@ const mapTransaction = (transaction: any): Transaction => ({
     amount: parseFloat(transaction.valor),
     type: transaction.tipo,
     origin: transaction.origem,
-    // userId needs to be derived based on wallet owner, which requires more info
-    userId: '', 
+    userId: transaction.user_id, // Assuming backend provides this
 });
 
+const mapWallet = (wallet: any): Wallet => ({
+    ...wallet,
+    id: wallet.id_carteira.toString(),
+    user_id: wallet.id_user.toString(),
+    balance: parseFloat(wallet.saldo)
+});
 // #endregion
 
 
@@ -95,7 +101,9 @@ export const getGuardianProfile = async (userId: string): Promise<GuardianProfil
     if (user && user.role === 'guardian') {
         const guardianProfile = user as GuardianProfile;
         
-        // Fetch full profiles for each student if 'dependentes' only contains IDs
+        // With the new 'dependentes' structure, this mapping should be sufficient.
+        // If 'dependentes' only contains IDs, a further fetch would be needed.
+        // Assuming full dependent user objects are returned.
         if (user.students && user.students.length > 0) {
             const studentProfiles = await Promise.all(
                 user.students.map(studentStub => getUser(studentStub.id))
@@ -123,6 +131,7 @@ export const getSchools = async (): Promise<School[]> => {
 };
 
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
+    if (!schoolId) return [];
     console.log(`Fetching canteens for school: ${schoolId}`);
     try {
       const response = await apiGet<{ data: any[] }>(`cantinas/escola/${schoolId}`);
@@ -137,9 +146,9 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
 
 // #region Product Services
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
+    if (!canteenId) return [];
     console.log(`Fetching products for canteen: ${canteenId}`);
     try {
-      // Use the new dedicated endpoint
       const response = await apiGet<{ data: any[] }>(`cantinas/${canteenId}/produtos`);
       return response.data.map(mapProduct);
     } catch(e) {
@@ -150,13 +159,12 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
 // #endregion
 
 
-// #region Order and Transaction Services
+// #region Order Services
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     console.log(`Fetching orders for user: ${userId}`);
     try {
       const response = await apiGet<{ data: any[] }>(`pedidos`);
       const allOrders = response.data.map(mapOrder);
-      // Filter client-side
       return allOrders.filter(o => o.studentId === userId || o.userId === userId);
     } catch(e) {
       console.error(`Failed to fetch orders for user ${userId}:`, e);
@@ -180,10 +188,9 @@ export const getOrdersByGuardian = async (studentIds: string[]): Promise<Order[]
 
 export const postOrder = async (orderData: any): Promise<Order> => {
     console.log('Posting new order', orderData);
-    // Payload should match the validation in PedidoController
     const payload = {
         aluno_id: orderData.studentId,
-        responsavel_id: orderData.userId, // User who is placing the order
+        responsavel_id: orderData.userId, 
         produtos: orderData.items.map((item: any) => ({ id: item.productId, quantidade: item.quantity })),
         valor_total: orderData.total,
         status: 'Pendente',
@@ -193,12 +200,14 @@ export const postOrder = async (orderData: any): Promise<Order> => {
 }
 // #endregion
 
-// #region Wallet and Transaction Services
 
+// #region Wallet and Transaction Services
 export const getWalletByUserId = async (userId: string): Promise<Wallet | null> => {
     try {
-        const response = await apiGet<{ data: any }>(`carteiras/${userId}`);
-        return response.data as Wallet;
+        // Assuming API provides a way to get wallet by user ID
+        // If the endpoint is /carteiras/{carteira_id}, this needs adjustment
+        const response = await apiGet<{ data: any }>(`carteiras/user/${userId}`); // This route may need to be created
+        return mapWallet(response.data);
     } catch (e) {
         console.error(`Failed to fetch wallet for user ${userId}:`, e);
         return null;
@@ -206,14 +215,11 @@ export const getWalletByUserId = async (userId: string): Promise<Wallet | null> 
 }
 
 export const getTransactionsByUser = async (userId: string): Promise<Transaction[]> => {
-     console.log(`Fetching transactions for user: ${userId}`);
+    console.log(`Fetching transactions for user: ${userId}`);
     try {
-        // Assuming the API filters transactions by the authenticated user's wallet
-        // Or if it returns all, we need a way to link transaction to user
         const response = await apiGet<{ data: any[] }>('transacoes');
-        // This requires a way to link transaction to a user. Placeholder logic.
-        const allTransactions = response.data.map(mapTransaction);
-        return allTransactions; // Needs backend filtering or more info in payload
+        // This will require the backend to filter by user or return user_id in payload
+        return response.data.map(mapTransaction).filter(t => t.userId === userId);
     } catch (e) {
         console.error(`Failed to fetch transactions for user ${userId}:`, e);
         return [];
@@ -227,8 +233,6 @@ export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<T
         const response = await apiGet<{ data: any[] }>('transacoes');
         const allTransactions = response.data.map(mapTransaction);
         const userIdSet = new Set(allUserIds.map(String));
-        // This logic is likely incorrect without knowing how transactions are linked to users.
-        // Needs review once backend structure is confirmed.
         return allTransactions.filter(t => t.userId && userIdSet.has(t.userId));
     } catch (e) {
         console.error(`Failed to fetch transactions for users:`, e);
@@ -238,42 +242,50 @@ export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<T
 
 export const postTransaction = async (transactionData: any) : Promise<Transaction> => {
     console.log('Posting new transaction', transactionData);
-    const response = await apiPost<{data: any}>('transacoes', transactionData);
+    const payload = {
+        id_carteira: transactionData.walletId,
+        descricao: transactionData.description,
+        valor: transactionData.amount,
+        tipo: transactionData.type,
+        origem: transactionData.origin,
+    };
+    const response = await apiPost<{data: any}>('transacoes', payload);
     return mapTransaction(response.data);
 }
 
-export const rechargeBalance = async (walletId: string, amount: number): Promise<{success: boolean}> => {
-    console.log(`Recharging balance for wallet ${walletId} with amount ${amount}`);
+export const rechargeBalance = async (targetId: string, amount: number): Promise<{success: boolean}> => {
+    console.log(`Recharging balance for user ${targetId} with amount ${amount}`);
+    // This assumes targetId is the user ID, and the backend can find the wallet.
+    // If id_carteira is needed, we must fetch it first.
     await postTransaction({
-        id_carteira: walletId,
-        descricao: `Recarga PIX no valor de R$ ${amount.toFixed(2)}`,
-        valor: amount,
-        tipo: 'credito',
-        origem: 'PIX',
+        userId: targetId, // This might need to be translated to walletId by the backend
+        description: `Recarga PIX no valor de R$ ${amount.toFixed(2)}`,
+        amount: amount,
+        type: 'credito',
+        origin: 'PIX',
     });
     return { success: true };
 }
 
 export const internalTransfer = async (fromUserId: string, toUserId:string, amount: number): Promise<{success: boolean}> => {
-    // This flow needs a dedicated backend endpoint for atomicity.
-    // Simulating with two transactions is risky.
+    // This flow should ideally be a single, atomic endpoint in the backend.
     console.log(`Transferring ${amount} from ${fromUserId} to ${toUserId}`);
     
     // Debit from source
      await postTransaction({
-        // needs wallet id
-        descricao: `Transferência enviada para usuário ${toUserId}`,
-        valor: amount,
-        tipo: 'debito',
-        origem: 'Transferência',
+        userId: fromUserId,
+        description: `Transferência enviada para usuário ${toUserId}`,
+        amount: amount,
+        type: 'debito',
+        origin: 'Transferência',
     });
     // Credit to destination
      await postTransaction({
-        // needs wallet id
-        descricao: `Transferência recebida de usuário ${fromUserId}`,
-        valor: amount,
-        tipo: 'credito',
-        origem: 'Transferência',
+        userId: toUserId,
+        description: `Transferência recebida de usuário ${fromUserId}`,
+        amount: amount,
+        type: 'credito',
+        origin: 'Transferência',
     });
     return { success: true };
 }

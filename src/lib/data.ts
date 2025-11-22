@@ -18,7 +18,7 @@ export type Product = {
   ativo: boolean;
   image: ImagePlaceholder; // Mapped client-side
   popular?: boolean; // Mapped client-side
-  category: 'Salgado' | 'Doce' | 'Bebida' | 'Almoço'; // This needs to be present in the backend model or mapped
+  categoria: 'Salgado' | 'Doce' | 'Bebida' | 'Almoço'; // This needs to be present in the backend model or mapped
 };
 
 export type Canteen = {
@@ -108,8 +108,12 @@ export type School = {
 };
 
 export type Wallet = {
-    id: string; // id_carteira
+    id_carteira: string;
+    id: string; // derived
     id_user: string;
+    user_id: string; // derived
     saldo: number;
+    balance: number; // derived
 }
 // #endregion
+
