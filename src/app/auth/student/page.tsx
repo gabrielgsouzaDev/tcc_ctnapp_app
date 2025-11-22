@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,11 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-import { type School } from '@/lib/data';
 import { Logo } from '@/components/shared/logo';
-import { getSchools } from '@/lib/services';
 import { useAuth } from '@/lib/auth-provider';
 
 const loginSchema = z.object({
@@ -31,7 +28,6 @@ const signupSchema = z.object({
   data_nascimento: z.string().min(1, 'A data de nascimento é obrigatória.'),
   email: z.string().email('E-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
-  // schoolId: z.string({ required_error: 'Por favor, selecione uma escola.' }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -42,25 +38,6 @@ export default function StudentAuthPage() {
   const { login, register } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [schools, setSchools] = useState<School[]>([]);
-
-  useEffect(() => {
-    const fetchSchools = async () => {
-      try {
-        const schoolList = await getSchools();
-        if (schoolList.length === 0) {
-          toast({ variant: 'default', title: 'Nenhuma escola encontrada para seleção.' });
-        } else {
-          setSchools(schoolList);
-        }
-      } catch (error) {
-        console.error("Failed to fetch schools:", error);
-        toast({ variant: 'destructive', title: 'Erro ao buscar escolas', description: 'Não foi possível carregar a lista de escolas do servidor.' });
-      }
-    };
-    fetchSchools();
-  }, [toast]);
-
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -213,33 +190,6 @@ export default function StudentAuthPage() {
                         </FormItem>
                       )}
                     />
-                    {/* A escola será associada pelo admin/responsável posteriormente */}
-                    {/* <FormField
-                      control={signupForm.control}
-                      name="schoolId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Escola</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione sua escola" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {schools.length === 0 ? (
-                                <SelectItem value="loading" disabled>Carregando escolas...</SelectItem>
-                              ) : (
-                                schools.map(school => (
-                                  <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    /> */}
                     <FormField
                       control={signupForm.control}
                       name="email"
