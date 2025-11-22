@@ -49,7 +49,7 @@ import { type Product, type Canteen, type OrderItem, type StudentProfile } from 
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { getStudentProfile, getCanteensBySchool, getProductsByCanteen, postOrder, postTransaction } from '@/lib/services';
+import { getStudentProfile, getCanteensBySchool, getProductsByCanteen, postOrder } from '@/lib/services';
 import { useAuth } from '@/lib/auth-provider';
 
 type CartItem = {
@@ -86,15 +86,17 @@ export default function StudentDashboard() {
 
    useEffect(() => {
     const fetchProfileAndCanteens = async () => {
-      if (user) {
+      if (user?.id) {
         setIsLoading(true);
         const profile = await getStudentProfile(user.id);
         if (profile) {
           setStudentProfile(profile);
-          const canteenList = await getCanteensBySchool(profile.schoolId);
-          setCanteens(canteenList);
-          if (canteenList.length > 0) {
-            setSelectedCanteen(canteenList[0].id);
+          if (profile.schoolId) {
+            const canteenList = await getCanteensBySchool(profile.schoolId);
+            setCanteens(canteenList);
+            if (canteenList.length > 0) {
+              setSelectedCanteen(canteenList[0].id);
+            }
           }
         } else {
             toast({ variant: 'destructive', title: 'Perfil não encontrado.' });
@@ -104,7 +106,7 @@ export default function StudentDashboard() {
         setIsLoading(false);
       }
     };
-    if (!isUserLoading) {
+    if (!isUserLoading && user) {
         fetchProfileAndCanteens();
     }
   }, [user, isUserLoading, router, logout, toast]);
@@ -200,6 +202,7 @@ export default function StudentDashboard() {
       });
     } else {
       toast({
+        variant: 'success',
         title: `${product.name} adicionado aos favoritos!`,
       });
     }
@@ -223,8 +226,8 @@ export default function StudentDashboard() {
         toast({ variant: "destructive", title: "Carrinho vazio!" });
         return;
     }
-    if (!studentProfile || !user) {
-        toast({ variant: "destructive", title: "Perfil não encontrado!" });
+    if (!studentProfile || !user?.id || !selectedCanteen) {
+        toast({ variant: "destructive", title: "Perfil ou cantina não selecionado!" });
         return;
     }
     if (studentProfile.balance < cartTotal) {
@@ -236,31 +239,21 @@ export default function StudentDashboard() {
         const orderPayload = {
             studentId: studentProfile.id,
             userId: user.id,
+            canteenId: selectedCanteen,
             total: cartTotal,
             items: cart.map(item => ({
               productId: item.product.id,
-              productName: item.product.name,
               quantity: item.quantity,
-              unitPrice: item.product.price,
-              image: item.product.image
+              unitPrice: item.product.price
             })),
         };
-        const newOrder = await postOrder(orderPayload);
-
-        const transactionPayload = {
-            description: `Compra de Pedido #${newOrder.id.substring(0, 6).toUpperCase()}`,
-            amount: cartTotal,
-            type: 'debit' as const,
-            origin: 'Cantina' as const,
-            userId: user.id,
-            studentId: studentProfile.id,
-        };
-        await postTransaction(transactionPayload);
+        await postOrder(orderPayload);
 
         // Update balance locally for immediate feedback
         setStudentProfile(prev => prev ? ({ ...prev, balance: prev.balance - cartTotal }) : null);
 
         toast({
+            variant: 'success',
             title: "Pedido realizado com sucesso!",
             description: "Você pode acompanhar o status em 'Pedidos'.",
         });

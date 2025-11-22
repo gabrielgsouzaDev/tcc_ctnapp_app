@@ -26,8 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedToken = localStorage.getItem('authToken');
-      const storedUserId = localStorage.getItem('userId');
+      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      const storedUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
 
       if (storedToken && storedUserId) {
         setToken(storedToken);
@@ -35,14 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
            const userData = await getUser(storedUserId);
            if (userData) {
              setUser(userData);
-             localStorage.setItem('user', JSON.stringify(userData));
            } else {
              throw new Error('User not found with stored ID');
            }
         } catch (error) {
-          console.error("Failed to fetch user with stored token/ID", error);
+          console.error("Failed to fetch user with stored token/ID, logging out.", error);
           localStorage.removeItem('authToken');
-          localStorage.removeItem('user');
           localStorage.removeItem('userId');
           setToken(null);
           setUser(null);
@@ -55,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleAuthSuccess = (response: { user: User; token: string }) => {
     localStorage.setItem('authToken', response.token);
-    localStorage.setItem('user', JSON.stringify(response.user));
     localStorage.setItem('userId', response.user.id);
     setToken(response.token);
     setUser(response.user);
@@ -69,10 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (data: Record<string, any>) => {
     // Backend expects 'senha', not 'password'
-    const payload = { ...data, senha: data.password };
-    delete payload.password; // remove original password field
+    const payload = { ...data, senha: data.password, role: data.role }; // Pass role
+    delete payload.password;
 
-    // The endpoint is now a unified /users for both roles
+    // The endpoint is now the apiResource route POST /users
     const response = await apiPost<{ user: User; token: string }>('users', payload);
     handleAuthSuccess(response);
   };
@@ -84,7 +81,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Logout failed on API, logging out client-side anyway.", error);
     } finally {
         localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
         localStorage.removeItem('userId');
         setToken(null);
         setUser(null);

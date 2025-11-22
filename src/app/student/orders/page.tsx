@@ -50,25 +50,27 @@ type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   const variant = {
-    'Entregue': 'default',
-    'Pendente': 'secondary',
-    'Cancelado': 'destructive',
+    'entregue': 'default',
+    'pendente': 'secondary',
+    'cancelado': 'destructive',
+    'confirmado': 'secondary',
   }[status] || 'default';
   
   const className = {
-    'Entregue': 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200',
-    'Pendente': 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 animate-pulse',
-    'Cancelado': 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200',
+    'entregue': 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200',
+    'pendente': 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 animate-pulse',
+    'confirmado': 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200',
+    'cancelado': 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200',
   }[status]
 
-  return <Badge variant={variant} className={cn('capitalize', className)}>{status.toLowerCase()}</Badge>;
+  return <Badge variant={variant} className={cn('capitalize', className)}>{status}</Badge>;
 };
 
 const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOrder: (items: OrderItem[]) => void; }) => {
     const [progress, setProgress] = useState(10)
  
     useEffect(() => {
-        if (order.status === 'Pendente') {
+        if (order.status === 'pendente' || order.status === 'confirmado') {
             const timer = setTimeout(() => setProgress(33), 800)
             return () => clearTimeout(timer)
         }
@@ -83,7 +85,7 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
       </DialogDescription>
     </DialogHeader>
     <div className="space-y-4 py-4">
-      {order.status === 'Pendente' && (
+      {(order.status === 'pendente' || order.status === 'confirmado') && (
         <div className="space-y-2">
             <h4 className="text-sm font-medium">Acompanhamento</h4>
             <Progress value={progress} className="w-full" />
@@ -155,7 +157,7 @@ export default function StudentOrdersPage() {
 
     useEffect(() => {
         const fetchOrders = async () => {
-            if (user) {
+            if (user?.id) {
                 setIsLoading(true);
                 const orders = await getOrdersByUser(user.id);
                 setOrderHistory(orders);
@@ -163,7 +165,7 @@ export default function StudentOrdersPage() {
             }
         };
 
-        if (!isUserLoading) {
+        if (!isUserLoading && user) {
             fetchOrders();
         }
     }, [user, isUserLoading]);
@@ -288,7 +290,7 @@ export default function StudentOrdersPage() {
               {filteredHistory.map((order) => (
                   <Dialog key={`mobile-${order.id}`}>
                       <DialogTrigger asChild>
-                          <Card className={cn("p-4", order.status === 'Pendente' && 'bg-yellow-50/50 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-600')}>
+                          <Card className={cn("p-4", order.status === 'pendente' && 'bg-yellow-50/50 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-600')}>
                               <div className="flex justify-between items-start">
                                   <div>
                                       <p className="font-bold">#{order.id.substring(0, 6).toUpperCase()}</p>
@@ -342,7 +344,7 @@ export default function StudentOrdersPage() {
                     <DialogTrigger asChild>
                        <TableRow className={cn(
                            "cursor-pointer",
-                            order.status === 'Pendente' && 'bg-yellow-50/50 border-l-4 border-yellow-400 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-600 dark:hover:bg-yellow-900/30'
+                            order.status === 'pendente' && 'bg-yellow-50/50 border-l-4 border-yellow-400 hover:bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-600 dark:hover:bg-yellow-900/30'
                         )}>
                         <TableCell className="font-medium">#{order.id.substring(0, 6).toUpperCase()}</TableCell>
                         <TableCell>{new Date(order.date).toLocaleDateString('pt-BR')}</TableCell>

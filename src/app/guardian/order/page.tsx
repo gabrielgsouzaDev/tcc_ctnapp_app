@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 
 import { type Product, type Canteen, type UserProfile, type Order, type OrderItem } from '@/lib/data';
 import { cn } from '@/lib/utils';
-import { getGuardianProfile, getCanteensBySchool, getProductsByCanteen, postOrder, postTransaction, internalTransfer } from '@/lib/services';
+import { getGuardianProfile, getCanteensBySchool, getProductsByCanteen, postOrder } from '@/lib/services';
 import { useAuth } from '@/lib/auth-provider';
 
 type Category = 'Todos' | 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
@@ -50,17 +50,20 @@ export default function GuardianOrderPage() {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-        if (user) {
+        if (user?.id) {
             setIsLoading(true);
             const profile = await getGuardianProfile(user.id);
             if (profile) {
                 setStudents(profile.students);
                 if (profile.students.length > 0) {
                     setStudentForOrder(profile.students[0].id);
-                    const canteenList = await getCanteensBySchool(profile.students[0].schoolId);
-                    setCanteens(canteenList);
-                    if (canteenList.length > 0) {
-                        setSelectedCanteen(canteenList[0].id);
+                    // A guardian's students can be in different schools. We use the first student's school.
+                    if (profile.students[0].schoolId) {
+                      const canteenList = await getCanteensBySchool(profile.students[0].schoolId);
+                      setCanteens(canteenList);
+                      if (canteenList.length > 0) {
+                          setSelectedCanteen(canteenList[0].id);
+                      }
                     }
                 }
             }
@@ -92,12 +95,18 @@ export default function GuardianOrderPage() {
         const parsedItems: OrderItem[] = JSON.parse(itemsToRepeat);
         const newCartItems: CartItem[] = parsedItems.map(item => ({
             product: { 
-                id: item.productId, 
-                name: item.productName, 
-                price: item.unitPrice, 
+                // This is a mock product structure for repeating an order.
+                // It's sufficient for adding to cart but won't have full product details.
+                id_produto: item.productId,
+                nome: item.productName,
+                preco: item.unitPrice,
                 image: item.image,
-                canteenId: '', 
-                schoolId: '',
+                id_cantina: '',
+                ativo: true,
+                id: item.productId,
+                canteenId: '',
+                name: item.productName,
+                price: item.unitPrice,
                 category: 'Salgado'
             },
             quantity: item.quantity,
@@ -201,11 +210,11 @@ export default function GuardianOrderPage() {
         toast({ variant: "destructive", title: "Carrinho vazio!" });
         return;
     }
-    if (!studentForOrder || !user) {
+    if (!studentForOrder || !user?.id || !selectedCanteen) {
        toast({
           variant: "destructive",
-          title: "Selecione um aluno",
-          description: "Você precisa escolher para qual aluno o pedido será feito.",
+          title: "Dados incompletos",
+          description: "Você precisa escolher um aluno e uma cantina.",
       });
       return;
     }
@@ -225,22 +234,20 @@ export default function GuardianOrderPage() {
         const orderPayload = {
             studentId: studentForOrder,
             userId: user.id, // Guardian's ID
+            canteenId: selectedCanteen,
             total: cartTotal,
             items: cart.map(item => ({
               productId: item.product.id,
-              productName: item.product.name,
               quantity: item.quantity,
               unitPrice: item.product.price,
-              image: item.product.image
             })),
         };
-        const newOrder = await postOrder(orderPayload);
-        
-        await internalTransfer(user.id, studentForOrder, cartTotal);
+        await postOrder(orderPayload);
       
         setStudents(prevStudents => prevStudents.map(s => s.id === studentForOrder ? { ...s, balance: s.balance - cartTotal } : s));
 
         toast({
+            variant: 'success',
             title: "Pedido realizado com sucesso!",
             description: `O pedido para ${studentsMap.get(studentForOrder)} pode ser acompanhado no seu Dashboard.`,
         });

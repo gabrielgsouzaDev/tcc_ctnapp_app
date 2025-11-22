@@ -38,7 +38,7 @@ import { useAuth } from '@/lib/auth-provider';
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 type FilterTypeKey = 'all' | 'credit' | 'debit';
-type FilterOriginKey = 'all' | 'Aluno' | 'Responsável' | 'Cantina' | 'PIX' | 'Transferência';
+type FilterOriginKey = 'all' | 'PIX' | 'Recarregar' | 'PagamentoEscola' | 'Debito' | 'Repasse' | 'Estorno';
 
 const quickAmounts = [20, 50, 100];
 
@@ -104,7 +104,7 @@ export default function StudentBalancePage() {
     
     useEffect(() => {
         const loadData = async () => {
-            if (user) {
+            if (user?.id) {
                 setIsLoading(true);
                 const [profile, transactions] = await Promise.all([
                     getStudentProfile(user.id),
@@ -116,7 +116,7 @@ export default function StudentBalancePage() {
             }
         };
 
-        if (!isUserLoading) {
+        if (!isUserLoading && user) {
             loadData();
         }
     }, [user, isUserLoading]);
@@ -163,7 +163,7 @@ export default function StudentBalancePage() {
     };
     
     const amountValue = Number(rechargeAmount);
-    const isButtonDisabled = !amountValue || amountValue <= 0;
+    const isButtonDisabled = !amountValue || amountValue <= 0 || !studentProfile?.carteira?.id;
 
     if (isLoading || isUserLoading) {
         return (
@@ -255,7 +255,7 @@ export default function StudentBalancePage() {
                             </Button>
                             ))}
                         </div>
-                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&userId=${user?.id}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
+                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&walletId=${studentProfile.carteira?.id}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
                             <Button 
                                 className="w-full"
                                 disabled={isButtonDisabled}
@@ -293,11 +293,11 @@ export default function StudentBalancePage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">Toda Origem</SelectItem>
-                                <SelectItem value="Aluno">Aluno</SelectItem>
-                                <SelectItem value="Responsável">Responsável</SelectItem>
-                                <SelectItem value="Cantina">Cantina</SelectItem>
                                 <SelectItem value="PIX">PIX</SelectItem>
-                                <SelectItem value="Transferência">Transferência</SelectItem>
+                                <SelectItem value="Recarregar">Recarga</SelectItem>
+                                <SelectItem value="Debito">Débito</SelectItem>
+                                <SelectItem value="Repasse">Repasse</SelectItem>
+                                <SelectItem value="Estorno">Estorno</SelectItem>
                             </SelectContent>
                         </Select>
                         <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterTypeKey)}>
@@ -311,7 +311,7 @@ export default function StudentBalancePage() {
                             </SelectContent>
                         </Select>
                         <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
-                            <SelectTrigger className="w-full min-w-[180px] bg-background sm:w-auto">
+                            <SelectTrigger className="w-full min-w-[180px] bg-background smw-auto">
                                 <SelectValue placeholder="Ordenar por" />
                             </SelectTrigger>
                             <SelectContent>

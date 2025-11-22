@@ -23,7 +23,7 @@ function PixPaymentContent() {
 
   const amount = searchParams.get('amount') || '0';
   const targetId = searchParams.get('targetId');
-  const userId = searchParams.get('userId');
+  const walletId = searchParams.get('walletId');
 
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'confirmed'>('pending');
   const [pixDetails, setPixDetails] = useState<{ qrCode: string; code: string } | null>(null);
@@ -31,7 +31,7 @@ function PixPaymentContent() {
 
   useEffect(() => {
     const generatePix = async () => {
-      if (!amount || Number(amount) <= 0 || !targetId || !userId) {
+      if (!amount || Number(amount) <= 0 || !targetId || !walletId) {
         toast({ variant: 'destructive', title: 'Dados inválidos para gerar PIX.' });
         router.back();
         return;
@@ -54,10 +54,10 @@ function PixPaymentContent() {
       }
     };
     generatePix();
-  }, [amount, targetId, userId, router, toast]);
+  }, [amount, targetId, walletId, router, toast]);
 
   const handleConfirmPayment = async () => {
-    if (!amount || Number(amount) <= 0 || !targetId) return;
+    if (!amount || Number(amount) <= 0 || !targetId || !walletId || !user?.id) return;
 
     setPaymentStatus('processing');
     toast({
@@ -66,10 +66,12 @@ function PixPaymentContent() {
     });
 
     try {
-        await rechargeBalance(targetId, Number(amount));
+        // Use the real service function to post the transaction
+        await rechargeBalance(walletId, user.id, Number(amount));
 
         setPaymentStatus('confirmed');
         toast({
+            variant: 'success',
             title: 'Pagamento Confirmado!',
             description: 'O saldo foi atualizado com sucesso.',
         });

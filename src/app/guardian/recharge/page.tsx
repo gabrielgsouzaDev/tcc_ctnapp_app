@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { type UserProfile, type GuardianProfile, StudentProfile } from '@/lib/data';
+import { type UserProfile, type GuardianProfile, type StudentProfile } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -24,6 +24,7 @@ type RechargeTarget = {
   id: string; 
   name: string;
   balance: number;
+  walletId: string | undefined;
   isGuardian?: boolean;
 };
 
@@ -42,7 +43,7 @@ export default function GuardianRechargePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-        if (user) {
+        if (user?.id) {
             setIsLoading(true);
             const profile = await getGuardianProfile(user.id);
             setGuardianProfile(profile);
@@ -52,6 +53,7 @@ export default function GuardianRechargePage() {
                     id: profile.id,
                     name: profile.name,
                     balance: profile.balance,
+                    walletId: profile.carteira?.id,
                     isGuardian: true,
                 });
             }
@@ -67,13 +69,15 @@ export default function GuardianRechargePage() {
       { 
         id: guardianProfile.id, 
         name: guardianProfile.name, 
-        balance: guardianProfile.balance, 
+        balance: guardianProfile.balance,
+        walletId: guardianProfile.carteira?.id,
         isGuardian: true 
       },
-      ...guardianProfile.students.map((s: StudentProfile) => ({
+      ...guardianProfile.students.map((s: UserProfile) => ({
           id: s.id,
           name: s.name,
           balance: s.balance,
+          walletId: s.carteira?.id,
           isGuardian: false
       }))
   ] : [];
@@ -85,7 +89,7 @@ export default function GuardianRechargePage() {
   const handleInternalTransfer = async () => {
      const amountValue = Number(rechargeAmount);
 
-     if (!selectedTarget || selectedTarget.isGuardian || !rechargeAmount || amountValue <= 0) {
+     if (!selectedTarget || selectedTarget.isGuardian || !rechargeAmount || amountValue <= 0 || !selectedTarget.walletId) {
       toast({
         variant: 'destructive',
         title: 'Dados inválidos',
@@ -94,10 +98,10 @@ export default function GuardianRechargePage() {
       return;
     }
 
-    if (!guardianProfile || amountValue > guardianProfile.balance) {
+    if (!guardianProfile || amountValue > guardianProfile.balance || !guardianProfile.carteira?.id) {
       toast({
         variant: 'destructive',
-        title: 'Saldo insuficiente',
+        title: 'Saldo ou carteira insuficiente',
         description: 'Seu saldo é insuficiente para realizar esta transferência.',
       });
       return;
@@ -106,9 +110,10 @@ export default function GuardianRechargePage() {
     setIsProcessing(true);
     
     try {
-        await internalTransfer(guardianProfile.id, selectedTarget.id, amountValue);
+        await internalTransfer(guardianProfile.carteira.id, guardianProfile.id, selectedTarget.walletId, selectedTarget.id, amountValue);
 
         toast({
+          variant: 'success',
           title: 'Transferência Concluída!',
           description: `O saldo de ${selectedTarget.name} foi atualizado com sucesso.`,
         });
@@ -123,7 +128,7 @@ export default function GuardianRechargePage() {
   }
 
   const amountValue = Number(rechargeAmount);
-  const isPixButtonDisabled = !selectedTarget || !amountValue || amountValue <= 0 || isProcessing;
+  const isPixButtonDisabled = !selectedTarget || !amountValue || amountValue <= 0 || isProcessing || !selectedTarget.walletId;
   const isTransferDisabled = isPixButtonDisabled || (guardianProfile && amountValue > guardianProfile.balance) || selectedTarget?.isGuardian;
 
   if (isLoading || isUserLoading) {
@@ -275,7 +280,7 @@ export default function GuardianRechargePage() {
             </AlertDialog>
 
             <Link 
-                href={`/pix-payment?amount=${amountValue}&targetId=${selectedTarget?.id}&userId=${user?.id}`}
+                href={`/pix-payment?amount=${amountValue}&targetId=${selectedTarget?.id}&walletId=${selectedTarget?.walletId}`}
                 passHref
                 className={cn('w-full', isPixButtonDisabled && 'pointer-events-none opacity-50')}
             >

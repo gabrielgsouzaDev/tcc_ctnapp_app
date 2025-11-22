@@ -24,10 +24,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
     }
     
     // The API wraps responses in a "data" object, so we extract it.
-    if (data && 'data' in data) {
-        return data.data as T;
-    }
-    
+    // This is now the standard for all successful responses from the ResponseHelper.
     return data as T;
 }
 
