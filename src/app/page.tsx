@@ -1,6 +1,5 @@
 'use client';
 
-// Ícone adicionado: ConciergeBell para representar o serviço do funcionário
 import { User, Shield, ConciergeBell } from 'lucide-react';
 import Link from 'next/link';
 
@@ -10,14 +9,13 @@ import { Logo } from '@/components/shared/logo';
 export default function ProfileSelectionPage() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-lg text-center"> {/* Aumentado o max-width para acomodar 3 cards */}
+      <div className="w-full max-w-lg text-center"> 
         <Logo />
         <h2 className="mb-6 mt-12 text-2xl font-semibold">Quem está usando?</h2>
-        {/* CORRIGIDO: O grid agora suporta 3 colunas em telas médias e maiores */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           
-          {/* Card Aluno (Existente) */}
-          <Link href="/auth/student/login" className="flex">
+          {/* Card Aluno */}
+          <Link href="/auth/student" className="flex">
             <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
                 <CardTitle className="flex flex-col items-center gap-2">
@@ -33,8 +31,8 @@ export default function ProfileSelectionPage() {
             </Card>
           </Link>
 
-          {/* Card Responsável (Existente) */}
-          <Link href="/auth/guardian/login" className="flex">
+          {/* Card Responsável */}
+          <Link href="/auth/guardian" className="flex">
             <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
                 <CardTitle className="flex flex-col items-center gap-2">
@@ -50,7 +48,7 @@ export default function ProfileSelectionPage() {
             </Card>
           </Link>
 
-          {/* NOVO: Card Funcionário */}
+          {/* Card Funcionário (Texto CORRIGIDO) */}
           <Link href="/auth/employee/login" className="flex">
             <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
@@ -61,7 +59,7 @@ export default function ProfileSelectionPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Gerenciar pedidos, estoque e fluxo da cantina.
+                  Acesso à área administrativa interna da escola.
                 </p>
               </CardContent>
             </Card>
