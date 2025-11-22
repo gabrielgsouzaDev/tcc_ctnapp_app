@@ -62,22 +62,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const login = async (email: string, password: string) => {
-    // A rota de login do backend espera 'senha'
-    const response = await apiPost<{ user: User; token: string }>('login', { email, senha: password });
+    // A rota de login do backend espera 'senha' e 'device_name'
+    const response = await apiPost<{ user: User; token: string }>('login', { email, senha: password, device_name: 'browser' });
     handleAuthSuccess(response);
   };
 
   const register = async (data: Record<string, any>) => {
-    // Prepara o payload para a rota POST /users, que é um apiResource
-    // O backend espera 'senha', não 'password'
-    const payload = { ...data, senha: data.password };
-    delete payload.password; // Remove o campo 'password' que o frontend usa
+    // 1. Extrai a senha do resto dos dados do formulário
+    const { password, ...restOfData } = data;
 
-    // Chama a rota de criação de usuário. O backend se encarrega de associar a role.
-    const response = await apiPost<{ user: User; token: string }>('users', payload);
+    // 2. Cria o payload para o backend, trocando 'password' por 'senha'
+    const payload = { ...restOfData, senha: password };
+
+    // 3. Chama a API para criar o usuário com o payload correto
+    await apiPost('users', payload);
     
-    // Após o registro, o backend deve retornar o usuário e um token para login automático
-    handleAuthSuccess(response);
+    // 4. Após o sucesso, chama a função de login com os dados originais
+    await login(data.email, password);
   };
 
   const logout = async () => {
