@@ -118,8 +118,8 @@ export const getGuardianProfile = async (userId: string): Promise<GuardianProfil
 // -- School and Canteen Services --
 export const getSchools = async (): Promise<School[]> => {
   try {
-    const response = await apiGet<{ data: any[] }>('escolas');
-    return response.data.map(mapSchool);
+    const response = await apiGet<any[]>('escolas');
+    return response.map(mapSchool);
   } catch (e) {
     console.error("Failed to fetch schools:", e);
     return [];
