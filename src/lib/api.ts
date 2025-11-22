@@ -1,6 +1,6 @@
 
 // This would be in something like src/lib/config.ts
-export const API_BASE_URL = 'https://cantappbackendlaravel-production.up.railway.app/api/';
+export const API_BASE_URL = 'https://cantappbackendlaravel-production.up.railway.app';
 
 // This is a simplified error type, you might want to expand it
 type ApiError = {
@@ -10,28 +10,24 @@ type ApiError = {
 
 async function handleResponse<T>(response: Response): Promise<T> {
     if (response.status === 204) {
-        // No content to parse, return a success-like object
         return { success: true } as unknown as T;
     }
     
     const data = await response.json();
 
     if (!response.ok) {
-        // If response is not OK, create an error object and throw it
         const error: Error & { data?: any } = new Error(data.message || 'Ocorreu um erro na API.');
         error.data = data;
         throw error;
     }
     
-    // The API wraps responses in a "data" object, so we extract it.
-    // This is now the standard for all successful responses from the ResponseHelper.
     return data as T;
 }
 
 
 export async function apiGet<T>(path: string): Promise<T> {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${API_BASE_URL}/api/${path}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -44,7 +40,7 @@ export async function apiGet<T>(path: string): Promise<T> {
 
 export async function apiPost<T>(path: string, body: any): Promise<T> {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${API_BASE_URL}/api/${path}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -58,7 +54,7 @@ export async function apiPost<T>(path: string, body: any): Promise<T> {
 
 export async function apiPut<T>(path: string, body: any): Promise<T> {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${API_BASE_URL}/api/${path}`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -72,7 +68,7 @@ export async function apiPut<T>(path: string, body: any): Promise<T> {
 
 export async function apiPatch<T>(path: string, body: any): Promise<T> {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${API_BASE_URL}/api/${path}`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',

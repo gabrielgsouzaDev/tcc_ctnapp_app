@@ -1,4 +1,5 @@
 
+
 import { type School, type StudentProfile, type GuardianProfile, type Canteen, type Product, type Transaction, type Order, type User, type Wallet } from '@/lib/data';
 import { apiGet, apiPost } from './api';
 import { PlaceHolderImages } from './placeholder-images';
@@ -49,7 +50,6 @@ const mapOrder = (order: any): Order => ({
     userId: order.id_comprador.toString(),
     total: parseFloat(order.valor_total),
     date: order.created_at,
-    // The `items` array is now `item_pedidos` in the response
     items: order.item_pedidos?.map((p: any) => ({
         productId: p.id_produto.toString(),
         productName: p.produto.nome, // nested product data
@@ -67,7 +67,6 @@ const mapTransaction = (transaction: any): Transaction => ({
     date: transaction.created_at,
     description: transaction.descricao,
     amount: parseFloat(transaction.valor),
-    // Map transaction type to a simpler credit/debit for UI
     type: ['PIX', 'Recarregar', 'Estorno'].includes(transaction.tipo) ? 'credit' : 'debit',
     origin: transaction.tipo,
     userId: transaction.id_user_autor?.toString() || '',
@@ -107,7 +106,6 @@ export const getGuardianProfile = async (userId: string): Promise<GuardianProfil
         const guardianProfile = user as GuardianProfile;
         
         if (user.students && user.students.length > 0) {
-            // No need to re-fetch, as 'dependentes' relationship should be loaded by backend
             guardianProfile.students = user.students as StudentProfile[];
         }
         
@@ -161,7 +159,6 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     try {
       const response = await apiGet<{ data: any[] }>(`pedidos`);
       const allOrders = response.data.map(mapOrder);
-      // Filter orders where the user is either the buyer or the recipient
       return allOrders.filter(o => o.userId === userId || o.studentId === userId);
     } catch(e) {
       console.error(`Failed to fetch orders for user ${userId}:`, e);
@@ -216,7 +213,6 @@ export const getTransactionsByUser = async (userId: string): Promise<Transaction
     try {
         const response = await apiGet<{ data: any[] }>('transacoes');
         const allTransactions = response.data.map(mapTransaction);
-        // Filter by user ID if available in the transaction data
         return allTransactions.filter(t => t.userId === userId);
     } catch (e) {
         console.error(`Failed to fetch transactions for user ${userId}:`, e);
@@ -230,7 +226,6 @@ export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<T
         const response = await apiGet<{ data: any[] }>('transacoes');
         const allTransactions = response.data.map(mapTransaction);
         const userIdSet = new Set(allUserIds.map(String));
-        // Filter transactions where the author is one of the guardian's users
         return allTransactions.filter(t => t.userId && userIdSet.has(t.userId));
     } catch (e) {
         console.error(`Failed to fetch transactions for users:`, e);
@@ -244,14 +239,13 @@ export const postTransaction = async (transactionData: any) : Promise<Transactio
         id_user_autor: transactionData.userId,
         descricao: transactionData.description,
         valor: transactionData.amount,
-        tipo: transactionData.origin, // The 'origin' in frontend is the 'tipo' in backend
+        tipo: transactionData.origin,
         status: 'confirmada',
     };
     const response = await apiPost<{data: any}>('transacoes', payload);
     return mapTransaction(response.data);
 }
 
-// rechargeBalance now uses the generic postTransaction
 export const rechargeBalance = async (walletId: string, userId: string, amount: number): Promise<{success: boolean}> => {
     await postTransaction({
         walletId: walletId,
@@ -264,24 +258,19 @@ export const rechargeBalance = async (walletId: string, userId: string, amount: 
 }
 
 export const internalTransfer = async (fromWalletId: string, fromUserId: string, toWalletId: string, toUserId: string, amount: number): Promise<{success: boolean}> => {
-    // This flow should ideally be a single, atomic endpoint in the backend.
-    // Simulating with two transactions.
-    
-    // Debit from source
-     await postTransaction({
+    await postTransaction({
         walletId: fromWalletId,
         userId: fromUserId,
         description: `Transferência enviada para usuário ${toUserId}`,
-        amount: -amount, // Negative for debit
+        amount: -amount,
         origin: 'Debito',
     });
-    // Credit to destination
-     await postTransaction({
+    await postTransaction({
         walletId: toWalletId,
-        userId: fromUserId, // Author is still the guardian
+        userId: fromUserId, 
         description: `Transferência recebida de usuário ${fromUserId}`,
         amount: amount,
-        origin: 'Recarregar', // Credit type for transfer
+        origin: 'Recarregar',
     });
     return { success: true };
 }
