@@ -75,7 +75,6 @@ export default function StudentDashboard() {
   const [products, setProducts] = useState<Product[]>([]); 
   const [isLoading, setIsLoading] = useState(true);
 
-  // ✅ PASSO 3: CARRINHO - Inicializa o estado do carrinho a partir do localStorage.
   const [cart, setCart] = useState<CartItem[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -92,9 +91,6 @@ export default function StudentDashboard() {
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
   const [favoriteCategory, setFavoriteCategory] = useState<Category>('Todos');
 
-  // --- DATA FETCHING & SYNC EFFECTS ---
-
-  // Busca cantinas e produtos
   useEffect(() => {
     const fetchCanteensAndProducts = async () => {
       if (user && user.schoolId) {
@@ -116,7 +112,6 @@ export default function StudentDashboard() {
     if (!isUserLoading && user) fetchCanteensAndProducts();
   }, [user, isUserLoading]);
 
-  // Busca favoritos
   useEffect(() => {
     const fetchFavorites = async () => {
         if (user) {
@@ -131,7 +126,6 @@ export default function StudentDashboard() {
     if (user) fetchFavorites();
   }, [user]);
 
-  // ✅ PASSO 3: CARRINHO - Salva o carrinho no localStorage sempre que ele muda.
   useEffect(() => {
     try {
         window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
@@ -139,9 +133,6 @@ export default function StudentDashboard() {
         console.error("Falha ao salvar carrinho no localStorage:", error);
     }
   }, [cart]);
-
-
-  // --- MEMOIZED VALUES ---
 
   const filteredProducts = useMemo(() => (
     products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -155,8 +146,6 @@ export default function StudentDashboard() {
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-
-  // --- HANDLER FUNCTIONS ---
 
   const handleCanteenChange = (canteenId: string) => {
       const newSelectedCanteen = canteens.find(c => c.id === canteenId) || null;
@@ -210,14 +199,11 @@ export default function StudentDashboard() {
         const orderPayload = { studentId: user.id, userId: user.id, canteenId: selectedCanteen.id, total: cartTotal, items: cart.map(i => ({...i})) };
         await postOrder(orderPayload);
         toast({ variant: 'success', title: "Pedido realizado!" });
-        setCart([]); // Limpa o carrinho após o sucesso
+        setCart([]);
     } catch(error) {
         toast({ variant: 'destructive', title: 'Erro no pedido.'});
     }
   }
-
-  // ... O restante do componente permanece o mesmo (renderização, etc.)
-  // A lógica do carrinho já está correta, só faltava a persistência.
 
   const getCartItemQuantity = (productId: string) => cart.find(item => item.product.id === productId)?.quantity || 0;
   const categories: Category[] = ['Todos', 'Salgado', 'Doce', 'Bebida', 'Almoço'];
@@ -226,7 +212,6 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-6">
-        {/* Header e Canteen Selector */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
                 <h1 className="text-2xl font-bold">Cardápio</h1>
@@ -237,16 +222,43 @@ export default function StudentDashboard() {
                     <SelectTrigger className="w-[200px]"><SelectValue placeholder="Selecionar Cantina" /></SelectTrigger>
                     <SelectContent>{canteens.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
-                <Sheet>{/* Favoritos */}
+                <Sheet>
                     <SheetTrigger asChild>
                         <Button variant="outline" size="icon" className="relative">
                             <Heart className="h-4 w-4" />
                             {favoriteIds.size > 0 && <Badge className="absolute -right-2 -top-2 bg-pink-500">{favoriteIds.size}</Badge>}
                         </Button>
                     </SheetTrigger>
-                    <SheetContent>{/* ... Conteúdo Favoritos ... */}</SheetContent>
+                    <SheetContent className="flex flex-col">
+                        <SheetHeader>
+                            <SheetTitle>Meus Favoritos</SheetTitle>
+                            <SheetDescription>Seus produtos preferidos em um só lugar.</SheetDescription>
+                        </SheetHeader>
+                        <div className="py-4">
+                            <div className="flex gap-2">{categories.map(c => <Button key={c} variant={favoriteCategory === c ? 'default' : 'outline'} onClick={() => setFavoriteCategory(c)}>{c}</Button>)}</div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            {favoriteProducts.length === 0 ? <p className='text-center text-muted-foreground'>Nenhum favorito encontrado.</p> : (
+                                <div className="space-y-4">
+                                    {favoriteProducts.map((product) => (
+                                        <div key={product.id} className="flex items-center gap-4 p-2 rounded-lg border">
+                                            <Image src={product.image.imageUrl} alt={product.name} width={64} height={64} className="rounded-md" />
+                                            <div className="flex-1">
+                                                <p className="font-semibold">{product.name}</p>
+                                                <p className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</p>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <Button size="sm" onClick={() => updateCart(product, 1)}>Adicionar</Button>
+                                                <Button size="sm" variant="outline" onClick={() => toggleFavorite(product.id)}><Trash2 className="h-4 w-4"/></Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </SheetContent>
                 </Sheet>
-                <Sheet>{/* Carrinho */}
+                <Sheet>
                     <SheetTrigger asChild>
                          <Button variant="outline" size="icon" className="relative">
                             <ShoppingCart className="h-4 w-4" />
@@ -280,13 +292,18 @@ export default function StudentDashboard() {
                              <div className="w-full space-y-4 pt-4">
                                 <div className="flex justify-between font-bold"><span>Total:</span><span>R$ {cartTotal.toFixed(2)}</span></div>
                                 <AlertDialog>
-                                    <AlertDialogTrigger asChild><Button className="w-full" disabled={cart.length === 0}>Finalizar</Button></AlertDialogTrigger>
+                                    <AlertDialogTrigger asChild><Button className="w-full" disabled={cart.length === 0 || user.balance < cartTotal}>Finalizar</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader><AlertDialogTitle>Confirmar Pedido</AlertDialogTitle></AlertDialogHeader>
-                                        {/* ... */}
+                                         <div className="py-4 text-sm text-muted-foreground">
+                                            <p>Seu saldo atual: <span className='font-bold'>R$ {user?.balance.toFixed(2)}</span></p>
+                                            <p>Total do pedido: <span className='font-bold'>R$ {cartTotal.toFixed(2)}</span></p>
+                                            <p>Saldo restante após a compra: <span className='font-bold'>R$ {(user.balance - cartTotal).toFixed(2)}</span></p>
+                                            {user.balance < cartTotal && <p className='text-red-500 font-bold mt-2'>Saldo insuficiente para completar o pedido.</p>}
+                                        </div>
                                         <AlertDialogFooter>
                                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction onClick={handleCheckout}>Confirmar</AlertDialogAction>
+                                            <AlertDialogAction onClick={handleCheckout} disabled={user.balance < cartTotal}>Confirmar</AlertDialogAction>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
@@ -300,24 +317,28 @@ export default function StudentDashboard() {
         {/* Filtros */}
         <div className="space-y-4">
             <Input placeholder="Buscar produto..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-            <div className="flex gap-2">{categories.map(c => <Button key={c} variant={selectedCategory === c ? 'default' : 'outline'} onClick={() => setSelectedCategory(c)}>{c}</Button>)}</div>
+            <div className="flex gap-2 flex-wrap">{categories.map(c => <Button key={c} variant={selectedCategory === c ? 'default' : 'outline'} onClick={() => setSelectedCategory(c)}>{c}</Button>)}</div>
         </div>
       
         {/* Grid de Produtos */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
-                <Card key={product.id} className="relative">
+                <Card key={product.id} className="relative flex flex-col">
                     <Button size="icon" variant="ghost" className="absolute top-2 right-2 z-10" onClick={() => toggleFavorite(product.id)}>
-                        <Heart className={cn(favoriteIds.has(product.id) && "text-red-500 fill-red-500")} />
+                        <Heart className={cn("h-6 w-6", favoriteIds.has(product.id) && "text-red-500 fill-red-500")} />
                     </Button>
-                    <Image src={product.image.imageUrl} alt={product.name} width={400} height={200} />
-                    <CardContent>
+                    <div className="relative w-full h-48">
+                        <Image src={product.image.imageUrl} alt={product.name} layout="fill" objectFit="cover" className="rounded-t-lg" />
+                    </div>
+                    <CardHeader>
                         <CardTitle>{product.name}</CardTitle>
-                        <p>R$ {product.price.toFixed(2)}</p>
-                        {getCartItemQuantity(product.id) > 0 && <Badge>No carrinho: {getCartItemQuantity(product.id)}</Badge>}
+                        <CardDescription>R$ {product.price.toFixed(2)}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                       {getCartItemQuantity(product.id) > 0 && <Badge>No carrinho: {getCartItemQuantity(product.id)}</Badge>}
                     </CardContent>
                     <CardFooter>
-                        <Button className="w-full" onClick={() => updateCart(product, 1)}>Adicionar</Button>
+                       <Button className="w-full" onClick={() => updateCart(product, 1)}>Adicionar</Button>
                     </CardFooter>
                 </Card>
             ))}
