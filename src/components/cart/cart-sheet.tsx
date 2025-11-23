@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-// ✅ 1. Importar os componentes do AlertDialog
 import {
     AlertDialog,
     AlertDialogAction,
@@ -71,7 +70,6 @@ export const CartSheet = () => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const handleCheckout = async () => {
-    // ✅ 2. A lógica de validação permanece, mas agora é chamada dentro do modal
     if (!user || !user.id || !cartItems[0]?.product.canteenId) {
         toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível identificar o usuário ou a cantina. Tente novamente.' });
         return;
@@ -87,7 +85,6 @@ export const CartSheet = () => {
         await postOrder({
             userId: user.id,
             studentId: user.id,
-            // ✅ 3. Obter o canteenId do primeiro produto do carrinho (todos são da mesma cantina)
             canteenId: cartItems[0].product.canteenId,
             items: cartItems,
             total: totalPrice,
@@ -145,12 +142,12 @@ export const CartSheet = () => {
 
         <Separator className="-mx-6 mt-auto" />
         <SheetFooter className="pt-6 space-y-4">
-            <div className="flex justify-between items-center text-lg font-semibold">
+            {/* ✅ CORREÇÃO: Adicionado 'gap-4' para criar um espaçamento suave */}
+            <div className="flex justify-between items-center text-lg font-semibold gap-4">
                 <p>Total</p>
                 <p className="whitespace-nowrap">R$ {totalPrice.toFixed(2)}</p>
             </div>
 
-            {/* ✅ 4. Envolver o botão Finalizar Pedido com o AlertDialog */}
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <Button disabled={cartItems.length === 0 || isCheckingOut} className="w-full">
