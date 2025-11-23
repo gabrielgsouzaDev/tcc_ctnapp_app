@@ -31,7 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (storedToken && storedUserId) {
         setToken(storedToken);
         try {
-           // Esta chamada depende do services.ts, que será corrigido a seguir
            const userData = await getUser(storedUserId);
            if (userData) {
              setUser(userData);
@@ -59,20 +58,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const login = async (email: string, password: string) => {
-    // ✅ CORREÇÃO: Especifica que a resposta útil está dentro de "data"
-    const response = await apiPost<{ data: { user: User; token: string } }>('login', { email, senha: password, device_name: 'browser' });
-    // ✅ CORREÇÃO: Passa o conteúdo de "data" para a função de sucesso
-    handleAuthSuccess(response.data);
+    try {
+      const response = await apiPost<{ data: { user: User; token: string } }>('login', { email, senha: password, device_name: 'browser' });
+      handleAuthSuccess(response.data);
+    } catch (error: any) {
+      // Transforma o erro da API em uma mensagem que o usuário final pode entender
+      console.error("Falha no login:", error);
+      // A mensagem de erro real vinda do backend agora será lançada para o formulário
+      throw new Error(error.message || 'E-mail ou senha incorretos. Tente novamente.');
+    }
   };
 
   const register = async (data: Record<string, any>) => {
     const { password, ...restOfData } = data;
     const payload = { ...restOfData, senha: password };
 
-    // A rota de registro também retorna um objeto data
     await apiPost<{ data: any }>('users', payload);
     
-    // Após o registro, faz o login para obter o token e os dados do usuário
     await login(data.email, password);
   };
 

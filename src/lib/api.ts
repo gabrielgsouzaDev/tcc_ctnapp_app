@@ -1,6 +1,6 @@
 
 // This would be in something like src/lib/config.ts
-export const API_BASE_URL = 'https://cantappbackendlaravel-production.up.railway.app';
+export const API_BASE_URL = 'https://cantappbackendlaravel-production.up.railway.app/';
 
 // This is a simplified error type, you might want to expand it
 type ApiError = {
