@@ -163,7 +163,7 @@ export default function StudentBalancePage() {
     };
     
     const amountValue = Number(rechargeAmount);
-    const isButtonDisabled = !amountValue || amountValue <= 0 || !studentProfile?.carteira?.id;
+    const isButtonDisabled = !amountValue || amountValue <= 0 || !studentProfile?.walletId;
 
     if (isLoading || isUserLoading) {
         return (
@@ -255,7 +255,8 @@ export default function StudentBalancePage() {
                             </Button>
                             ))}
                         </div>
-                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&walletId=${studentProfile.carteira?.id}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
+                        
+                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&walletId=${studentProfile.walletId}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
                             <Button 
                                 className="w-full"
                                 disabled={isButtonDisabled}

@@ -24,7 +24,7 @@ type RechargeTarget = {
   id: string; 
   name: string;
   balance: number;
-  walletId: string | null; // ✅ CORREÇÃO BUILD: walletId pode ser nulo
+  walletId: string | null; 
   isGuardian?: boolean;
 };
 
@@ -53,7 +53,7 @@ export default function GuardianRechargePage() {
                     id: profile.id,
                     name: profile.name,
                     balance: profile.balance,
-                    walletId: profile.walletId, // ✅ CORREÇÃO BUILD: Usar a propriedade correta
+                    walletId: profile.walletId, 
                     isGuardian: true,
                 });
             }
@@ -70,14 +70,14 @@ export default function GuardianRechargePage() {
         id: guardianProfile.id, 
         name: guardianProfile.name, 
         balance: guardianProfile.balance,
-        walletId: guardianProfile.walletId, // ✅ CORREÇÃO BUILD: Usar a propriedade correta
+        walletId: guardianProfile.walletId, 
         isGuardian: true 
       },
       ...guardianProfile.students.map((s: UserProfile) => ({
           id: s.id,
           name: s.name,
           balance: s.balance,
-          walletId: s.walletId, // ✅ CORREÇÃO BUILD: Usar a propriedade correta
+          walletId: s.walletId, 
           isGuardian: false
       }))
   ] : [];
@@ -94,15 +94,15 @@ export default function GuardianRechargePage() {
       return;
     }
 
-    if (!guardianProfile || amountValue > guardianProfile.balance || !guardianProfile.walletId) { // ✅ CORREÇÃO BUILD: Usar a propriedade correta
-      toast({ variant: 'destructive', title: 'Saldo ou carteira insuficiente' });
+    if (!guardianProfile || amountValue > guardianProfile.balance || !guardianProfile.walletId) { 
+      // ✅ CORREÇÃO FINAL: Mensagem de erro consistente, sem usar "carteira".
+      toast({ variant: 'destructive', title: 'Saldo insuficiente ou conta de origem inválida' });
       return;
     }
 
     setIsProcessing(true);
     
     try {
-        // ✅ CORREÇÃO BUILD: Usar a propriedade correta
         await internalTransfer(guardianProfile.walletId, guardianProfile.id, selectedTarget.walletId, selectedTarget.id, amountValue);
 
         toast({ variant: 'success', title: 'Transferência Concluída!' });
