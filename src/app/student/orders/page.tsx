@@ -4,7 +4,7 @@
 import Image from 'next/image';
 import { useMemo, useState, useEffect } from 'react';
 import { Loader2, Search } from 'lucide-react';
-import { Badge, type BadgeProps } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -49,20 +49,23 @@ import { useAuth } from '@/lib/auth-provider';
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
-  // ✅ CORREÇÃO BUILD: Tipagem explícita para garantir compatibilidade com o Badge.
-  const variant: BadgeProps['variant'] = {
+  // ✅ CORREÇÃO BUILD DEFINITIVA: Usar 'as const' para inferir tipos literais.
+  const variantMap = {
     'entregue': 'default',
     'pendente': 'secondary',
     'cancelado': 'destructive',
     'confirmado': 'secondary',
-  }[status] || 'default';
-  
-  const className = {
+  } as const;
+
+  const classNameMap = {
     'entregue': 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200',
     'pendente': 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 animate-pulse',
     'confirmado': 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200',
     'cancelado': 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200',
-  }[status]
+  } as const;
+
+  const variant = variantMap[status] ?? 'default';
+  const className = classNameMap[status];
 
   return <Badge variant={variant} className={cn('capitalize', className)}>{status}</Badge>;
 };
