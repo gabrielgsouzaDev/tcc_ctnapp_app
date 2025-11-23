@@ -6,32 +6,6 @@ import { apiPost, apiGet } from './api';
 import { type User } from './data';
 import { getUser } from './services';
 
-// --- Tipagens para a Resposta da API de Login ---
-
-// Resposta em caso de SUCESSO
-interface AuthSuccessResponse {
-  success: true;
-  data: {
-    token: string;
-    user: User;
-  };
-}
-
-// Resposta em caso de FALHA
-interface AuthFailureResponse {
-  success: false;
-  message: string;
-}
-
-// A resposta completa da API será um dos dois tipos acima (União Discriminada)
-type LoginApiResponse = AuthSuccessResponse | AuthFailureResponse;
-
-// O payload que a função handleAuthSuccess espera, extraído da resposta de sucesso
-interface AuthSuccessPayload {
-    token: string;
-    user: User;
-}
-
 interface AuthContextType {
   user: User | null;
   token: string | null;
@@ -51,17 +25,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedToken = localStorage.getItem('authToken');
-      const storedUserId = localStorage.getItem('userId');
+      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      const storedUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
 
       if (storedToken && storedUserId) {
         setToken(storedToken);
         try {
+           // Esta chamada depende do services.ts, que será corrigido a seguir
            const userData = await getUser(storedUserId);
-           setUser(userData);
+           if (userData) {
+             setUser(userData);
+           } else {
+             throw new Error('Usuário não encontrado com o ID armazenado');
+           }
         } catch (error) {
           console.error("Falha ao buscar usuário com dados locais, limpando sessão.", error);
-          localStorage.clear(); // Limpa tudo se os dados estiverem corrompidos
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userId');
           setToken(null);
           setUser(null);
         }
@@ -71,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
-  const handleAuthSuccess = (payload: AuthSuccessPayload) => {
+  const handleAuthSuccess = (payload: { user: User; token: string }) => {
     localStorage.setItem('authToken', payload.token);
     localStorage.setItem('userId', payload.user.id.toString());
     setToken(payload.token);
@@ -79,41 +59,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const login = async (email: string, password: string) => {
-    const response = await apiPost<LoginApiResponse>('login', { email, senha: password, device_name: 'browser' });
-
-    // ✅ CORREÇÃO DEFINITIVA: Checa `response.success` de forma explícita.
-    // Isso funciona como um "type guard" para o TypeScript.
-    if (response.success === true) {
-      // Se success é true, o TS sabe que `response` é `AuthSuccessResponse`
-      // e que `response.data` existe e é seguro de usar.
-      handleAuthSuccess(response.data);
-    } else {
-      // Se success não é true, o TS sabe que `response` é `AuthFailureResponse`
-      // e que `response.message` existe e é seguro de usar.
-      throw new Error(response.message || 'Login falhou por um motivo desconhecido');
-    }
+    // ✅ CORREÇÃO: Especifica que a resposta útil está dentro de "data"
+    const response = await apiPost<{ data: { user: User; token: string } }>('login', { email, senha: password, device_name: 'browser' });
+    // ✅ CORREÇÃO: Passa o conteúdo de "data" para a função de sucesso
+    handleAuthSuccess(response.data);
   };
 
   const register = async (data: Record<string, any>) => {
-    const { password, role, ...restOfData } = data;
+    const { password, ...restOfData } = data;
+    const payload = { ...restOfData, senha: password };
 
-    const roleMappings: { [key: string]: number } = {
-        'Admin': 1,
-        'Aluno': 2,
-        'Responsavel': 3,
-        'Funcionario': 4,
-        'Cantina': 5,
-    };
-    const roleId = roleMappings[role as string];
-
-    if (!roleId) {
-        throw new Error(`A role fornecida ('${role}') é inválida.`);
-    }
-
-    const payload = { ...restOfData, senha: password, id_role: roleId };
-    await apiPost('users', payload);
+    // A rota de registro também retorna um objeto data
+    await apiPost<{ data: any }>('users', payload);
     
-    // Após o cadastro, faz o login para popular a sessão
+    // Após o registro, faz o login para obter o token e os dados do usuário
     await login(data.email, password);
   };
 
@@ -123,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
         console.error("Logout via API falhou, procedendo com logout local.", error);
     } finally {
-        localStorage.clear(); // Limpa toda a sessão local
+        localStorage.clear();
         setToken(null);
         setUser(null);
         router.push('/');

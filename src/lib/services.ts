@@ -7,7 +7,7 @@ import { PlaceHolderImages } from './placeholder-images';
 
 const mapUser = (user: any): User => ({
     ...user,
-    id: user.id, // ID is already a number
+    id: user.id,
     name: user.nome,
     schoolId: user.id_escola,
     role: user.roles?.[0]?.nome_role || 'Aluno', 
@@ -35,8 +35,8 @@ const mapProduct = (product: any): Product => ({
     name: product.nome,
     price: parseFloat(product.preco),
     image: PlaceHolderImages.find(img => img.id.includes(product.nome.split(' ')[0].toLowerCase())) || PlaceHolderImages[0],
-    category: 'Salgado', // Placeholder - backend needs to provide this
-    popular: [2, 4].includes(product.id_produto), // Mock popular items
+    category: 'Salgado', 
+    popular: [2, 4].includes(product.id_produto),
 });
 
 const mapOrder = (order: any): Order => ({
@@ -81,7 +81,7 @@ const mapWallet = (wallet: any): Wallet => ({
 
 // #region --- API Service Functions ---
 
-// -- User and Profile Services --
+// ✅ CORREÇÃO: Extrai o usuário de 'response.data'
 export const getUser = async (userId: string): Promise<User | null> => {
   try {
     const response = await apiGet<{ data: any }>(`users/${userId}`);
@@ -104,32 +104,29 @@ export const getGuardianProfile = async (userId: string): Promise<GuardianProfil
     const user = await getUser(userId);
     if (user && user.role === 'Responsavel') {
         const guardianProfile = user as GuardianProfile;
-        
-        // The `dependentes` relation from the backend is mapped to `students`
         if (user.students && user.students.length > 0) {
             guardianProfile.students = user.students as StudentProfile[];
         }
-        
         return guardianProfile;
     }
     return null;
 }
 
-// -- School and Canteen Services --
+// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getSchools = async (): Promise<School[]> => {
   try {
-    const response = await apiGet<any[]>('escolas');
-    return response.map(mapSchool);
+    const response = await apiGet<{ data: any[] }>('escolas');
+    return response.data.map(mapSchool);
   } catch (e) {
     console.error("Failed to fetch schools:", e);
     return [];
   }
 };
 
+// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
     if (!schoolId) return [];
     try {
-      // Uses the dedicated route from the final api.php
       const response = await apiGet<{ data: any[] }>(`cantinas/escola/${schoolId}`);
       return response.data.map(mapCanteen);
     } catch(e) {
@@ -138,11 +135,10 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
     }
 }
 
-// -- Product Services --
+// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
     if (!canteenId) return [];
     try {
-      // Uses the dedicated route from the final api.php
       const response = await apiGet<{ data: any[] }>(`cantinas/${canteenId}/produtos`);
       return response.data.map(mapProduct);
     } catch(e) {
@@ -151,12 +147,11 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
     }
 }
 
-// -- Order Services --
+// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     try {
       const response = await apiGet<{ data: any[] }>(`pedidos`);
       const allOrders = response.data.map(mapOrder);
-      // Filter orders where the user is either the buyer or the recipient
       return allOrders.filter(o => o.userId === userId || o.studentId === userId);
     } catch(e) {
       console.error(`Failed to fetch orders for user ${userId}:`, e);
@@ -164,6 +159,7 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     }
 }
 
+// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getOrdersByGuardian = async (studentIds: string[]): Promise<Order[]> => {
     if (!studentIds || studentIds.length === 0) return Promise.resolve([]);
     try {
@@ -177,6 +173,7 @@ export const getOrdersByGuardian = async (studentIds: string[]): Promise<Order[]
     }
 }
 
+// ✅ CORREÇÃO: Extrai o pedido criado de 'response.data'
 export const postOrder = async (orderData: any): Promise<Order> => {
     const payload = {
         id_comprador: orderData.userId, 
@@ -194,7 +191,7 @@ export const postOrder = async (orderData: any): Promise<Order> => {
     return mapOrder(response.data);
 }
 
-// -- Wallet and Transaction Services --
+// ✅ CORREÇÃO: Extrai a carteira de 'response.data'
 export const getWalletByUserId = async (userId: string): Promise<Wallet | null> => {
     try {
         const response = await apiGet<{ data: any }>(`carteiras/${userId}`);
@@ -205,6 +202,7 @@ export const getWalletByUserId = async (userId: string): Promise<Wallet | null> 
     }
 }
 
+// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getTransactionsByUser = async (userId: string): Promise<Transaction[]> => {
     try {
         const response = await apiGet<{ data: any[] }>('transacoes');
@@ -216,13 +214,13 @@ export const getTransactionsByUser = async (userId: string): Promise<Transaction
     }
 }
 
+// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<Transaction[]> => {
      if (!allUserIds || allUserIds.length === 0) return Promise.resolve([]);
     try {
         const response = await apiGet<{ data: any[] }>('transacoes');
         const allTransactions = response.data.map(mapTransaction);
         const userIdSet = new Set(allUserIds.map(String));
-        // A transaction belongs to a guardian view if the author is one of the users in the family
         return allTransactions.filter(t => t.userId && userIdSet.has(t.userId));
     } catch (e) {
         console.error(`Failed to fetch transactions for users:`, e);
@@ -230,14 +228,15 @@ export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<T
     }
 }
 
+// ✅ CORREÇÃO: Extrai a transação criada de 'response.data'
 export const postTransaction = async (transactionData: any) : Promise<Transaction> => {
     const payload = {
         id_carteira: transactionData.walletId,
         id_user_autor: transactionData.userId,
         descricao: transactionData.description,
         valor: transactionData.amount,
-        tipo: transactionData.origin, // 'PIX', 'Debito', etc.
-        status: 'confirmada', // Assuming direct confirmation for now
+        tipo: transactionData.origin,
+        status: 'confirmada',
     };
     const response = await apiPost<{data: any}>('transacoes', payload);
     return mapTransaction(response.data);
@@ -255,18 +254,16 @@ export const rechargeBalance = async (walletId: string, userId: string, amount: 
 }
 
 export const internalTransfer = async (fromWalletId: string, fromUserId: string, toWalletId: string, toUserId: string, amount: number): Promise<{success: boolean}> => {
-    // Debit from guardian's wallet
     await postTransaction({
         walletId: fromWalletId,
         userId: fromUserId,
         description: `Transferência enviada para usuário ${toUserId}`,
-        amount: -amount, // Negative amount for debit
+        amount: -amount,
         origin: 'Debito',
     });
-    // Credit to student's wallet
     await postTransaction({
         walletId: toWalletId,
-        userId: fromUserId, // The author is still the guardian
+        userId: fromUserId, 
         description: `Transferência recebida de usuário ${fromUserId}`,
         amount: amount,
         origin: 'Recarregar',
