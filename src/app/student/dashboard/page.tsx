@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-provider";
 import { useCart } from "@/hooks/use-cart";
-import { getCanteensBySchool, getProductsByCanteen, getStudentProfile } from '@/lib/services';
+import { getCanteensBySchool } from '@/lib/services';
 import { type Product, type Canteen } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
@@ -28,62 +28,49 @@ export default function StudentDashboardPage() {
 
   const [canteens, setCanteens] = useState<Canteen[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedCanteen, setSelectedCanteen] = useState<string>('');
+  const [selectedCanteenId, setSelectedCanteenId] = useState<string>('');
   
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
 
   const [searchTermProducts, setSearchTermProducts] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
 
   useEffect(() => {
-    const fetchInitialData = async () => {
-      if (user?.id) {
+    const fetchCanteenData = async () => {
+      if (user?.schoolId) {
         setIsLoading(true);
         try {
-          const profile = await getStudentProfile(user.id);
-          if (profile?.schoolId) {
-            const canteenList = await getCanteensBySchool(profile.schoolId);
-            setCanteens(canteenList);
-            if (profile.canteenId) {
-              setSelectedCanteen(profile.canteenId);
-            } else if (canteenList.length > 0) {
-              setSelectedCanteen(canteenList[0].id);
-            }
+          const canteenList = await getCanteensBySchool(user.schoolId);
+          setCanteens(canteenList);
+          if (canteenList.length > 0) {
+            const defaultCanteen = canteenList[0];
+            setSelectedCanteenId(defaultCanteen.id);
+            setProducts(defaultCanteen.produtos || []); 
           }
         } catch (error) {
-            console.error("Failed to fetch initial student data:", error);
-            toast({ variant: 'destructive', title: 'Erro ao carregar dados', description: 'Não foi possível buscar as informações da cantina.' });
+          console.error("Failed to fetch canteen data:", error);
+          toast({ variant: 'destructive', title: 'Erro ao carregar dados', description: 'Não foi possível buscar as informações da cantina.' });
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     };
-    if (!isUserLoading) {
-      fetchInitialData();
+    if (user && !isUserLoading) {
+      fetchCanteenData();
     }
   }, [user, isUserLoading, toast]);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      if (selectedCanteen) {
-        setIsLoadingProducts(true);
-        try {
-            const productList = await getProductsByCanteen(selectedCanteen);
-            setProducts(productList);
-        } catch (error) {
-            console.error("Failed to fetch products:", error);
-            toast({ variant: 'destructive', title: 'Erro ao buscar produtos', description: 'Não foi possível carregar o cardápio.' });
-        }
-        setIsLoadingProducts(false);
-      }
-    };
-    if (selectedCanteen) {
-        fetchProducts();
+  const handleCanteenChange = (canteenId: string) => {
+    const newSelectedCanteen = canteens.find(c => c.id === canteenId);
+    if (newSelectedCanteen) {
+        setSelectedCanteenId(newSelectedCanteen.id);
+        setProducts(newSelectedCanteen.produtos || []);
     }
-  }, [selectedCanteen, toast]);
+  };
 
   const filteredProducts = useMemo(() => {
+    if (!products) return [];
     return products
       .filter(p => p.name.toLowerCase().includes(searchTermProducts.toLowerCase()))
       .filter(p => selectedCategory === 'Todos' || p.category === selectedCategory);
@@ -97,7 +84,6 @@ export default function StudentDashboardPage() {
     const quantityInCart = getCartItemQuantity(product.id);
     addItem(product, 1);
     
-    // Visual feedback
     setAddToCartState(prev => ({ ...prev, [product.id]: 'added' }));
     setTimeout(() => {
        setAddToCartState(prev => ({ ...prev, [product.id]: 'idle' }));
@@ -146,7 +132,7 @@ export default function StudentDashboardPage() {
             Bem-vindo, {user?.name || 'aluno'}! Escolha os itens para o seu pedido.
           </p>
         </div>
-        <Select value={selectedCanteen} onValueChange={setSelectedCanteen} disabled={canteens.length <= 1}>
+        <Select value={selectedCanteenId} onValueChange={handleCanteenChange} disabled={canteens.length <= 1}>
             <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Selecionar Cantina" />
             </SelectTrigger>
@@ -184,11 +170,10 @@ export default function StudentDashboardPage() {
           </div>
       </div>
 
-       {isLoadingProducts ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-pulse">
-            {[...Array(8)].map((_, i) => (
-                <Card key={i} className="h-96"><CardHeader className="p-0 h-56 bg-muted rounded-t-lg"></CardHeader><CardContent className="p-4 space-y-2"><div className="h-6 w-3/4 bg-muted rounded"></div><div className="h-4 w-1/4 bg-muted rounded"></div></CardContent><CardFooter className='p-4 pt-0'><div className="h-10 w-full bg-muted rounded-md"></div></CardFooter></Card>
-            ))}
+       {(filteredProducts.length === 0 && !isLoading) ? (
+        <div className="col-span-full text-center text-muted-foreground py-20 space-y-4">
+            <Search className="mx-auto h-12 w-12 text-muted-foreground/50" strokeWidth={1}/>
+            <p>Nenhum produto encontrado para os filtros selecionados.</p>
         </div>
       ) : (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -209,7 +194,6 @@ export default function StudentDashboardPage() {
                 width={400}
                 height={200}
                 className="h-56 w-full rounded-t-lg object-cover"
-                data-ai-hint={product.image.imageHint}
               />
             </CardHeader>
             <CardContent className="flex flex-1 flex-col justify-between p-4">
@@ -245,12 +229,6 @@ export default function StudentDashboardPage() {
         )})}
       </div>
        )}
-      {(filteredProducts.length === 0 && !isLoadingProducts) && (
-        <div className="col-span-full text-center text-muted-foreground py-20 space-y-4">
-            <Search className="mx-auto h-12 w-12 text-muted-foreground/50" strokeWidth={1}/>
-            <p>Nenhum produto encontrado para os filtros selecionados.</p>
-        </div>
-      )}
     </div>
   );
 }

@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/shared/logo";
 import { useAuth } from "@/lib/auth-provider";
-import { CartSheet } from "@/components/cart/cart-sheet"; // ✅ 1. Importar o CartSheet
+import { CartSheet } from "@/components/cart/cart-sheet";
 
 type NavItem = {
   href: string;
@@ -100,6 +100,7 @@ export function AppLayout({
     }
   };
 
+  // ✅ MENU DO ALUNO RESTAURADO PARA O ORIGINAL
   const studentNavItems: NavItem[] = [
     {
       href: "/student/dashboard",
@@ -235,7 +236,6 @@ export function AppLayout({
               <PanelLeft />
             </SidebarTrigger>
             <div className="flex items-center gap-4">
-              {/* ✅ 2. Adicionar o carrinho condicionalmente para o aluno */}
               {userType === 'student' && <CartSheet />}
               
               <DropdownMenu>
