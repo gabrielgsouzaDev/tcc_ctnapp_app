@@ -58,10 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const login = async (email: string, password: string) => {
-    // ✅ CORREÇÃO: A API agora retorna a resposta dentro de um wrapper "data".
     const response = await apiPost<{ data: { user: User; token: string } }>('login', { email, senha: password, device_name: 'browser' });
-    
-    // Passamos o conteúdo de `response.data` para a função de sucesso.
     handleAuthSuccess(response.data);
   };
 

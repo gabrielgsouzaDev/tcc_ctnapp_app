@@ -7,7 +7,7 @@ import { PlaceHolderImages } from './placeholder-images';
 
 const mapUser = (user: any): User => ({
     ...user,
-    id: user.id, // ID is already a number
+    id: user.id,
     name: user.nome,
     schoolId: user.id_escola,
     role: user.roles?.[0]?.nome_role || 'Aluno', 
@@ -35,8 +35,8 @@ const mapProduct = (product: any): Product => ({
     name: product.nome,
     price: parseFloat(product.preco),
     image: PlaceHolderImages.find(img => img.id.includes(product.nome.split(' ')[0].toLowerCase())) || PlaceHolderImages[0],
-    category: 'Salgado', // Placeholder - backend needs to provide this
-    popular: [2, 4].includes(product.id_produto), // Mock popular items
+    category: 'Salgado', 
+    popular: [2, 4].includes(product.id_produto),
 });
 
 const mapOrder = (order: any): Order => ({
@@ -81,7 +81,6 @@ const mapWallet = (wallet: any): Wallet => ({
 
 // #region --- API Service Functions ---
 
-// -- User and Profile Services --
 export const getUser = async (userId: string): Promise<User | null> => {
   try {
     const response = await apiGet<{ data: any }>(`users/${userId}`);
@@ -104,20 +103,16 @@ export const getGuardianProfile = async (userId: string): Promise<GuardianProfil
     const user = await getUser(userId);
     if (user && user.role === 'Responsavel') {
         const guardianProfile = user as GuardianProfile;
-        
         if (user.students && user.students.length > 0) {
             guardianProfile.students = user.students as StudentProfile[];
         }
-        
         return guardianProfile;
     }
     return null;
 }
 
-// -- School and Canteen Services --
 export const getSchools = async (): Promise<School[]> => {
   try {
-    // ✅ CORREÇÃO: A API agora retorna as escolas dentro de um wrapper "data".
     const response = await apiGet<{ data: any[] }>('escolas');
     return response.data.map(mapSchool);
   } catch (e) {
@@ -137,11 +132,9 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
     }
 }
 
-// -- Product Services --
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
     if (!canteenId) return [];
     try {
-      // ✅ CORREÇÃO: A API agora retorna os produtos dentro de um wrapper "data".
       const response = await apiGet<{ data: any[] }>(`cantinas/${canteenId}/produtos`);
       return response.data.map(mapProduct);
     } catch(e) {
@@ -150,7 +143,6 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
     }
 }
 
-// -- Order Services --
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     try {
       const response = await apiGet<{ data: any[] }>(`pedidos`);
@@ -192,7 +184,6 @@ export const postOrder = async (orderData: any): Promise<Order> => {
     return mapOrder(response.data);
 }
 
-// -- Wallet and Transaction Services --
 export const getWalletByUserId = async (userId: string): Promise<Wallet | null> => {
     try {
         const response = await apiGet<{ data: any }>(`carteiras/${userId}`);
@@ -233,8 +224,8 @@ export const postTransaction = async (transactionData: any) : Promise<Transactio
         id_user_autor: transactionData.userId,
         descricao: transactionData.description,
         valor: transactionData.amount,
-        tipo: transactionData.origin, // 'PIX', 'Debito', etc.
-        status: 'confirmada', // Assuming direct confirmation for now
+        tipo: transactionData.origin,
+        status: 'confirmada',
     };
     const response = await apiPost<{data: any}>('transacoes', payload);
     return mapTransaction(response.data);
@@ -252,18 +243,16 @@ export const rechargeBalance = async (walletId: string, userId: string, amount: 
 }
 
 export const internalTransfer = async (fromWalletId: string, fromUserId: string, toWalletId: string, toUserId: string, amount: number): Promise<{success: boolean}> => {
-    // Debit from guardian's wallet
     await postTransaction({
         walletId: fromWalletId,
         userId: fromUserId,
         description: `Transferência enviada para usuário ${toUserId}`,
-        amount: -amount, // Negative amount for debit
+        amount: -amount,
         origin: 'Debito',
     });
-    // Credit to student's wallet
     await postTransaction({
         walletId: toWalletId,
-        userId: fromUserId, // The author is still the guardian
+        userId: fromUserId, 
         description: `Transferência recebida de usuário ${fromUserId}`,
         amount: amount,
         origin: 'Recarregar',
