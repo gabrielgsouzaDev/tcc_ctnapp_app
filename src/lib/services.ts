@@ -105,7 +105,6 @@ export const getGuardianProfile = async (userId: string): Promise<GuardianProfil
     if (user && user.role === 'Responsavel') {
         const guardianProfile = user as GuardianProfile;
         
-        // The `dependentes` relation from the backend is mapped to `students`
         if (user.students && user.students.length > 0) {
             guardianProfile.students = user.students as StudentProfile[];
         }
@@ -118,8 +117,9 @@ export const getGuardianProfile = async (userId: string): Promise<GuardianProfil
 // -- School and Canteen Services --
 export const getSchools = async (): Promise<School[]> => {
   try {
-    const response = await apiGet<any[]>('escolas');
-    return response.map(mapSchool);
+    // ✅ CORREÇÃO: A API agora retorna as escolas dentro de um wrapper "data".
+    const response = await apiGet<{ data: any[] }>('escolas');
+    return response.data.map(mapSchool);
   } catch (e) {
     console.error("Failed to fetch schools:", e);
     return [];
@@ -129,7 +129,6 @@ export const getSchools = async (): Promise<School[]> => {
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
     if (!schoolId) return [];
     try {
-      // Uses the dedicated route from the final api.php
       const response = await apiGet<{ data: any[] }>(`cantinas/escola/${schoolId}`);
       return response.data.map(mapCanteen);
     } catch(e) {
@@ -142,7 +141,7 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
     if (!canteenId) return [];
     try {
-      // Uses the dedicated route from the final api.php
+      // ✅ CORREÇÃO: A API agora retorna os produtos dentro de um wrapper "data".
       const response = await apiGet<{ data: any[] }>(`cantinas/${canteenId}/produtos`);
       return response.data.map(mapProduct);
     } catch(e) {
@@ -156,7 +155,6 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     try {
       const response = await apiGet<{ data: any[] }>(`pedidos`);
       const allOrders = response.data.map(mapOrder);
-      // Filter orders where the user is either the buyer or the recipient
       return allOrders.filter(o => o.userId === userId || o.studentId === userId);
     } catch(e) {
       console.error(`Failed to fetch orders for user ${userId}:`, e);
@@ -222,7 +220,6 @@ export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<T
         const response = await apiGet<{ data: any[] }>('transacoes');
         const allTransactions = response.data.map(mapTransaction);
         const userIdSet = new Set(allUserIds.map(String));
-        // A transaction belongs to a guardian view if the author is one of the users in the family
         return allTransactions.filter(t => t.userId && userIdSet.has(t.userId));
     } catch (e) {
         console.error(`Failed to fetch transactions for users:`, e);

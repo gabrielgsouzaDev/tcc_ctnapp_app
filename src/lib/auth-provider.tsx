@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -32,16 +31,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (storedToken && storedUserId) {
         setToken(storedToken);
         try {
-           // Ao inicializar, busca os dados completos do usuário
            const userData = await getUser(storedUserId);
            if (userData) {
              setUser(userData);
            } else {
-             throw new Error('User not found with stored ID');
+             throw new Error('Usuário não encontrado com o ID armazenado');
            }
         } catch (error) {
-          console.error("Failed to fetch user with stored token/ID, logging out.", error);
-          // Limpa o estado se o token/ID for inválido
+          console.error("Falha ao buscar usuário com dados locais, limpando sessão.", error);
           localStorage.removeItem('authToken');
           localStorage.removeItem('userId');
           setToken(null);
@@ -53,44 +50,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
-  // Função centralizada para lidar com o sucesso da autenticação
-  const handleAuthSuccess = (response: { user: User; token: string }) => {
-    localStorage.setItem('authToken', response.token);
-    localStorage.setItem('userId', response.user.id.toString());
-    setToken(response.token);
-    setUser(response.user);
+  const handleAuthSuccess = (payload: { user: User; token: string }) => {
+    localStorage.setItem('authToken', payload.token);
+    localStorage.setItem('userId', payload.user.id.toString());
+    setToken(payload.token);
+    setUser(payload.user);
   }
 
   const login = async (email: string, password: string) => {
-    // A rota de login do backend espera 'senha' e 'device_name'
-    const response = await apiPost<{ user: User; token: string }>('login', { email, senha: password, device_name: 'browser' });
-    handleAuthSuccess(response);
+    // ✅ CORREÇÃO: A API agora retorna a resposta dentro de um wrapper "data".
+    const response = await apiPost<{ data: { user: User; token: string } }>('login', { email, senha: password, device_name: 'browser' });
+    
+    // Passamos o conteúdo de `response.data` para a função de sucesso.
+    handleAuthSuccess(response.data);
   };
 
   const register = async (data: Record<string, any>) => {
-    // 1. Extrai a senha do resto dos dados do formulário
     const { password, ...restOfData } = data;
-
-    // 2. Cria o payload para o backend, trocando 'password' por 'senha'
     const payload = { ...restOfData, senha: password };
 
-    // 3. Chama a API para criar o usuário com o payload correto
     await apiPost('users', payload);
     
-    // 4. Após o sucesso, chama a função de login com os dados originais
     await login(data.email, password);
   };
 
   const logout = async () => {
     try {
-        // Tenta fazer logout no backend para invalidar o token
         await apiPost('logout', {});
     } catch (error) {
-        console.error("Logout API call failed, proceeding with client-side logout.", error);
+        console.error("Logout via API falhou, procedendo com logout local.", error);
     } finally {
-        // Limpa o estado local independentemente do sucesso da API
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userId');
+        localStorage.clear();
         setToken(null);
         setUser(null);
         router.push('/');
@@ -112,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   }
   return context;
 }
