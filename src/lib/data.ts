@@ -1,33 +1,39 @@
 
-import type { ImagePlaceholder } from './placeholder-images';
+// #region --- DATA TYPE DEFINITIONS ---
+// This file contains the type definitions for the data used in the application.
+// These types are used to ensure that the data is consistent across the application.
+// Mappers in services.ts are used to transform backend data into these types.
 
-// =============================================================================
-// TYPE DEFINITIONS - FRONTEND DOMAIN
-//
-// Este arquivo contém as definições de tipo para a aplicação frontend.
-// Estes tipos representam a ESTRUTURA FINAL dos dados após serem mapeados
-// do backend. Eles são a "única fonte da verdade" para os componentes React.
-//
-// ✅ PRINCÍPIO: Não incluir campos brutos do backend (ex: id_escola, nome_role).
-// A camada de mapeamento em 'services.ts' é a única responsável por essa tradução.
-// =============================================================================
+// #region --- IMAGE & CATEGORY TYPES ---
+
+export type Image = {
+  id: string;
+  imageUrl: string;
+  imageHint: string;
+  description: string;
+};
+
+export type Category = 'Lanche' | 'Bebida' | 'Doce' | 'Salgado';
+
+// #endregion
 
 
 // #region --- USER & AUTH TYPES ---
 
 export type User = {
   id: string;
-  walletId: string | null; // ✅ CORREÇÃO BUILD: Mapeado de carteira.id_carteira
+  walletId: string | null;
   name: string;
   email: string;
   role: 'Aluno' | 'Responsavel' | 'Admin' | 'Cantina' | 'Escola';
   balance: number;
   schoolId: string | null;
   canteenId: string | null;
-  students: User[]; // Para responsáveis, contém a lista de alunos dependentes
+  students: User[];
   telefone: string | null;
   data_nascimento: string | null;
   ativo: boolean;
+  student_code: string | null; // ✅ CORREÇÃO: Propriedade adicionada
 };
 
 export type StudentProfile = User & {
@@ -47,77 +53,75 @@ export type UserProfile = StudentProfile | GuardianProfile;
 // #region --- CORE ENTITY TYPES ---
 
 export type School = {
-  id: string; // Mapeado de id_escola
-  name: string; // Mapeado de nome
+  id: string;
+  name: string;
   cnpj: string | null;
   status: 'ativa' | 'inativa' | 'pendente';
   qtd_alunos: number;
 };
 
 export type Canteen = {
-  id: string; // Mapeado de id_cantina
-  name: string; // Mapeado de nome
-  schoolId: string; // Mapeado de id_escola
-  hr_abertura: string | null;
-  hr_fechamento: string | null;
-  produtos?: Product[]; // ✅ FIX: Adicionado para refletir os produtos pré-carregados pela API
+  id: string;
+  name: string;
+  schoolId: string;
+  hr_abertura: string;
+  hr_fechamento: string;
+  produtos: Product[];
 };
 
 export type Product = {
-  id: string; // Mapeado de id_produto
-  canteenId: string; // Mapeado de id_cantina
-  name: string; // Mapeado de nome
-  price: number; // Mapeado de preco
-  image: ImagePlaceholder;
-  // ✅ FIX: O tipo da categoria agora reflete o ENUM do backend
-  category: 'Salgado' | 'Doce' | 'Bebida' | 'Almoço' | null; 
-  popular?: boolean;
+  id: string;
+  canteenId: string;
+  name: string;
+  price: number;
   ativo: boolean;
+  image: Image;
+  category: Category;
+  popular: boolean;
 };
 
-// ✅ NOVO: Tipo para representar um item favorito.
 export type Favorite = {
-  id: string; // Mapeado de id_favorito
-  userId: string; // Mapeado de id_user
-  productId: string; // Mapeado de id_produto
-  product?: Product; // Opcional, pode ser carregado junto
-};
-
-export type Order = {
-  id: string; // Mapeado de id_pedido
-  studentId: string; // Mapeado de id_destinatario
-  userId: string; // Mapeado de id_comprador
-  canteenId: string; // Mapeado de id_cantina
-  total: number; // Mapeado de valor_total
-  date: string; // Mapeado de created_at
-  status: 'pendente' | 'confirmado' | 'cancelado' | 'entregue';
-  items: OrderItem[]; 
+  id: string;
+  userId: string;
+  productId: string;
+  product?: Product;
 };
 
 export type OrderItem = {
-  productId: string; // Mapeado de id_produto
-  productName: string; // Mapeado de produto.nome
-  quantity: number; // Mapeado de quantidade
-  unitPrice: number; // Mapeado de preco_unitario
-  image: ImagePlaceholder;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  image: Image;
 };
 
-export type Transaction = {
-  id: string; // Mapeado de id_transacao
-  walletId: string; // Mapeado de id_carteira
-  userId: string; // Mapeado de id_user_autor
-  date: string; // Mapeado de created_at
-  description: string; // Mapeado de descricao
-  amount: number; // Mapeado de valor
-  type: 'credit' | 'debit'; // Derivado de tipo
-  origin: 'PIX' | 'Recarregar' | 'PagamentoEscola' | 'Debito' | 'Repasse' | 'Estorno'; // Mapeado de tipo
-  status: 'pendente' | 'confirmada' | 'rejeitada';
+export type Order = {
+  id: string;
+  studentId: string;
+  userId: string; // ID of the user who made the order (can be the student or the guardian)
+  canteenId: string;
+  items: OrderItem[];
+  total: number;
+  date: string;
+  status: 'pendente' | 'confirmado' | 'entregue' | 'cancelado';
 };
 
 export type Wallet = {
-    id: string; // Mapeado de id_carteira
-    userId: string; // Mapeado de id_user
-    balance: number; // Mapeado de saldo
-}
+  id: string;
+  userId: string;
+  balance: number;
+};
+
+export type Transaction = {
+  id: string;
+  walletId: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: 'credit' | 'debit';
+  origin: 'PIX' | 'Debito' | 'Estorno' | 'Recarregar' | 'Compra';
+  userId: string; // ID of the user who initiated the transaction
+  status: string;
+};
 
 // #endregion

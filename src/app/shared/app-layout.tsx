@@ -10,6 +10,7 @@ import {
   ShoppingBasket,
   ShoppingCart,
   User,
+  Users,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -52,6 +53,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/shared/logo";
 import { useAuth } from "@/lib/auth-provider";
+import { CartSheet } from "@/components/cart/cart-sheet"; // ✅ 1. Importar o CartSheet
 
 type NavItem = {
   href: string;
@@ -109,7 +111,7 @@ export function AppLayout({
       href: "/student/orders",
       label: "Pedidos",
       icon: <ShoppingBasket />,
-      active: pathname === "/student/orders",
+      active: pathname.startsWith("/student/orders"),
     },
     {
       href: "/student/balance",
@@ -125,6 +127,12 @@ export function AppLayout({
       label: "Dashboard",
       icon: <Home />,
       active: pathname === "/guardian/dashboard",
+    },
+    {
+      href: "/guardian/dependents",
+      label: "Dependentes",
+      icon: <Users />,
+      active: pathname.startsWith("/guardian/dependents"),
     },
     {
       href: "/guardian/order",
@@ -227,6 +235,9 @@ export function AppLayout({
               <PanelLeft />
             </SidebarTrigger>
             <div className="flex items-center gap-4">
+              {/* ✅ 2. Adicionar o carrinho condicionalmente para o aluno */}
+              {userType === 'student' && <CartSheet />}
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">

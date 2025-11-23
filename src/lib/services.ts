@@ -1,13 +1,13 @@
 
 import { type School, type StudentProfile, type GuardianProfile, type Canteen, type Product, type Transaction, type Order, type User, type Wallet, type Favorite } from '@/lib/data';
-import { apiGet, apiPost, apiDelete } from './api';
+import { apiGet, apiPost, apiDelete, apiPatch } from './api';
 import { PlaceHolderImages } from './placeholder-images';
 
 // #region --- Mappers (From Backend Structure to Frontend Structure) ---
 
 export const mapUser = (user: any): User => ({
     id: user.id.toString(),
-    walletId: user.carteira?.id_carteira?.toString() || null, // ✅ CORREÇÃO BUILD: Mapeia o ID da carteira.
+    walletId: user.carteira?.id_carteira?.toString() || null, 
     name: user.nome,
     email: user.email,
     telefone: user.telefone,
@@ -18,6 +18,7 @@ export const mapUser = (user: any): User => ({
     role: user.roles?.[0]?.nome_role || 'Aluno', 
     balance: parseFloat(user.carteira?.saldo ?? 0),
     students: user.dependentes?.map(mapUser) || [],
+    student_code: user.codigo_aluno || null, // Incluindo o código do aluno
 });
 
 const mapSchool = (school: any): School => ({
@@ -123,11 +124,7 @@ export const getStudentProfile = async (userId: string): Promise<StudentProfile 
 export const getGuardianProfile = async (userId: string): Promise<GuardianProfile | null> => {
     const user = await getUser(userId);
     if (user && user.role === 'Responsavel') {
-        const guardianProfile = user as GuardianProfile;
-        if (user.students && user.students.length > 0) {
-            guardianProfile.students = user.students as StudentProfile[];
-        }
-        return guardianProfile;
+        return user as GuardianProfile;
     }
     return null;
 }
@@ -231,9 +228,9 @@ export const postOrder = async (orderData: any): Promise<Order> => {
         id_destinatario: orderData.studentId,
         id_cantina: orderData.canteenId,
         produtos: orderData.items.map((item: any) => ({ 
-            id_produto: item.productId, 
+            id_produto: item.product.id,
             quantidade: item.quantity,
-            preco_unitario: item.unitPrice,
+            preco_unitario: item.product.price,
         })),
         valor_total: orderData.total,
         status: 'pendente',
@@ -241,6 +238,12 @@ export const postOrder = async (orderData: any): Promise<Order> => {
     const response = await apiPost<{data: any}>('pedidos', payload);
     return mapOrder(response.data);
 }
+
+export const updateOrderStatus = async (orderId: string, status: string): Promise<Order> => {
+    const payload = { status };
+    const response = await apiPatch<{ data: any }>(`pedidos/${orderId}`, payload);
+    return mapOrder(response.data);
+};
 
 export const getWalletByUserId = async (userId: string): Promise<Wallet | null> => {
     try {
@@ -317,4 +320,19 @@ export const internalTransfer = async (fromWalletId: string, fromUserId: string,
     });
     return { success: true };
 }
+
+// ✅ NOVA FUNÇÃO: Vincula um aluno a um responsável
+export const linkStudentToGuardian = async (guardianId: string, studentCode: string): Promise<void> => {
+    const payload = {
+        id_responsavel: guardianId,
+        codigo_aluno: studentCode
+    };
+    try {
+        await apiPost('responsavel/vincular-aluno', payload);
+    } catch (error) {
+        console.error(`Failed to link student with code ${studentCode} to guardian ${guardianId}:`, error);
+        throw error; // Re-lança o erro para o componente lidar com a UI (ex: toast)
+    }
+};
+
 // #endregion

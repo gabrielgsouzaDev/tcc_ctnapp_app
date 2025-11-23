@@ -3,7 +3,7 @@
 
 import Image from 'next/image';
 import { useMemo, useState, useEffect } from 'react';
-import { Loader2, Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +30,17 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -38,39 +49,30 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { type Order, type OrderItem } from '@/lib/data';
+import { type Order, type Product } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { getOrdersByUser } from '@/lib/services';
+import { getOrdersByUser, updateOrderStatus } from '@/lib/services';
 import { useAuth } from '@/lib/auth-provider';
-
+import { useCart } from '@/hooks/use-cart'; // ✅ 1. Importar o hook do carrinho
 
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
 
-const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
-  // ✅ CORREÇÃO BUILD DEFINITIVA: Usar 'as const' para inferir tipos literais.
-  const variantMap = {
-    'entregue': 'default',
-    'pendente': 'secondary',
-    'cancelado': 'destructive',
-    'confirmado': 'secondary',
-  } as const;
+// A lógica do carrinho foi movida para use-cart.tsx
 
+const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   const classNameMap = {
     'entregue': 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200',
     'pendente': 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 animate-pulse',
     'confirmado': 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200',
     'cancelado': 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200',
   } as const;
-
-  const variant = variantMap[status] ?? 'default';
   const className = classNameMap[status];
-
-  return <Badge variant={variant} className={cn('capitalize', className)}>{status}</Badge>;
+  return <Badge variant={classNameMap[status] ? 'secondary' : 'default'} className={cn('capitalize', className)}>{status}</Badge>;
 };
 
-const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOrder: (items: OrderItem[]) => void; }) => {
+const OrderDetailsDialog = ({ order, onRepeatOrder, onCancelOrder }: { order: Order; onRepeatOrder: (order: Order) => void; onCancelOrder: (orderId: string) => Promise<void>; }) => {
     const [progress, setProgress] = useState(10)
  
     useEffect(() => {
@@ -137,13 +139,34 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
         <OrderStatusBadge status={order.status} />
       </div>
     </div>
-    <DialogFooter>
+    <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between sm:space-x-2">
         <DialogClose asChild>
-            <Button variant="outline">Fechar</Button>
+            <Button variant="outline" className="w-full sm:w-auto">Fechar</Button>
         </DialogClose>
-        <DialogClose asChild>
-            <Button onClick={() => onRepeatOrder(order.items)}>Repetir Pedido</Button>
-        </DialogClose>
+        <div className="flex flex-col-reverse sm:flex-row sm:gap-2 w-full sm:w-auto">
+            {order.status === 'pendente' && (
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" className="w-full sm:w-auto"><X className="mr-2 h-4 w-4" />Cancelar Pedido</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar Cancelamento</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Você tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita e o valor será estornado para sua carteira.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Voltar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => onCancelOrder(order.id)}>Confirmar</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+            <DialogClose asChild>
+                <Button onClick={() => onRepeatOrder(order)} className="w-full sm:w-auto">Repetir Pedido</Button>
+            </DialogClose>
+        </div>
     </DialogFooter>
   </DialogContent>
 )};
@@ -152,19 +175,27 @@ const OrderDetailsDialog = ({ order, onRepeatOrder }: { order: Order; onRepeatOr
 export default function StudentOrdersPage() {
     const { toast } = useToast();
     const { user, isLoading: isUserLoading } = useAuth();
+    const { addItem } = useCart(); // ✅ 2. Obter a função addItem do hook
     
     const [orderHistory, setOrderHistory] = useState<Order[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // ✅ 3. A lógica do estado do carrinho (useState, useEffect) foi REMOVIDA daqui.
+    // Agora ela é gerenciada globalmente pelo CartProvider.
 
     useEffect(() => {
         const fetchOrders = async () => {
             if (user?.id) {
                 setIsLoading(true);
-                const orders = await getOrdersByUser(user.id);
-                setOrderHistory(orders);
+                try {
+                  const orders = await getOrdersByUser(user.id);
+                  setOrderHistory(orders);
+                } catch (error) {
+                  console.error("Failed to fetch orders", error);
+                  toast({ variant: 'destructive', title: 'Erro ao buscar pedidos.' });
+                }
                 setIsLoading(false);
             }
         };
@@ -172,7 +203,7 @@ export default function StudentOrdersPage() {
         if (!isUserLoading && user) {
             fetchOrders();
         }
-    }, [user, isUserLoading]);
+    }, [user, isUserLoading, toast]);
 
     const filteredHistory = useMemo(() => {
         let processedOrders = [...orderHistory];
@@ -201,13 +232,47 @@ export default function StudentOrdersPage() {
         return processedOrders;
     }, [sortKey, searchTerm, orderHistory]);
 
-
-    const handleRepeatOrder = (items: OrderItem[]) => {
-        console.log('Repeating order with items:', items);
-        toast({
-            title: "Pedido repetido!",
-            description: `${items.length} tipo(s) de item foram adicionados ao seu carrinho.`,
+    // ✅ 4. A função `handleRepeatOrder` agora usa `addItem` do contexto.
+    const handleRepeatOrder = (order: Order) => {
+        order.items.forEach(orderItem => {
+            const product: Product = {
+                id: orderItem.productId,
+                name: orderItem.productName,
+                price: orderItem.unitPrice,
+                // Idealmente, estas propriedades viriam de uma busca de produto completa
+                category: 'Salgado', 
+                canteenId: order.canteenId,
+                image: orderItem.image,
+                ativo: true, 
+                popular: false, 
+            };
+            addItem(product, orderItem.quantity); // Usa a função do hook
         });
+
+        toast({
+            title: "Itens adicionados!",
+            description: `Seu carrinho foi atualizado com os itens do pedido.`,
+            variant: 'success'
+        });
+    };
+
+    const handleCancelOrder = async (orderId: string) => {
+        try {
+            const updatedOrder = await updateOrderStatus(orderId, 'cancelado');
+            setOrderHistory(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+            toast({
+                title: "Pedido Cancelado",
+                description: "Seu pedido foi cancelado com sucesso e o valor estornado.",
+                variant: "success"
+            });
+        } catch (error) {
+            console.error("Failed to cancel order:", error);
+            toast({
+                title: "Falha ao Cancelar",
+                description: "Não foi possível cancelar o pedido. Tente novamente.",
+                variant: "destructive"
+            });
+        }
     };
     
     if (isLoading || isUserLoading) {
@@ -327,7 +392,7 @@ export default function StudentOrdersPage() {
                               </div>
                           </Card>
                       </DialogTrigger>
-                      <OrderDetailsDialog order={order} onRepeatOrder={handleRepeatOrder} />
+                      <OrderDetailsDialog order={order} onRepeatOrder={handleRepeatOrder} onCancelOrder={handleCancelOrder} />
                   </Dialog>
               ))}
           </div>
@@ -379,7 +444,7 @@ export default function StudentOrdersPage() {
                         <TableCell className="text-right font-semibold">R$ {order.total.toFixed(2)}</TableCell>
                       </TableRow>
                     </DialogTrigger>
-                    <OrderDetailsDialog order={order} onRepeatOrder={handleRepeatOrder} />
+                    <OrderDetailsDialog order={order} onRepeatOrder={handleRepeatOrder} onCancelOrder={handleCancelOrder} />
                   </Dialog>
                 ))}
               </TableBody>
