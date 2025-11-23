@@ -81,7 +81,6 @@ const mapWallet = (wallet: any): Wallet => ({
 
 // #region --- API Service Functions ---
 
-// ✅ CORREÇÃO: Extrai o usuário de 'response.data'
 export const getUser = async (userId: string): Promise<User | null> => {
   try {
     const response = await apiGet<{ data: any }>(`users/${userId}`);
@@ -112,18 +111,23 @@ export const getGuardianProfile = async (userId: string): Promise<GuardianProfil
     return null;
 }
 
-// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getSchools = async (): Promise<School[]> => {
   try {
-    const response = await apiGet<{ data: any[] }>('escolas');
-    return response.data.map(mapSchool);
+    const response = await apiGet<any>('escolas');
+    if (response && Array.isArray(response.data)) {
+      return response.data.map(mapSchool);
+    }
+    if (Array.isArray(response)) {
+      return response.map(mapSchool);
+    }
+    console.error("Unexpected response format for schools:", response);
+    return [];
   } catch (e) {
     console.error("Failed to fetch schools:", e);
     return [];
   }
 };
 
-// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
     if (!schoolId) return [];
     try {
@@ -135,7 +139,6 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
     }
 }
 
-// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
     if (!canteenId) return [];
     try {
@@ -147,7 +150,6 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
     }
 }
 
-// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     try {
       const response = await apiGet<{ data: any[] }>(`pedidos`);
@@ -159,7 +161,6 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     }
 }
 
-// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getOrdersByGuardian = async (studentIds: string[]): Promise<Order[]> => {
     if (!studentIds || studentIds.length === 0) return Promise.resolve([]);
     try {
@@ -173,7 +174,6 @@ export const getOrdersByGuardian = async (studentIds: string[]): Promise<Order[]
     }
 }
 
-// ✅ CORREÇÃO: Extrai o pedido criado de 'response.data'
 export const postOrder = async (orderData: any): Promise<Order> => {
     const payload = {
         id_comprador: orderData.userId, 
@@ -191,7 +191,6 @@ export const postOrder = async (orderData: any): Promise<Order> => {
     return mapOrder(response.data);
 }
 
-// ✅ CORREÇÃO: Extrai a carteira de 'response.data'
 export const getWalletByUserId = async (userId: string): Promise<Wallet | null> => {
     try {
         const response = await apiGet<{ data: any }>(`carteiras/${userId}`);
@@ -202,7 +201,6 @@ export const getWalletByUserId = async (userId: string): Promise<Wallet | null> 
     }
 }
 
-// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getTransactionsByUser = async (userId: string): Promise<Transaction[]> => {
     try {
         const response = await apiGet<{ data: any[] }>('transacoes');
@@ -214,7 +212,6 @@ export const getTransactionsByUser = async (userId: string): Promise<Transaction
     }
 }
 
-// ✅ CORREÇÃO: Extrai a lista de 'response.data'
 export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<Transaction[]> => {
      if (!allUserIds || allUserIds.length === 0) return Promise.resolve([]);
     try {
@@ -228,7 +225,6 @@ export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<T
     }
 }
 
-// ✅ CORREÇÃO: Extrai a transação criada de 'response.data'
 export const postTransaction = async (transactionData: any) : Promise<Transaction> => {
     const payload = {
         id_carteira: transactionData.walletId,
