@@ -77,7 +77,8 @@ function PixPaymentContent() {
         });
 
         setTimeout(() => {
-          const redirectPath = user?.role === 'student' ? '/student/dashboard' : '/guardian/dashboard';
+          // ✅ CORREÇÃO BUILD: Comparar com 'Aluno' (em português) em vez de 'student'.
+          const redirectPath = user?.role === 'Aluno' ? '/student/dashboard' : '/guardian/dashboard';
           router.push(redirectPath);
         }, 3000);
 
