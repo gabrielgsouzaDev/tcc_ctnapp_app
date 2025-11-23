@@ -127,7 +127,7 @@ export default function StudentAuthPage() {
             <Logo />
         </div>
         
-        <Tabs defaultValue="login" className="w-full">
+        <Tabs defaultValue="signup" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Entrar</TabsTrigger>
             <TabsTrigger value="signup">Cadastrar</TabsTrigger>
@@ -239,8 +239,8 @@ export default function StudentAuthPage() {
                               </FormControl>
                               <SelectContent>
                                 {schools.map(school => (
-                                    <SelectItem key={school.id} value={school.id_escola.toString()}>
-                                        {school.nome}
+                                    <SelectItem key={school.id} value={school.id}>
+                                        {school.name}
                                     </SelectItem>
                                 ))}
                               </SelectContent>
