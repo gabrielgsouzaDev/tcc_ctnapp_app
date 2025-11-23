@@ -5,7 +5,6 @@ import { PlaceHolderImages } from './placeholder-images';
 
 // #region --- Mappers (From Backend Structure to Frontend Structure) ---
 
-// ✅ CORREÇÃO: Removido o operador '...' para garantir que o objeto final contenha APENAS os campos definidos no tipo 'User'.
 export const mapUser = (user: any): User => ({
     id: user.id.toString(),
     name: user.nome,
@@ -20,7 +19,6 @@ export const mapUser = (user: any): User => ({
     students: user.dependentes?.map(mapUser) || [],
 });
 
-// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
 const mapSchool = (school: any): School => ({
     id: school.id_escola.toString(),
     name: school.nome,
@@ -29,16 +27,18 @@ const mapSchool = (school: any): School => ({
     qtd_alunos: school.qtd_alunos,
 });
 
-// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
+// ✅ CORREÇÃO FINAL: Mapeia o array 'produtos' que agora vem pré-carregado com a cantina.
 const mapCanteen = (canteen: any): Canteen => ({
     id: canteen.id_cantina.toString(),
     name: canteen.nome,
     schoolId: canteen.id_escola.toString(),
     hr_abertura: canteen.hr_abertura,
     hr_fechamento: canteen.hr_fechamento,
+    // Usa o mapProduct para transformar cada produto dentro do array 'produtos' (se existir).
+    produtos: canteen.produtos?.map(mapProduct) || [], 
 });
 
-// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
+// ✅ CORREÇÃO FINAL: Usa a 'categoria' vinda do backend em vez de um valor fixo.
 const mapProduct = (product: any): Product => ({
     id: product.id_produto.toString(),
     canteenId: product.id_cantina.toString(),
@@ -46,11 +46,10 @@ const mapProduct = (product: any): Product => ({
     price: parseFloat(product.preco),
     ativo: product.ativo,
     image: PlaceHolderImages.find(img => img.id.includes(product.nome.split(' ')[0].toLowerCase())) || PlaceHolderImages[0],
-    category: 'Salgado', 
+    category: product.categoria, // Usa o valor que vem da API.
     popular: [2, 4].includes(product.id_produto),
 });
 
-// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
 const mapOrder = (order: any): Order => ({
     id: order.id_pedido.toString(),
     studentId: order.id_destinatario.toString(),
@@ -68,7 +67,6 @@ const mapOrder = (order: any): Order => ({
     status: order.status || 'pendente',
 });
 
-// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
 const mapTransaction = (transaction: any): Transaction => ({
     id: transaction.id_transacao.toString(),
     walletId: transaction.id_carteira.toString(),
@@ -81,7 +79,6 @@ const mapTransaction = (transaction: any): Transaction => ({
     status: transaction.status,
 });
 
-// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
 const mapWallet = (wallet: any): Wallet => ({
     id: wallet.id_carteira.toString(),
     userId: wallet.id_user.toString(),
@@ -144,6 +141,7 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
     if (!schoolId) return [];
     try {
       const response = await apiGet<{ data: any[] }>(`cantinas/escola/${schoolId}`);
+      // A correção no mapCanteen garante que os produtos sejam mapeados aqui.
       return response.data.map(mapCanteen);
     } catch(e) {
       console.error(`Failed to fetch canteens for school ${schoolId}:`, e);
@@ -151,6 +149,7 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
     }
 }
 
+// ESTA FUNÇÃO NÃO É MAIS USADA NO DASHBOARD, MAS PODE SER ÚTIL EM OUTROS LUGARES
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
     if (!canteenId) return [];
     try {
