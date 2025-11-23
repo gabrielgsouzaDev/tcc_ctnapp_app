@@ -96,7 +96,6 @@ export default function GuardianOrderPage() {
         const newCartItems: CartItem[] = parsedItems.map(item => ({
             product: { 
                 // This is a mock product structure for repeating an order.
-                // It's sufficient for adding to cart but won't have full product details.
                 id_produto: item.productId,
                 nome: item.productName,
                 preco: item.unitPrice,
@@ -107,7 +106,8 @@ export default function GuardianOrderPage() {
                 canteenId: '',
                 name: item.productName,
                 price: item.unitPrice,
-                category: 'Salgado'
+                category: 'Salgado',
+                popular: false, // ✅ CORREÇÃO: Propriedade 'popular' adicionada
             },
             quantity: item.quantity,
         }));
