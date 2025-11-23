@@ -208,7 +208,7 @@ export default function StudentDashboard() {
   const getCartItemQuantity = (productId: string) => cart.find(item => item.product.id === productId)?.quantity || 0;
   const categories: Category[] = ['Todos', 'Salgado', 'Doce', 'Bebida', 'Almoço'];
   
-  if (isUserLoading || isLoading) return <p>Carregando dashboard...</p>;
+  if (isUserLoading || isLoading || !user) return <p>Carregando dashboard...</p>;
 
   return (
     <div className="space-y-6">
@@ -296,7 +296,7 @@ export default function StudentDashboard() {
                                     <AlertDialogContent>
                                         <AlertDialogHeader><AlertDialogTitle>Confirmar Pedido</AlertDialogTitle></AlertDialogHeader>
                                          <div className="py-4 text-sm text-muted-foreground">
-                                            <p>Seu saldo atual: <span className='font-bold'>R$ {user?.balance.toFixed(2)}</span></p>
+                                            <p>Seu saldo atual: <span className='font-bold'>R$ {user.balance.toFixed(2)}</span></p>
                                             <p>Total do pedido: <span className='font-bold'>R$ {cartTotal.toFixed(2)}</span></p>
                                             <p>Saldo restante após a compra: <span className='font-bold'>R$ {(user.balance - cartTotal).toFixed(2)}</span></p>
                                             {user.balance < cartTotal && <p className='text-red-500 font-bold mt-2'>Saldo insuficiente para completar o pedido.</p>}

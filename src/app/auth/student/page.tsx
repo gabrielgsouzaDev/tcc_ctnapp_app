@@ -7,19 +7,21 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/shared/logo';
 import { useAuth } from '@/lib/auth-provider';
 import { getSchools } from '@/lib/services';
-import { School } from '@/lib/data';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { type School } from '@/lib/data';
+import { cn } from '@/lib/utils';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido.'),
@@ -31,7 +33,7 @@ const signupSchema = z.object({
   data_nascimento: z.string().min(1, 'A data de nascimento é obrigatória.'),
   email: z.string().email('E-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
-  id_escola: z.string().min(1, 'A escola é obrigatória.'),
+  id_escola: z.string({ required_error: 'A escola é obrigatória.' }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -98,7 +100,7 @@ export default function StudentAuthPage() {
     try {
       await register({
         ...data,
-        role: 'Aluno' // Deve corresponder à role no backend
+        role: 'Aluno'
       });
       
       toast({ 
@@ -229,22 +231,56 @@ export default function StudentAuthPage() {
                       control={signupForm.control}
                       name="id_escola"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex flex-col">
                           <FormLabel>Escola</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Popover>
+                            <PopoverTrigger asChild>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione sua escola" />
-                                </SelectTrigger>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className={cn(
+                                    "w-full justify-between",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value
+                                    ? schools.find(
+                                        (school) => school.id === field.value
+                                      )?.name
+                                    : "Selecione sua escola"}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
                               </FormControl>
-                              <SelectContent>
-                                {schools.map(school => (
-                                    <SelectItem key={school.id} value={school.id}>
-                                        {school.name}
-                                    </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                              <Command>
+                                <CommandInput placeholder="Buscar escola..." />
+                                <CommandEmpty>Nenhuma escola encontrada.</CommandEmpty>
+                                <CommandGroup>
+                                  {schools.map((school) => (
+                                    <CommandItem
+                                      value={school.name}
+                                      key={school.id}
+                                      onSelect={() => {
+                                        signupForm.setValue("id_escola", school.id);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          school.id === field.value
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      {school.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}
