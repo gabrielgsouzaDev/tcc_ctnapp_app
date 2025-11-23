@@ -7,6 +7,7 @@ import { PlaceHolderImages } from './placeholder-images';
 
 export const mapUser = (user: any): User => ({
     id: user.id.toString(),
+    walletId: user.carteira?.id_carteira?.toString() || null, // ✅ CORREÇÃO BUILD: Mapeia o ID da carteira.
     name: user.nome,
     email: user.email,
     telefone: user.telefone,
@@ -54,12 +55,10 @@ const mapProduct = (product: any): Product => ({
     popular: false,
 });
 
-// ✅ NOVO: Mapper para os favoritos que vêm do backend.
 const mapFavorite = (favorite: any): Favorite => ({
     id: favorite.id_favorito.toString(),
     userId: favorite.id_user.toString(),
     productId: favorite.id_produto.toString(),
-    // O produto pode vir aninhado dentro do favorito
     product: favorite.produto ? mapProduct(favorite.produto) : undefined,
 });
 
@@ -172,7 +171,6 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
     }
 }
 
-// ✅ NOVO: Funções para interagir com a API de favoritos.
 export const getFavoritesByUser = async (userId: string): Promise<Favorite[]> => {
     try {
         const response = await apiGet<{ data: any[] }>(`favoritos/${userId}`);

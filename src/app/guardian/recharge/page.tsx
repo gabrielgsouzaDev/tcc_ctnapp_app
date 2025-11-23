@@ -24,7 +24,7 @@ type RechargeTarget = {
   id: string; 
   name: string;
   balance: number;
-  walletId: string | undefined;
+  walletId: string | null; // ✅ CORREÇÃO BUILD: walletId pode ser nulo
   isGuardian?: boolean;
 };
 
@@ -53,7 +53,7 @@ export default function GuardianRechargePage() {
                     id: profile.id,
                     name: profile.name,
                     balance: profile.balance,
-                    walletId: profile.carteira?.id,
+                    walletId: profile.walletId, // ✅ CORREÇÃO BUILD: Usar a propriedade correta
                     isGuardian: true,
                 });
             }
@@ -70,14 +70,14 @@ export default function GuardianRechargePage() {
         id: guardianProfile.id, 
         name: guardianProfile.name, 
         balance: guardianProfile.balance,
-        walletId: guardianProfile.carteira?.id,
+        walletId: guardianProfile.walletId, // ✅ CORREÇÃO BUILD: Usar a propriedade correta
         isGuardian: true 
       },
       ...guardianProfile.students.map((s: UserProfile) => ({
           id: s.id,
           name: s.name,
           balance: s.balance,
-          walletId: s.carteira?.id,
+          walletId: s.walletId, // ✅ CORREÇÃO BUILD: Usar a propriedade correta
           isGuardian: false
       }))
   ] : [];
@@ -90,33 +90,22 @@ export default function GuardianRechargePage() {
      const amountValue = Number(rechargeAmount);
 
      if (!selectedTarget || selectedTarget.isGuardian || !rechargeAmount || amountValue <= 0 || !selectedTarget.walletId) {
-      toast({
-        variant: 'destructive',
-        title: 'Dados inválidos',
-        description: 'Selecione um aluno e um valor para a transferência.',
-      });
+      toast({ variant: 'destructive', title: 'Dados inválidos' });
       return;
     }
 
-    if (!guardianProfile || amountValue > guardianProfile.balance || !guardianProfile.carteira?.id) {
-      toast({
-        variant: 'destructive',
-        title: 'Saldo ou carteira insuficiente',
-        description: 'Seu saldo é insuficiente para realizar esta transferência.',
-      });
+    if (!guardianProfile || amountValue > guardianProfile.balance || !guardianProfile.walletId) { // ✅ CORREÇÃO BUILD: Usar a propriedade correta
+      toast({ variant: 'destructive', title: 'Saldo ou carteira insuficiente' });
       return;
     }
 
     setIsProcessing(true);
     
     try {
-        await internalTransfer(guardianProfile.carteira.id, guardianProfile.id, selectedTarget.walletId, selectedTarget.id, amountValue);
+        // ✅ CORREÇÃO BUILD: Usar a propriedade correta
+        await internalTransfer(guardianProfile.walletId, guardianProfile.id, selectedTarget.walletId, selectedTarget.id, amountValue);
 
-        toast({
-          variant: 'success',
-          title: 'Transferência Concluída!',
-          description: `O saldo de ${selectedTarget.name} foi atualizado com sucesso.`,
-        });
+        toast({ variant: 'success', title: 'Transferência Concluída!' });
         router.push('/guardian/dashboard');
 
     } catch (error) {

@@ -17,6 +17,7 @@ import type { ImagePlaceholder } from './placeholder-images';
 
 export type User = {
   id: string;
+  walletId: string | null; // ✅ CORREÇÃO BUILD: Mapeado de carteira.id_carteira
   name: string;
   email: string;
   role: 'Aluno' | 'Responsavel' | 'Admin' | 'Cantina' | 'Escola';
