@@ -4,7 +4,7 @@
 import Image from 'next/image';
 import { useMemo, useState, useEffect } from 'react';
 import { Loader2, Search } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -49,7 +49,8 @@ import { useAuth } from '@/lib/auth-provider';
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
-  const variant = {
+  // ✅ CORREÇÃO BUILD: Tipagem explícita para garantir compatibilidade com o Badge.
+  const variant: BadgeProps['variant'] = {
     'entregue': 'default',
     'pendente': 'secondary',
     'cancelado': 'destructive',
