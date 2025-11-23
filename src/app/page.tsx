@@ -9,10 +9,10 @@ import { Logo } from '@/components/shared/logo';
 export default function ProfileSelectionPage() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-2xl text-center"> 
+      <div className="w-full max-w-xl text-center"> 
         <Logo />
         <h2 className="mb-6 mt-12 text-2xl font-semibold">Quem está usando?</h2>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           
           <Link href="/auth/student" className="flex">
             <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
@@ -41,23 +41,6 @@ export default function ProfileSelectionPage() {
               <CardContent>
                 <p className="text-sm text-muted-foreground">
                   Gerencie o saldo, acompanhe o histórico de consumo e realize recargas para seus dependentes.
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/auth/employee/login" className="flex">
-            <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex flex-col items-center gap-2">
-                  {/* Ícone trocado para 'User' para refletir o perfil de cliente */}
-                  <User className="h-12 w-12 text-primary" />
-                  <span>Funcionário</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Acesse a plataforma como cliente para fazer pedidos e gerenciar seu consumo na cantina.
                 </p>
               </CardContent>
             </Card>

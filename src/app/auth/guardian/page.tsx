@@ -25,7 +25,7 @@ const loginSchema = z.object({
 
 const signupSchema = z.object({
   nome: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
-  telefone: z.string().min(8, 'O telefone é obrigatório.'),
+  cpf: z.string().length(11, 'O CPF deve ter 11 dígitos.'),
   email: z.string().email('E-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
 });
@@ -43,15 +43,14 @@ export default function GuardianAuthPage() {
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
-
+  
   const signupForm = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { nome: '', telefone: '', email: '', password: '' },
+    defaultValues: { nome: '', cpf: '', email: '', password: '' },
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
-
     try {
       await login(data.email, data.password);
       toast({ 
@@ -73,23 +72,22 @@ export default function GuardianAuthPage() {
 
   const onSignupSubmit = async (data: SignupFormValues) => {
     setIsSubmitting(true);
-
+    
     try {
-      // Passa o 'role' junto com os dados do formulário.
-      // O backend deve usar isso para criar o tipo de usuário correto.
       await register({
         ...data,
-        role: 'Responsavel' // Deve corresponder ao nome da role no backend
+        role: 'Responsavel' // Deve corresponder à role no backend
       });
-
+      
       toast({ 
         title: 'Conta criada com sucesso!', 
-        description: 'Redirecionando para o painel...',
+        description: 'Você será redirecionado para o painel.',
         variant: 'success'
       });
       router.push('/guardian/dashboard');
+
     } catch (error: any) {
-      console.error('Signup Error:', error);
+      console.error("Signup Error:", error);
       toast({
         variant: 'destructive',
         title: 'Falha no cadastro',
@@ -104,19 +102,20 @@ export default function GuardianAuthPage() {
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40 px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-8 flex justify-center">
-          <Logo />
+            <Logo />
         </div>
+        
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Entrar</TabsTrigger>
             <TabsTrigger value="signup">Cadastrar</TabsTrigger>
           </TabsList>
-
+          
           <TabsContent value="login">
             <Card>
               <CardHeader>
                 <CardTitle>Login de Responsável</CardTitle>
-                <CardDescription>Acesse sua conta para gerenciar saldos e pedidos.</CardDescription>
+                <CardDescription>Acesse sua conta para gerenciar dependentes.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...loginForm}>
@@ -157,10 +156,10 @@ export default function GuardianAuthPage() {
           </TabsContent>
 
           <TabsContent value="signup">
-            <Card>
+             <Card>
               <CardHeader>
                 <CardTitle>Cadastro de Responsável</CardTitle>
-                <CardDescription>Crie sua conta para vincular a um aluno.</CardDescription>
+                <CardDescription>Crie sua conta para gerenciar o saldo e os pedidos de seus dependentes.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...signupForm}>
@@ -170,7 +169,7 @@ export default function GuardianAuthPage() {
                       name="nome"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Seu Nome Completo</FormLabel>
+                          <FormLabel>Nome Completo</FormLabel>
                           <FormControl>
                             <Input placeholder="Seu nome completo" {...field} />
                           </FormControl>
@@ -180,14 +179,13 @@ export default function GuardianAuthPage() {
                     />
                      <FormField
                       control={signupForm.control}
-                      name="telefone"
+                      name="cpf"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Telefone</FormLabel>
+                          <FormLabel>CPF</FormLabel>
                           <FormControl>
-                            <Input placeholder="(XX) XXXXX-XXXX" {...field} />
+                            <Input placeholder="Apenas números" {...field} maxLength={11} />
                           </FormControl>
-                           <p className="text-xs text-muted-foreground pt-1">Este telefone será usado para contato.</p>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -197,7 +195,7 @@ export default function GuardianAuthPage() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Seu E-mail</FormLabel>
+                          <FormLabel>E-mail</FormLabel>
                           <FormControl>
                             <Input placeholder="seu@email.com" {...field} />
                           </FormControl>
@@ -227,7 +225,8 @@ export default function GuardianAuthPage() {
             </Card>
           </TabsContent>
         </Tabs>
-         <div className="mt-6 text-center">
+
+        <div className="mt-6 text-center">
           <Button variant="link" asChild>
             <Link href="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
