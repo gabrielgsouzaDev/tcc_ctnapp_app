@@ -27,27 +27,32 @@ const mapSchool = (school: any): School => ({
     qtd_alunos: school.qtd_alunos,
 });
 
-// ✅ CORREÇÃO FINAL: Mapeia o array 'produtos' que agora vem pré-carregado com a cantina.
 const mapCanteen = (canteen: any): Canteen => ({
     id: canteen.id_cantina.toString(),
     name: canteen.nome,
     schoolId: canteen.id_escola.toString(),
     hr_abertura: canteen.hr_abertura,
     hr_fechamento: canteen.hr_fechamento,
-    // Usa o mapProduct para transformar cada produto dentro do array 'produtos' (se existir).
     produtos: canteen.produtos?.map(mapProduct) || [], 
 });
 
-// ✅ CORREÇÃO FINAL: Usa a 'categoria' vinda do backend em vez de um valor fixo.
+// ✅ CORREÇÃO DO ERRO DE TIPO: Adicionada a propriedade 'description' para cumprir o contrato do tipo ImagePlaceholder.
 const mapProduct = (product: any): Product => ({
     id: product.id_produto.toString(),
     canteenId: product.id_cantina.toString(),
     name: product.nome,
     price: parseFloat(product.preco),
     ativo: product.ativo,
-    image: PlaceHolderImages.find(img => img.id.includes(product.nome.split(' ')[0].toLowerCase())) || PlaceHolderImages[0],
-    category: product.categoria, // Usa o valor que vem da API.
-    popular: [2, 4].includes(product.id_produto),
+    category: product.categoria || 'Salgado',
+    image: product.url_imagem
+        ? { 
+            id: product.id_produto.toString(), 
+            imageUrl: product.url_imagem, 
+            imageHint: `Image of ${product.nome}`,
+            description: `Image for the product ${product.nome}` // Propriedade adicionada
+          }
+        : PlaceHolderImages[0],
+    popular: false,
 });
 
 const mapOrder = (order: any): Order => ({
@@ -141,7 +146,6 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
     if (!schoolId) return [];
     try {
       const response = await apiGet<{ data: any[] }>(`cantinas/escola/${schoolId}`);
-      // A correção no mapCanteen garante que os produtos sejam mapeados aqui.
       return response.data.map(mapCanteen);
     } catch(e) {
       console.error(`Failed to fetch canteens for school ${schoolId}:`, e);
@@ -149,7 +153,6 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
     }
 }
 
-// ESTA FUNÇÃO NÃO É MAIS USADA NO DASHBOARD, MAS PODE SER ÚTIL EM OUTROS LUGARES
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
     if (!canteenId) return [];
     try {
@@ -260,7 +263,7 @@ export const rechargeBalance = async (walletId: string, userId: string, amount: 
     return { success: true };
 }
 
-export const internalTransfer = async (fromWalletId: string, fromUserId: string, toWalletId: string, toUserId: string, amount: number): Promise<{success: boolean}> => {
+export const internalTransfer = async (fromWalletId: string, fromUserId: string, toWalletId: string, toUserId: string, amount: number): Promise<{success:boolean}> => {
     await postTransaction({
         walletId: fromWalletId,
         userId: fromUserId,
