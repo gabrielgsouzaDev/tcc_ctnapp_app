@@ -59,6 +59,7 @@ export type Canteen = {
   schoolId: string; // Mapeado de id_escola
   hr_abertura: string | null;
   hr_fechamento: string | null;
+  produtos?: Product[]; // ✅ FIX: Adicionado para refletir os produtos pré-carregados pela API
 };
 
 export type Product = {
@@ -67,7 +68,8 @@ export type Product = {
   name: string; // Mapeado de nome
   price: number; // Mapeado de preco
   image: ImagePlaceholder;
-  category: 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
+  // ✅ FIX: O tipo da categoria agora reflete o ENUM do backend
+  category: 'Salgado' | 'Doce' | 'Bebida' | 'Almoço' | null; 
   popular?: boolean;
   ativo: boolean;
 };

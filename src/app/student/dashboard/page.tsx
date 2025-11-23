@@ -49,8 +49,7 @@ import { type Product, type Canteen, type OrderItem } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-// ✅ OTIMIZAÇÃO: getStudentProfile não é mais necessário, pois os dados já estão no objeto 'user'.
-import { getCanteensBySchool, getProductsByCanteen, postOrder } from '@/lib/services';
+import { getCanteensBySchool, postOrder } from '@/lib/services';
 import { useAuth } from '@/lib/auth-provider';
 
 type CartItem = {
@@ -66,18 +65,17 @@ type AddToCartState = {
 
 export default function StudentDashboard() {
   const { toast } = useToast();
-  // ✅ OTIMIZAÇÃO: O objeto 'user' do useAuth() é a fonte da verdade. Não precisamos de um estado 'studentProfile' separado.
-  const { user, isLoading: isUserLoading, logout } = useAuth();
+  const { user, isLoading: isUserLoading } = useAuth();
   const router = useRouter();
   
   const [canteens, setCanteens] = useState<Canteen[]>([]);
-  const [selectedCanteen, setSelectedCanteen] = useState('');
+  // ✅ OTIMIZAÇÃO: Armazenar o objeto Canteen inteiro, não apenas o ID.
+  const [selectedCanteen, setSelectedCanteen] = useState<Canteen | null>(null);
   
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-
-  // ✅ OTIMIZAÇÃO: O estado de loading principal agora depende apenas do carregamento do usuário e das cantinas.
+  // ✅ OTIMIZAÇÃO: Não há mais um estado de loading separado para produtos.
+  const [products, setProducts] = useState<Product[]>([]); 
   const [isLoading, setIsLoading] = useState(true);
+
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,18 +83,21 @@ export default function StudentDashboard() {
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
   const [favoriteCategory, setFavoriteCategory] = useState<Category>('Todos');
 
-  // Efeito para buscar as cantinas assim que o usuário estiver disponível.
+  // Efeito para buscar as cantinas e seus produtos pré-carregados.
    useEffect(() => {
-    const fetchCanteens = async () => {
-      // Só prossegue se o usuário estiver carregado e tiver um schoolId.
+    const fetchCanteensAndProducts = async () => {
       if (user && user.schoolId) {
         setIsLoading(true);
         try {
+          // API agora retorna cantinas E seus produtos juntos.
           const canteenList = await getCanteensBySchool(user.schoolId.toString());
           setCanteens(canteenList);
-          // Se houver cantinas, seleciona a primeira por padrão.
+          
           if (canteenList.length > 0) {
-            setSelectedCanteen(canteenList[0].id);
+            // Seleciona a primeira cantina por padrão.
+            setSelectedCanteen(canteenList[0]);
+            // ✅ OTIMIZAÇÃO: Define os produtos da cantina já selecionada.
+            setProducts(canteenList[0].produtos || []); 
           } else {
             toast({ variant: 'default', title: 'Nenhuma cantina encontrada para sua escola.' });
           }
@@ -106,36 +107,26 @@ export default function StudentDashboard() {
         }
         setIsLoading(false);
       } else if (user && !user.schoolId) {
-          // Caso o usuário (aluno) não esteja associado a uma escola.
-          toast({ variant: 'destructive', title: 'Você não está associado a uma escola.', description: 'Contate o suporte.' });
+          toast({ variant: 'destructive', title: 'Você não está associado a uma escola.' });
           setIsLoading(false);
       }
     };
     
-    // Garante que o usuário foi carregado antes de fazer a chamada.
     if (!isUserLoading) {
-        fetchCanteens();
+        fetchCanteensAndProducts();
     }
   }, [user, isUserLoading, toast]);
 
-  // Efeito para buscar produtos sempre que a cantina selecionada mudar.
-  useEffect(() => {
-    const fetchProducts = async () => {
-        if (selectedCanteen) {
-            setIsLoadingProducts(true);
-            try {
-                const productList = await getProductsByCanteen(selectedCanteen);
-                setProducts(productList);
-            } catch (error) {
-                console.error("Falha ao buscar produtos:", error);
-                toast({ variant: 'destructive', title: 'Erro ao carregar produtos.' });
-            }
-            setIsLoadingProducts(false);
-        }
-    };
-    fetchProducts();
-  }, [selectedCanteen, toast]);
+    // ✅ OTIMIZAÇÃO: Removido o useEffect que buscava produtos separadamente.
+    // A lógica agora é tratada pela função 'handleCanteenChange'.
 
+  // Função para lidar com a mudança de cantina no dropdown.
+  const handleCanteenChange = (canteenId: string) => {
+      const newSelectedCanteen = canteens.find(c => c.id === canteenId) || null;
+      setSelectedCanteen(newSelectedCanteen);
+      // Define os produtos da nova cantina selecionada.
+      setProducts(newSelectedCanteen?.produtos || []);
+  }
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
@@ -145,6 +136,7 @@ export default function StudentDashboard() {
       )
       .filter((p) => {
         if (selectedCategory === 'Todos') return true;
+        // ✅ FIX: A categoria agora vem do backend e é usada aqui.
         return p.category === selectedCategory;
       });
   }, [searchTerm, selectedCategory, products]);
@@ -239,12 +231,10 @@ export default function StudentDashboard() {
         toast({ variant: "destructive", title: "Carrinho vazio!" });
         return;
     }
-    // ✅ OTIMIZAÇÃO: Usa o 'user' diretamente para validação.
     if (!user || !selectedCanteen) {
         toast({ variant: "destructive", title: "Perfil ou cantina não selecionado!" });
         return;
     }
-    // ✅ OTIMIZAÇÃO: Lê o saldo diretamente do 'user'.
     if (user.balance < cartTotal) {
         toast({ variant: "destructive", title: "Saldo insuficiente!" });
         return;
@@ -252,9 +242,9 @@ export default function StudentDashboard() {
 
     try {
         const orderPayload = {
-            studentId: user.id, // O destinatário é o próprio aluno
-            userId: user.id,    // O comprador é o próprio aluno
-            canteenId: selectedCanteen,
+            studentId: user.id,
+            userId: user.id,
+            canteenId: selectedCanteen.id, // Usa o ID da cantina selecionada
             total: cartTotal,
             items: cart.map(item => ({
               productId: item.product.id,
@@ -263,10 +253,6 @@ export default function StudentDashboard() {
             })),
         };
         await postOrder(orderPayload);
-
-        // TODO: Em vez de atualizar localmente, o ideal seria re-buscar o usuário ou o saldo
-        // para ter a informação mais precisa do backend, mas isso é uma otimização futura.
-        // Por agora, limpamos o carrinho e damos feedback de sucesso.
 
         toast({
             variant: 'success',
@@ -287,7 +273,6 @@ export default function StudentDashboard() {
 
   const categories: Category[] = ['Todos', 'Salgado', 'Doce', 'Bebida', 'Almoço'];
   
-  // O estado de loading agora considera o carregamento inicial do usuário e das cantinas.
   if (isUserLoading || isLoading) {
     return (
         <div className="space-y-6 animate-pulse">
@@ -315,7 +300,6 @@ export default function StudentDashboard() {
     )
   }
 
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -328,7 +312,11 @@ export default function StudentDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={selectedCanteen} onValueChange={setSelectedCanteen} disabled={canteens.length === 0}>
+           <Select 
+            value={selectedCanteen?.id || ''} 
+            onValueChange={handleCanteenChange}
+            disabled={canteens.length === 0}
+           >
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder={canteens.length > 0 ? "Selecionar Cantina" : "Nenhuma cantina"} />
             </SelectTrigger>
@@ -548,12 +536,7 @@ export default function StudentDashboard() {
           </div>
       </div>
       
-      {isLoadingProducts ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-pulse">
-            {[...Array(8)].map((_, i) => <Card key={i} className="h-80"><CardHeader className="p-0 h-48 bg-muted rounded-t-lg"></CardHeader><CardContent className="p-4 space-y-2"><div className="h-6 w-3/4 bg-muted rounded"></div><div className="h-4 w-1/4 bg-muted rounded"></div></CardContent><CardFooter className='p-4 pt-0'><div className="h-10 w-full bg-muted rounded-md"></div></CardFooter></Card>)}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProducts.map((product) => {
             const quantityInCart = getCartItemQuantity(product.id);
             const isAdded = addToCartState[product.id] === 'added';
@@ -616,8 +599,8 @@ export default function StudentDashboard() {
             </Card>
             )})}
         </div>
-      )}
-       {(filteredProducts.length === 0 && !isLoadingProducts) && (
+      
+       {(filteredProducts.length === 0 && !isLoading) && (
         <div className="col-span-full text-center text-muted-foreground py-10">
           <p>Nenhum produto encontrado para os filtros selecionados.</p>
         </div>
