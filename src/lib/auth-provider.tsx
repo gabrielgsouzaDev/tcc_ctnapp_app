@@ -1,10 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+// ✅ 1. Importar usePathname para verificar a rota atual
+import { useRouter, usePathname } from 'next/navigation';
 import { apiPost, apiGet } from './api';
 import { type User } from './data';
-// ✅ IMPORTAÇÃO: Importa a função de mapeamento que foi exportada.
 import { getUser, mapUser } from './services';
 
 interface AuthContextType {
@@ -23,64 +23,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname(); // ✅ Obter o pathname atual
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-      const storedUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-
-      if (storedToken && storedUserId) {
-        setToken(storedToken);
-        try {
-           // A função getUser já retorna o usuário mapeado, então aqui está correto.
-           const userData = await getUser(storedUserId);
-           if (userData) {
-             setUser(userData);
-           } else {
-             throw new Error('Usuário não encontrado com o ID armazenado');
-           }
-        } catch (error) {
-          console.error("Falha ao buscar usuário com dados locais, limpando sessão.", error);
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('userId');
-          setToken(null);
-          setUser(null);
-        }
-      }
-      setIsLoading(false);
-    };
-    initializeAuth();
-  }, []);
-
-  // ✅ CORREÇÃO: A função agora recebe um payload não mapeado e utiliza o mapUser.
-  const handleAuthSuccess = (rawUser: any, token: string) => {
-    const mappedUser = mapUser(rawUser);
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('userId', mappedUser.id.toString());
-    setToken(token);
-    setUser(mappedUser);
-  }
-
-  const login = async (email: string, password: string) => {
-    try {
-      const response = await apiPost<{ data: { user: any; token: string } }>('login', { email, senha: password, device_name: 'browser' });
-      // ✅ LÓGICA: Passa o usuário bruto e o token para o handler, que fará o mapeamento.
-      handleAuthSuccess(response.data.user, response.data.token);
-    } catch (error: any) {
-      console.error("Falha no login:", error);
-      throw new Error(error.message || 'E-mail ou senha incorretos. Tente novamente.');
-    }
-  };
-
-  const register = async (data: Record<string, any>) => {
-    const { password, ...restOfData } = data;
-    const payload = { ...restOfData, senha: password };
-
-    await apiPost<{ data: any }>('users', payload);
-    
-    await login(data.email, password);
-  };
-
+  // A função de logout foi movida para cima para ser usada no useEffect
   const logout = async () => {
     try {
         await apiPost('logout', {});
@@ -94,13 +39,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      const storedUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+
+      if (storedToken && storedUserId) {
+        setToken(storedToken);
+        try {
+           const userData = await getUser(storedUserId);
+
+           if (userData) {
+            // ✅ 2. Lógica de verificação de consistência da sessão
+            const isStudentRoute = pathname.startsWith('/student');
+            const isGuardianRoute = pathname.startsWith('/guardian');
+            const userIsStudent = userData.role === 'Aluno';
+            const userIsGuardian = userData.role === 'Responsavel';
+
+            // Se o tipo de usuário na sessão for inconsistente com a rota, força o logout
+            if ((isStudentRoute && !userIsStudent) || (isGuardianRoute && !userIsGuardian)) {
+                console.warn("Inconsistência de sessão detectada (rota vs. papel de usuário). Limpando a sessão.");
+                logout(); // Força o logout para limpar dados corrompidos
+                return; // Interrompe a execução
+            }
+
+            setUser(userData);
+
+           } else {
+             throw new Error('Usuário não encontrado com o ID armazenado');
+           }
+        } catch (error) {
+          console.error("Falha ao buscar usuário, limpando sessão.", error);
+          logout(); // Usa a função de logout para limpar tudo
+        }
+      }
+      setIsLoading(false);
+    };
+    initializeAuth();
+  // A dependência de `pathname` garante que a verificação ocorra em mudanças de rota, se necessário
+  }, [pathname]); 
+
+  const handleAuthSuccess = (rawUser: any, token: string) => {
+    const mappedUser = mapUser(rawUser);
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('userId', mappedUser.id.toString());
+    setToken(token);
+    setUser(mappedUser);
+  }
+
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await apiPost<{ data: { user: any; token: string } }>('login', { email, senha: password, device_name: 'browser' });
+      handleAuthSuccess(response.data.user, response.data.token);
+    } catch (error: any) {
+      console.error("Falha no login:", error);
+      throw new Error(error.message || 'E-mail ou senha incorretos. Tente novamente.');
+    }
+  };
+
+  const register = async (data: Record<string, any>) => {
+    const { password, ...restOfData } = data;
+    const payload = { ...restOfData, senha: password };
+    await apiPost<{ data: any }>('users', payload);
+    await login(data.email, password);
+  };
+
   const value = {
     user,
     token,
     isLoading,
     login,
     register,
-    logout,
+    logout, // Expõe a função de logout já definida
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

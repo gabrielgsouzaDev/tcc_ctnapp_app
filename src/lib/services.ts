@@ -5,6 +5,18 @@ import { PlaceHolderImages } from './placeholder-images';
 
 // #region --- Mappers (From Backend Structure to Frontend Structure) ---
 
+// ✅ FUNÇÃO ADICIONADA: Mapeia o nome do papel do backend para o do frontend
+const mapRole = (roleName: string): User['role'] => {
+    switch (roleName) {
+        case 'student':
+            return 'Aluno';
+        case 'guardian':
+            return 'Responsavel';
+        default:
+            return 'Aluno'; // Retorna um padrão seguro
+    }
+}
+
 export const mapUser = (user: any): User => ({
     id: user.id.toString(),
     walletId: user.carteira?.id_carteira?.toString() || null, 
@@ -15,10 +27,11 @@ export const mapUser = (user: any): User => ({
     ativo: user.ativo,
     schoolId: user.id_escola?.toString() || null,
     canteenId: user.id_cantina?.toString() || null,
-    role: user.roles?.[0]?.nome_role || 'Aluno', 
+    // ✅ LÓGICA CORRIGIDA: Usa a função mapRole para garantir consistência
+    role: mapRole(user.roles?.[0]?.nome_role), 
     balance: parseFloat(user.carteira?.saldo ?? 0),
     students: user.dependentes?.map(mapUser) || [],
-    student_code: user.codigo_aluno || null, // Incluindo o código do aluno
+    student_code: user.codigo_aluno || null,
 });
 
 const mapSchool = (school: any): School => ({
@@ -321,7 +334,6 @@ export const internalTransfer = async (fromWalletId: string, fromUserId: string,
     return { success: true };
 }
 
-// ✅ NOVA FUNÇÃO: Vincula um aluno a um responsável
 export const linkStudentToGuardian = async (guardianId: string, studentCode: string): Promise<void> => {
     const payload = {
         id_responsavel: guardianId,
