@@ -4,7 +4,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter } from 'next/navigation';
 import { apiPost, apiGet } from './api';
 import { type User } from './data';
-import { getUser } from './services';
+// ✅ IMPORTAÇÃO: Importa a função de mapeamento que foi exportada.
+import { getUser, mapUser } from './services';
 
 interface AuthContextType {
   user: User | null;
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (storedToken && storedUserId) {
         setToken(storedToken);
         try {
+           // A função getUser já retorna o usuário mapeado, então aqui está correto.
            const userData = await getUser(storedUserId);
            if (userData) {
              setUser(userData);
@@ -50,21 +52,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
-  const handleAuthSuccess = (payload: { user: User; token: string }) => {
-    localStorage.setItem('authToken', payload.token);
-    localStorage.setItem('userId', payload.user.id.toString());
-    setToken(payload.token);
-    setUser(payload.user);
+  // ✅ CORREÇÃO: A função agora recebe um payload não mapeado e utiliza o mapUser.
+  const handleAuthSuccess = (rawUser: any, token: string) => {
+    const mappedUser = mapUser(rawUser);
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('userId', mappedUser.id.toString());
+    setToken(token);
+    setUser(mappedUser);
   }
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await apiPost<{ data: { user: User; token: string } }>('login', { email, senha: password, device_name: 'browser' });
-      handleAuthSuccess(response.data);
+      const response = await apiPost<{ data: { user: any; token: string } }>('login', { email, senha: password, device_name: 'browser' });
+      // ✅ LÓGICA: Passa o usuário bruto e o token para o handler, que fará o mapeamento.
+      handleAuthSuccess(response.data.user, response.data.token);
     } catch (error: any) {
-      // Transforma o erro da API em uma mensagem que o usuário final pode entender
       console.error("Falha no login:", error);
-      // A mensagem de erro real vinda do backend agora será lançada para o formulário
       throw new Error(error.message || 'E-mail ou senha incorretos. Tente novamente.');
     }
   };

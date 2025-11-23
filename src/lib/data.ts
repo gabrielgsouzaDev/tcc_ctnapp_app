@@ -1,32 +1,32 @@
 
 import type { ImagePlaceholder } from './placeholder-images';
 
-// This file contains TYPE DEFINITIONS for the entire application.
-// These types reflect the final Laravel database DUMP.
+// =============================================================================
+// TYPE DEFINITIONS - FRONTEND DOMAIN
+//
+// Este arquivo contém as definições de tipo para a aplicação frontend.
+// Estes tipos representam a ESTRUTURA FINAL dos dados após serem mapeados
+// do backend. Eles são a "única fonte da verdade" para os componentes React.
+//
+// ✅ PRINCÍPIO: Não incluir campos brutos do backend (ex: id_escola, nome_role).
+// A camada de mapeamento em 'services.ts' é a única responsável por essa tradução.
+// =============================================================================
 
-// #region --- ENTITY TYPE DEFINITIONS ---
+
+// #region --- USER & AUTH TYPES ---
 
 export type User = {
-    id: number;
-    nome: string;
-    email: string;
-    telefone: string | null;
-    data_nascimento: string | null;
-    id_escola: number | null;
-    id_cantina: number | null;
-    ativo: boolean;
-    created_at: string;
-    updated_at: string;
-    // --- Relationships & Frontend Derived Fields ---
-    roles: { nome_role: string }[];
-    carteira?: Wallet;
-    dependentes?: User[]; // For guardians
-    // --- Mapped Fields for convenience ---
-    name: string; // derived from nome
-    role: 'Aluno' | 'Responsavel' | 'Admin' | 'Cantina' | 'Escola';
-    balance: number;
-    schoolId: number | null; // derived from id_escola
-    students: User[]; // Mapped from 'dependentes'
+  id: string;
+  name: string;
+  email: string;
+  role: 'Aluno' | 'Responsavel' | 'Admin' | 'Cantina' | 'Escola';
+  balance: number;
+  schoolId: string | null;
+  canteenId: string | null;
+  students: User[]; // Para responsáveis, contém a lista de alunos dependentes
+  telefone: string | null;
+  data_nascimento: string | null;
+  ativo: boolean;
 };
 
 export type StudentProfile = User & {
@@ -40,122 +40,73 @@ export type GuardianProfile = User & {
 
 export type UserProfile = StudentProfile | GuardianProfile;
 
+// #endregion
+
+
+// #region --- CORE ENTITY TYPES ---
+
 export type School = {
-  id_escola: number; 
-  nome: string;
+  id: string; // Mapeado de id_escola
+  name: string; // Mapeado de nome
   cnpj: string | null;
-  id_endereco: number | null;
-  id_plano: number | null;
   status: 'ativa' | 'inativa' | 'pendente';
   qtd_alunos: number;
-  created_at: string;
-  updated_at: string;
-  // --- Mapped Fields ---
-  id: string; // derived from id_escola
-  name: string; // derived from nome
 };
 
 export type Canteen = {
-  id_cantina: number;
-  nome: string;
-  id_escola: number;
+  id: string; // Mapeado de id_cantina
+  name: string; // Mapeado de nome
+  schoolId: string; // Mapeado de id_escola
   hr_abertura: string | null;
   hr_fechamento: string | null;
-  created_at: string;
-  updated_at: string;
-  // --- Mapped Fields ---
-  id: string; // derived from id_cantina
-  name: string; // derived from nome
-  schoolId: string; // derived from id_escola
 };
 
 export type Product = {
-  id_produto: number;
-  id_cantina: number; 
-  nome: string;
-  preco: number;
-  ativo: boolean;
-  created_at: string;
-  updated_at: string;
-  // --- Mapped Fields ---
-  id: string; // derived from id_produto
-  canteenId: string; // derived from id_cantina
-  name: string; // derived from nome
-  price: number; // derived from preco
+  id: string; // Mapeado de id_produto
+  canteenId: string; // Mapeado de id_cantina
+  name: string; // Mapeado de nome
+  price: number; // Mapeado de preco
   image: ImagePlaceholder;
+  category: 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
   popular?: boolean;
-  category: 'Salgado' | 'Doce' | 'Bebida' | 'Almoço'; // This needs to be present in the backend model or mapped
+  ativo: boolean;
 };
 
 export type Order = {
-  id_pedido: number;
-  id_cantina: number;
-  id_comprador: number;
-  id_destinatario: number;
-  valor_total: number;
+  id: string; // Mapeado de id_pedido
+  studentId: string; // Mapeado de id_destinatario
+  userId: string; // Mapeado de id_comprador
+  canteenId: string; // Mapeado de id_cantina
+  total: number; // Mapeado de valor_total
+  date: string; // Mapeado de created_at
   status: 'pendente' | 'confirmado' | 'cancelado' | 'entregue';
-  created_at: string;
-  updated_at: string;
-  // --- Relationships & Mapped Fields ---
   items: OrderItem[]; 
-  id: string; // from id_pedido
-  date: string; // from created_at
-  total: number; // from valor_total
-  studentId: string; // from id_destinatario
-  userId: string; // from id_comprador
-  canteenId: string; // from id_cantina
 };
 
 export type OrderItem = {
-  id_item: number;
-  id_pedido: number;
-  id_produto: number;
-  quantidade: number;
-  preco_unitario: number;
-  created_at: string;
-  updated_at: string;
-  // --- Frontend derived/mapped fields ---
-  productId: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
+  productId: string; // Mapeado de id_produto
+  productName: string; // Mapeado de produto.nome
+  quantity: number; // Mapeado de quantidade
+  unitPrice: number; // Mapeado de preco_unitario
   image: ImagePlaceholder;
 };
 
 export type Transaction = {
-  id_transacao: number;
-  id_carteira: number;
-  id_user_autor: number | null;
-  id_aprovador: number | null;
-  uuid: string;
-  tipo: 'PIX' | 'Recarregar' | 'PagamentoEscola' | 'Debito' | 'Repasse' | 'Estorno';
-  valor: number;
-  descricao: string | null;
-  referencia: string | null;
+  id: string; // Mapeado de id_transacao
+  walletId: string; // Mapeado de id_carteira
+  userId: string; // Mapeado de id_user_autor
+  date: string; // Mapeado de created_at
+  description: string; // Mapeado de descricao
+  amount: number; // Mapeado de valor
+  type: 'credit' | 'debit'; // Derivado de tipo
+  origin: 'PIX' | 'Recarregar' | 'PagamentoEscola' | 'Debito' | 'Repasse' | 'Estorno'; // Mapeado de tipo
   status: 'pendente' | 'confirmada' | 'rejeitada';
-  created_at: string;
-  updated_at: string;
-  // --- Mapped Fields ---
-  id: string; // from id_transacao
-  walletId: string; // from id_carteira
-  date: string; // from created_at
-  description: string; // from descricao
-  amount: number; // from valor
-  type: 'credit' | 'debit'; // derived from tipo
-  origin: string; // derived from tipo
-  userId: string; // derived from id_user_autor
-  studentId?: string; // needs to be mapped based on context
 };
 
 export type Wallet = {
-    id_carteira: number;
-    id_user: number;
-    saldo: number;
-    saldo_bloqueado: number;
-    // --- Mapped Fields ---
-    id: string; // from id_carteira
-    userId: string; // from id_user
-    balance: number; // from saldo
+    id: string; // Mapeado de id_carteira
+    userId: string; // Mapeado de id_user
+    balance: number; // Mapeado de saldo
 }
 
 // #endregion

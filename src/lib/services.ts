@@ -5,42 +5,53 @@ import { PlaceHolderImages } from './placeholder-images';
 
 // #region --- Mappers (From Backend Structure to Frontend Structure) ---
 
-const mapUser = (user: any): User => ({
-    ...user,
-    id: user.id,
+// ✅ CORREÇÃO: Removido o operador '...' para garantir que o objeto final contenha APENAS os campos definidos no tipo 'User'.
+export const mapUser = (user: any): User => ({
+    id: user.id.toString(),
     name: user.nome,
-    schoolId: user.id_escola,
+    email: user.email,
+    telefone: user.telefone,
+    data_nascimento: user.data_nascimento,
+    ativo: user.ativo,
+    schoolId: user.id_escola?.toString() || null,
+    canteenId: user.id_cantina?.toString() || null,
     role: user.roles?.[0]?.nome_role || 'Aluno', 
     balance: parseFloat(user.carteira?.saldo ?? 0),
     students: user.dependentes?.map(mapUser) || [],
 });
 
+// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
 const mapSchool = (school: any): School => ({
-    ...school,
     id: school.id_escola.toString(),
     name: school.nome,
+    cnpj: school.cnpj,
+    status: school.status,
+    qtd_alunos: school.qtd_alunos,
 });
 
+// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
 const mapCanteen = (canteen: any): Canteen => ({
-    ...canteen,
     id: canteen.id_cantina.toString(),
     name: canteen.nome,
     schoolId: canteen.id_escola.toString(),
+    hr_abertura: canteen.hr_abertura,
+    hr_fechamento: canteen.hr_fechamento,
 });
 
+// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
 const mapProduct = (product: any): Product => ({
-    ...product,
     id: product.id_produto.toString(),
     canteenId: product.id_cantina.toString(),
     name: product.nome,
     price: parseFloat(product.preco),
+    ativo: product.ativo,
     image: PlaceHolderImages.find(img => img.id.includes(product.nome.split(' ')[0].toLowerCase())) || PlaceHolderImages[0],
     category: 'Salgado', 
     popular: [2, 4].includes(product.id_produto),
 });
 
+// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
 const mapOrder = (order: any): Order => ({
-    ...order,
     id: order.id_pedido.toString(),
     studentId: order.id_destinatario.toString(),
     userId: order.id_comprador.toString(),
@@ -57,8 +68,8 @@ const mapOrder = (order: any): Order => ({
     status: order.status || 'pendente',
 });
 
+// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
 const mapTransaction = (transaction: any): Transaction => ({
-    ...transaction,
     id: transaction.id_transacao.toString(),
     walletId: transaction.id_carteira.toString(),
     date: transaction.created_at,
@@ -67,10 +78,11 @@ const mapTransaction = (transaction: any): Transaction => ({
     type: ['PIX', 'Recarregar', 'Estorno'].includes(transaction.tipo) ? 'credit' : 'debit',
     origin: transaction.tipo,
     userId: transaction.id_user_autor?.toString() || '',
+    status: transaction.status,
 });
 
+// ✅ CORREÇÃO: Removido o operador '...' para garantir um objeto limpo.
 const mapWallet = (wallet: any): Wallet => ({
-    ...wallet,
     id: wallet.id_carteira.toString(),
     userId: wallet.id_user.toString(),
     balance: parseFloat(wallet.saldo)
