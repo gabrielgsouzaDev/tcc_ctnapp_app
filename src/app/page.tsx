@@ -9,12 +9,12 @@ import { Logo } from '@/components/shared/logo';
 export default function ProfileSelectionPage() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-lg text-center"> 
+      {/* A classe max-w-lg foi alterada para max-w-2xl para alargar o container */}
+      <div className="w-full max-w-2xl text-center"> 
         <Logo />
         <h2 className="mb-6 mt-12 text-2xl font-semibold">Quem está usando?</h2>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           
-          {/* Card Aluno */}
           <Link href="/auth/student" className="flex">
             <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
@@ -31,7 +31,6 @@ export default function ProfileSelectionPage() {
             </Card>
           </Link>
 
-          {/* Card Responsável */}
           <Link href="/auth/guardian" className="flex">
             <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
@@ -48,7 +47,6 @@ export default function ProfileSelectionPage() {
             </Card>
           </Link>
 
-          {/* Card Funcionário (Texto CORRIGIDO) */}
           <Link href="/auth/employee/login" className="flex">
             <Card className="flex w-full transform cursor-pointer flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
               <CardHeader>
