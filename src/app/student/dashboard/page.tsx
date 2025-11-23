@@ -1,13 +1,14 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-provider";
 import { useCart } from "@/hooks/use-cart";
-import { getCanteensBySchool } from '@/lib/services';
-import { type Product, type Canteen } from '@/lib/data';
+// ✅ 1. Importar as funções de serviço para favoritos
+import { getCanteensBySchool, getFavoritesByUser, addFavorite, removeFavorite } from '@/lib/services';
+import { type Product, type Canteen, type Favorite } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -36,28 +37,40 @@ export default function StudentDashboardPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
 
+  // ✅ 2. Criar estado para armazenar IDs de produtos favoritos
+  const [favoriteProductIds, setFavoriteProductIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
-    const fetchCanteenData = async () => {
-      if (user?.schoolId) {
+    const fetchInitialData = async () => {
+      if (user?.schoolId && user.id) {
         setIsLoading(true);
         try {
-          const canteenList = await getCanteensBySchool(user.schoolId);
+          // Buscar dados da cantina e favoritos em paralelo
+          const [canteenList, userFavorites] = await Promise.all([
+            getCanteensBySchool(user.schoolId),
+            getFavoritesByUser(user.id)
+          ]);
+
           setCanteens(canteenList);
           if (canteenList.length > 0) {
             const defaultCanteen = canteenList[0];
             setSelectedCanteenId(defaultCanteen.id);
             setProducts(defaultCanteen.produtos || []); 
           }
+          
+          // ✅ 3. Preencher o estado de favoritos com os dados buscados
+          setFavoriteProductIds(new Set(userFavorites.map(fav => fav.productId)));
+
         } catch (error) {
-          console.error("Failed to fetch canteen data:", error);
-          toast({ variant: 'destructive', title: 'Erro ao carregar dados', description: 'Não foi possível buscar as informações da cantina.' });
+          console.error("Failed to fetch initial data:", error);
+          toast({ variant: 'destructive', title: 'Erro ao carregar dados', description: 'Não foi possível buscar as informações da página.' });
         } finally {
           setIsLoading(false);
         }
       }
     };
     if (user && !isUserLoading) {
-      fetchCanteenData();
+      fetchInitialData();
     }
   }, [user, isUserLoading, toast]);
 
@@ -68,6 +81,30 @@ export default function StudentDashboardPage() {
         setProducts(newSelectedCanteen.produtos || []);
     }
   };
+
+  // ✅ 4. Criar função para adicionar/remover um produto dos favoritos
+  const handleToggleFavorite = useCallback(async (productId: string) => {
+    if (!user) return;
+
+    const isFavorite = favoriteProductIds.has(productId);
+    const newFavoriteProductIds = new Set(favoriteProductIds);
+
+    try {
+        if (isFavorite) {
+            await removeFavorite(user.id, productId);
+            newFavoriteProductIds.delete(productId);
+            toast({ title: "Removido dos favoritos!" });
+        } else {
+            await addFavorite(user.id, productId);
+            newFavoriteProductIds.add(productId);
+            toast({ title: "Adicionado aos favoritos!", variant: "success" });
+        }
+        setFavoriteProductIds(newFavoriteProductIds);
+    } catch (error) {
+        console.error("Failed to update favorites", error);
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar seus favoritos.' });
+    }
+  }, [user, favoriteProductIds, toast]);
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
@@ -180,14 +217,19 @@ export default function StudentDashboardPage() {
         {filteredProducts.map((product) => {
           const quantityInCart = getCartItemQuantity(product.id);
           const isAdded = addToCartState[product.id] === 'added';
+          const isFavorite = favoriteProductIds.has(product.id); // Verificar se o produto é favorito
+          
           return (
           <Card key={product.id} className="relative flex flex-col overflow-hidden transition-shadow hover:shadow-lg">
-            {product.popular && (
-                <Badge className="absolute top-2 left-2 z-10 bg-amber-400 text-amber-900 gap-1 hover:bg-amber-400 border-amber-500">
-                    <Star className="h-3 w-3" /> Popular
-                </Badge>
-            )}
-            <CardHeader className="p-0">
+            <CardHeader className="p-0 relative">
+               {/* ✅ 5. Reintroduzir o ícone de favorito no card */}
+              <button 
+                onClick={() => handleToggleFavorite(product.id)}
+                className="absolute top-2 right-2 z-10 p-1.5 bg-background/60 rounded-full backdrop-blur-sm transition-colors hover:bg-background/80"
+                aria-label={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+              >
+                <Star className={`h-5 w-5 ${isFavorite ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}`} />
+              </button>
               <Image
                 src={product.image.imageUrl}
                 alt={product.name}

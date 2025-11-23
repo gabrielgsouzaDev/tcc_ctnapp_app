@@ -1,11 +1,22 @@
 
 'use client';
 
-import { useState } from "react"; // ✅ CORREÇÃO: Importar o useState
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+// ✅ 1. Importar os componentes do AlertDialog
 import {
-  Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { useCart, CartItem } from "@/hooks/use-cart";
@@ -13,7 +24,7 @@ import { useAuth } from "@/lib/auth-provider";
 import { postOrder } from "@/lib/services";
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
-import { Loader2, Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { Loader2, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 
@@ -57,10 +68,12 @@ export const CartSheet = () => {
   const { toast } = useToast();
   const router = useRouter();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const handleCheckout = async () => {
-    if (!user || !user.canteenId) {
-        toast({ variant: 'destructive', title: 'Erro', description: 'Usuário ou cantina não encontrado.' });
+    // ✅ 2. A lógica de validação permanece, mas agora é chamada dentro do modal
+    if (!user || !user.id || !cartItems[0]?.product.canteenId) {
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível identificar o usuário ou a cantina. Tente novamente.' });
         return;
     }
 
@@ -74,25 +87,27 @@ export const CartSheet = () => {
         await postOrder({
             userId: user.id,
             studentId: user.id,
-            canteenId: user.canteenId,
+            // ✅ 3. Obter o canteenId do primeiro produto do carrinho (todos são da mesma cantina)
+            canteenId: cartItems[0].product.canteenId,
             items: cartItems,
             total: totalPrice,
         });
 
         toast({ variant: 'success', title: 'Pedido realizado com sucesso!', description: 'Você pode acompanhar o status na página de pedidos.' });
         clearCart();
+        setIsSheetOpen(false); // Fechar o carrinho
         router.push('/student/orders');
 
     } catch (error) {
         console.error("Falha ao finalizar pedido:", error);
-        toast({ variant: 'destructive', title: 'Erro ao criar pedido', description: 'Tente novamente mais tarde.' });
+        toast({ variant: 'destructive', title: 'Erro ao criar pedido', description: 'Não foi possível completar seu pedido. Tente novamente mais tarde.' });
     } finally {
         setIsCheckingOut(false);
     }
   };
 
   return (
-    <Sheet>
+    <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" size="icon" className="relative">
           {cartCount > 0 && (
@@ -132,14 +147,32 @@ export const CartSheet = () => {
         <SheetFooter className="pt-6 space-y-4">
             <div className="flex justify-between items-center text-lg font-semibold">
                 <p>Total</p>
-                <p>R$ {totalPrice.toFixed(2)}</p>
+                <p className="whitespace-nowrap">R$ {totalPrice.toFixed(2)}</p>
             </div>
-            <SheetClose asChild>
-                <Button onClick={handleCheckout} disabled={cartItems.length === 0 || isCheckingOut} className="w-full">
-                    {isCheckingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                    Finalizar Pedido
-                </Button>
-            </SheetClose>
+
+            {/* ✅ 4. Envolver o botão Finalizar Pedido com o AlertDialog */}
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button disabled={cartItems.length === 0 || isCheckingOut} className="w-full">
+                        {isCheckingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                        Finalizar Pedido
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar Pedido</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Você está prestes a finalizar seu pedido no valor de R$ {totalPrice.toFixed(2)}. O valor será debitado do seu saldo. Você confirma?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isCheckingOut}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleCheckout} disabled={isCheckingOut}>
+                            {isCheckingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : "Confirmar"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </SheetFooter>
       </SheetContent>
     </Sheet>
