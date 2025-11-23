@@ -1,6 +1,6 @@
 
-import { type School, type StudentProfile, type GuardianProfile, type Canteen, type Product, type Transaction, type Order, type User, type Wallet } from '@/lib/data';
-import { apiGet, apiPost } from './api';
+import { type School, type StudentProfile, type GuardianProfile, type Canteen, type Product, type Transaction, type Order, type User, type Wallet, type Favorite } from '@/lib/data';
+import { apiGet, apiPost, apiDelete } from './api';
 import { PlaceHolderImages } from './placeholder-images';
 
 // #region --- Mappers (From Backend Structure to Frontend Structure) ---
@@ -36,7 +36,6 @@ const mapCanteen = (canteen: any): Canteen => ({
     produtos: canteen.produtos?.map(mapProduct) || [], 
 });
 
-// ✅ CORREÇÃO DO ERRO DE TIPO: Adicionada a propriedade 'description' para cumprir o contrato do tipo ImagePlaceholder.
 const mapProduct = (product: any): Product => ({
     id: product.id_produto.toString(),
     canteenId: product.id_cantina.toString(),
@@ -49,10 +48,19 @@ const mapProduct = (product: any): Product => ({
             id: product.id_produto.toString(), 
             imageUrl: product.url_imagem, 
             imageHint: `Image of ${product.nome}`,
-            description: `Image for the product ${product.nome}` // Propriedade adicionada
+            description: `Image for the product ${product.nome}`
           }
         : PlaceHolderImages[0],
     popular: false,
+});
+
+// ✅ NOVO: Mapper para os favoritos que vêm do backend.
+const mapFavorite = (favorite: any): Favorite => ({
+    id: favorite.id_favorito.toString(),
+    userId: favorite.id_user.toString(),
+    productId: favorite.id_produto.toString(),
+    // O produto pode vir aninhado dentro do favorito
+    product: favorite.produto ? mapProduct(favorite.produto) : undefined,
 });
 
 const mapOrder = (order: any): Order => ({
@@ -67,7 +75,7 @@ const mapOrder = (order: any): Order => ({
         productName: p.produto.nome,
         quantity: p.quantidade,
         unitPrice: parseFloat(p.preco_unitario),
-        image: PlaceHolderImages.find(img => img.id.includes(p.produto.nome.split(' ')[0].toLowerCase())) || PlaceHolderImages[0],
+        image: p.produto.url_imagem ? { id: p.id_produto, imageUrl: p.produto.url_imagem, imageHint: '-', description: '-'} : PlaceHolderImages[0],
     })) || [],
     status: order.status || 'pendente',
 });
@@ -163,6 +171,37 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
       return [];
     }
 }
+
+// ✅ NOVO: Funções para interagir com a API de favoritos.
+export const getFavoritesByUser = async (userId: string): Promise<Favorite[]> => {
+    try {
+        const response = await apiGet<{ data: any[] }>(`favoritos/${userId}`);
+        return response.data.map(mapFavorite);
+    } catch (e) {
+        console.error(`Failed to fetch favorites for user ${userId}:`, e);
+        return [];
+    }
+}
+
+export const addFavorite = async (userId: string, productId: string): Promise<Favorite | null> => {
+    try {
+        const payload = { id_user: userId, id_produto: productId };
+        const response = await apiPost<{ data: any }>('favoritos', payload);
+        return mapFavorite(response.data);
+    } catch (e) {
+        console.error(`Failed to add favorite:`, e);
+        return null;
+    }
+}
+
+export const removeFavorite = async (userId: string, productId: string): Promise<void> => {
+    try {
+        await apiDelete(`favoritos/${userId}/${productId}`);
+    } catch (e) {
+        console.error(`Failed to remove favorite:`, e);
+    }
+}
+
 
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     try {

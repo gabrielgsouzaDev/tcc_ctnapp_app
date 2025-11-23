@@ -74,6 +74,14 @@ export type Product = {
   ativo: boolean;
 };
 
+// ✅ NOVO: Tipo para representar um item favorito.
+export type Favorite = {
+  id: string; // Mapeado de id_favorito
+  userId: string; // Mapeado de id_user
+  productId: string; // Mapeado de id_produto
+  product?: Product; // Opcional, pode ser carregado junto
+};
+
 export type Order = {
   id: string; // Mapeado de id_pedido
   studentId: string; // Mapeado de id_destinatario
