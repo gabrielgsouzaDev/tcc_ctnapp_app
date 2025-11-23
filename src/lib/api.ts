@@ -10,7 +10,6 @@ type ApiError = {
 
 async function handleResponse<T>(response: Response): Promise<T> {
     if (response.status === 204) {
-        // No content, return a success-like object if needed, or just return
         return { success: true } as unknown as T;
     }
     
@@ -18,18 +17,19 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
     if (!response.ok) {
         const error: Error & { data?: any } = new Error(data.message || 'Ocorreu um erro na API.');
-        error.data = data; // Attach the full error response
+        error.data = data;
         throw error;
     }
     
     return data as T;
 }
 
-// ✅ CORREÇÃO: Removido o prefixo '/api' da URL, pois o backend já o adiciona.
+// ✅ CORREÇÃO: Re-adicionado o prefixo '/api' que foi removido incorretamente.
+// O backend Laravel espera as chamadas neste formato.
 
 export async function apiGet<T>(path: string): Promise<T> {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_BASE_URL}/${path}`, { // /api removido
+    const response = await fetch(`${API_BASE_URL}/api/${path}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -42,7 +42,7 @@ export async function apiGet<T>(path: string): Promise<T> {
 
 export async function apiPost<T>(path: string, body: any): Promise<T> {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_BASE_URL}/${path}`, { // /api removido
+    const response = await fetch(`${API_BASE_URL}/api/${path}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -56,7 +56,7 @@ export async function apiPost<T>(path: string, body: any): Promise<T> {
 
 export async function apiPut<T>(path: string, body: any): Promise<T> {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_BASE_URL}/${path}`, { // /api removido
+    const response = await fetch(`${API_BASE_URL}/api/${path}`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ export async function apiPut<T>(path: string, body: any): Promise<T> {
 
 export async function apiPatch<T>(path: string, body: any): Promise<T> {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_BASE_URL}/${path}`, { // /api removido
+    const response = await fetch(`${API_BASE_URL}/api/${path}`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ export async function apiPatch<T>(path: string, body: any): Promise<T> {
 
 export async function apiDelete<T>(path: string): Promise<T> {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_BASE_URL}/${path}`, { // /api removido
+    const response = await fetch(`${API_BASE_URL}/api/${path}`, {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
