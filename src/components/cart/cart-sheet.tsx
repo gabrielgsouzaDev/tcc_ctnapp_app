@@ -51,7 +51,6 @@ const CartItemCard = ({ item }: { item: any }) => {
 };
 
 export const CartSheet = () => {
-  // ✅ 1. Importar a função refreshUser do hook
   const { user, refreshUser } = useAuth();
   const { cartItems, cartCount, totalPrice, clearCart } = useCart();
   const { toast } = useToast();
@@ -80,16 +79,21 @@ export const CartSheet = () => {
         total: totalPrice,
       });
 
-      // ✅ 2. Chamar a função para atualizar os dados do usuário (e o saldo) após a compra
       await refreshUser();
 
       toast({ variant: 'success', title: 'Pedido realizado com sucesso!', description: 'Você pode acompanhar o status na página de pedidos.' });
       clearCart();
       setIsSheetOpen(false);
       router.push('/student/orders');
-    } catch (error) {
-      console.error('Falha ao finalizar pedido:', error);
-      toast({ variant: 'destructive', title: 'Erro ao criar pedido', description: 'Não foi possível completar seu pedido. Tente novamente mais tarde.' });
+    } catch (error: any) {
+        console.error('Falha ao finalizar pedido:', error);
+        // ✅ ATUALIZADO: Exibe a mensagem de erro específica vinda do backend
+        const errorMessage = error?.response?.data?.message || 'Não foi possível completar seu pedido. Tente novamente mais tarde.';
+        toast({ 
+            variant: 'destructive', 
+            title: 'Erro ao criar pedido', 
+            description: errorMessage 
+        });
     } finally {
       setIsCheckingOut(false);
     }
@@ -165,3 +169,5 @@ export const CartSheet = () => {
     </Sheet>
   );
 };
+
+
