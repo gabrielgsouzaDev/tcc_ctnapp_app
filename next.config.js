@@ -19,6 +19,10 @@ const nextConfig = {
                 protocol: 'https',
                 hostname: 'api.qrserver.com',
             },
+            {
+                protocol: 'https',
+                hostname: 'cantappbackendlaravel-production.up.railway.app',
+            },
         ],
     },
 };
