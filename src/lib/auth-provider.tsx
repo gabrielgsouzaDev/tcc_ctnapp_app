@@ -1,7 +1,7 @@
 // src/lib/auth-provider.tsx
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiPost } from './api';
 import { type User } from './data';
@@ -14,6 +14,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (data: Record<string, any>) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>; // ✅ 1. Adicionada a função ao tipo do contexto
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
     return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // roda só uma vez — evita re-fetches que removiam conteúdo
+  }, []); // roda só uma vez
 
   const handleAuthSuccess = (rawUser: any, token: string) => {
     const mappedUser = mapUser(rawUser);
@@ -77,6 +78,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(token);
     setUser(mappedUser);
   };
+
+  // ✅ 2. Implementada a função para atualizar os dados do usuário
+  const refreshUser = useCallback(async () => {
+    if (!user?.id) {
+        console.warn("Tentativa de atualizar usuário sem um usuário logado.");
+        return;
+    }
+    try {
+        const updatedUserData = await getUser(user.id);
+        if (updatedUserData) {
+            setUser(updatedUserData);
+        }
+    } catch (error) {
+        console.error("Falha ao atualizar os dados do usuário:", error);
+    }
+  }, [user?.id]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -100,7 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await login(data.email, password);
   };
 
-  const value = { user, token, isLoading, login, register, logout };
+  // ✅ 3. Exposta a nova função para os componentes filhos
+  const value = { user, token, isLoading, login, register, logout, refreshUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -2,8 +2,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo, useState, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
+import { useMemo, useState, useEffect, useTransition } from 'react';
+import { Search, X, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,34 +53,42 @@ import { type Order, type Product } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { getOrdersByUser, updateOrderStatus } from '@/lib/services';
+import { getOrdersByUser, updateOrderStatus, getProductsByCanteen } from '@/lib/services';
 import { useAuth } from '@/lib/auth-provider';
-import { useCart } from '@/hooks/use-cart'; // ✅ 1. Importar o hook do carrinho
+import { useCart } from '@/hooks/use-cart';
 
 type SortKey = 'date-desc' | 'date-asc' | 'total-desc' | 'total-asc';
-
-// A lógica do carrinho foi movida para use-cart.tsx
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   const classNameMap = {
     'entregue': 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200',
-    'pendente': 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 animate-pulse',
+    'pendente': 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200',
     'confirmado': 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200',
+    'em_preparo': 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200',
+    'pronto': 'bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200',
     'cancelado': 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200',
   } as const;
-  const className = classNameMap[status];
-  return <Badge variant={classNameMap[status] ? 'secondary' : 'default'} className={cn('capitalize', className)}>{status}</Badge>;
+  const statusTextMap = {
+    'em_preparo': 'Em Preparo',
+    'pendente': 'Pendente',
+    'confirmado': 'Confirmado',
+    'pronto': 'Pronto para Retirada',
+    'entregue': 'Entregue',
+    'cancelado': 'Cancelado',
+  }
+
+  const className = classNameMap[status] ?? 'default';
+  return <Badge variant='secondary' className={cn('capitalize', className)}>{statusTextMap[status]}</Badge>;
 };
 
-const OrderDetailsDialog = ({ order, onRepeatOrder, onCancelOrder }: { order: Order; onRepeatOrder: (order: Order) => void; onCancelOrder: (orderId: string) => Promise<void>; }) => {
-    const [progress, setProgress] = useState(10)
- 
-    useEffect(() => {
-        if (order.status === 'pendente' || order.status === 'confirmado') {
-            const timer = setTimeout(() => setProgress(33), 800)
-            return () => clearTimeout(timer)
-        }
-    }, [order.status]);
+const OrderDetailsDialog = ({ order, onRepeatOrder, onCancelOrder }: { order: Order; onRepeatOrder: (order: Order) => Promise<void>; onCancelOrder: (orderId: string) => Promise<void>; }) => {
+    const [isRepeating, setIsRepeating] = useTransition();
+
+    const handleRepeatClick = () => {
+        setIsRepeating(async () => {
+            await onRepeatOrder(order);
+        });
+    }
 
     return (
   <DialogContent className="sm:max-w-[425px]">
@@ -91,19 +99,7 @@ const OrderDetailsDialog = ({ order, onRepeatOrder, onCancelOrder }: { order: Or
       </DialogDescription>
     </DialogHeader>
     <div className="space-y-4 py-4">
-      {(order.status === 'pendente' || order.status === 'confirmado') && (
         <div className="space-y-2">
-            <h4 className="text-sm font-medium">Acompanhamento</h4>
-            <Progress value={progress} className="w-full" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Recebido</span>
-                <span>Em preparação</span>
-                <span>Pronto</span>
-            </div>
-            <p className="text-sm text-center text-primary font-medium pt-2">Tempo estimado: 5-10 minutos</p>
-        </div>
-      )}
-      <div className="space-y-2">
          <h4 className="text-sm font-medium">Itens do Pedido</h4>
         {order.items.map((item, index) => (
           <div key={index} className="flex items-center justify-between">
@@ -114,7 +110,6 @@ const OrderDetailsDialog = ({ order, onRepeatOrder, onCancelOrder }: { order: Or
                 width={40} 
                 height={40} 
                 className="rounded-md object-cover h-10 w-10"
-                data-ai-hint={item.image.imageHint}
               />
               <div>
                 <p className="font-medium">{item.productName}</p>
@@ -147,7 +142,7 @@ const OrderDetailsDialog = ({ order, onRepeatOrder, onCancelOrder }: { order: Or
             {order.status === 'pendente' && (
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button variant="destructive" className="w-full sm:w-auto"><X className="mr-2 h-4 w-4" />Cancelar Pedido</Button>
+                        <Button variant="destructive" className="w-full sm:w-auto"><X className="mr-2 h-4 w-4" />Cancelar</Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
@@ -163,9 +158,10 @@ const OrderDetailsDialog = ({ order, onRepeatOrder, onCancelOrder }: { order: Or
                     </AlertDialogContent>
                 </AlertDialog>
             )}
-            <DialogClose asChild>
-                <Button onClick={() => onRepeatOrder(order)} className="w-full sm:w-auto">Repetir Pedido</Button>
-            </DialogClose>
+            <Button onClick={handleRepeatClick} className="w-full sm:w-auto" disabled={isRepeating}>
+                {isRepeating && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                {isRepeating ? 'Adicionando...' : 'Repetir Pedido'}
+            </Button>
         </div>
     </DialogFooter>
   </DialogContent>
@@ -175,15 +171,12 @@ const OrderDetailsDialog = ({ order, onRepeatOrder, onCancelOrder }: { order: Or
 export default function StudentOrdersPage() {
     const { toast } = useToast();
     const { user, isLoading: isUserLoading } = useAuth();
-    const { addItem } = useCart(); // ✅ 2. Obter a função addItem do hook
+    const { addItem } = useCart();
     
     const [orderHistory, setOrderHistory] = useState<Order[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [sortKey, setSortKey] = useState<SortKey>('date-desc');
     const [searchTerm, setSearchTerm] = useState('');
-    
-    // ✅ 3. A lógica do estado do carrinho (useState, useEffect) foi REMOVIDA daqui.
-    // Agora ela é gerenciada globalmente pelo CartProvider.
 
     useEffect(() => {
         const fetchOrders = async () => {
@@ -232,28 +225,50 @@ export default function StudentOrdersPage() {
         return processedOrders;
     }, [sortKey, searchTerm, orderHistory]);
 
-    // ✅ 4. A função `handleRepeatOrder` agora usa `addItem` do contexto.
-    const handleRepeatOrder = (order: Order) => {
-        order.items.forEach(orderItem => {
-            const product: Product = {
-                id: orderItem.productId,
-                name: orderItem.productName,
-                price: orderItem.unitPrice,
-                // Idealmente, estas propriedades viriam de uma busca de produto completa
-                category: 'Salgado', 
-                canteenId: order.canteenId,
-                image: orderItem.image,
-                ativo: true, 
-                popular: false, 
-            };
-            addItem(product, orderItem.quantity); // Usa a função do hook
-        });
+    // ✅ ATUALIZADO: Função agora é robusta, segura e fornece feedback claro.
+    const handleRepeatOrder = async (order: Order) => {
+        try {
+            // 1. Busca os produtos atuais da cantina para garantir dados frescos
+            const currentProducts = await getProductsByCanteen(order.canteenId);
+            const productsMap = new Map(currentProducts.map(p => [p.id, p]));
 
-        toast({
-            title: "Itens adicionados!",
-            description: `Seu carrinho foi atualizado com os itens do pedido.`,
-            variant: 'success'
-        });
+            let itemsAdded = 0;
+            let itemsUnavailable = 0;
+
+            for (const orderItem of order.items) {
+                const product = productsMap.get(orderItem.productId);
+                // 2. Valida se o produto ainda existe e está ativo
+                if (product && product.ativo) {
+                    addItem(product, orderItem.quantity);
+                    itemsAdded++;
+                } else {
+                    itemsUnavailable++;
+                }
+            }
+
+            // 3. Fornece feedback claro ao usuário
+            if (itemsAdded > 0) {
+                toast({
+                    title: "Itens adicionados!",
+                    description: `${itemsAdded} tipo(s) de item foram adicionados ao seu carrinho.`,
+                    variant: "success"
+                });
+            }
+            if (itemsUnavailable > 0) {
+                toast({
+                    title: "Alguns itens não estão disponíveis",
+                    description: `${itemsUnavailable} produto(s) do seu pedido antigo não estão mais disponíveis e não foram adicionados.`,
+                    variant: "destructive"
+                });
+            }
+        } catch (error) {
+            console.error("Failed to repeat order:", error);
+            toast({
+                title: "Erro ao repetir pedido",
+                description: "Não foi possível buscar as informações dos produtos. Tente novamente.",
+                variant: "destructive"
+            });
+        }
     };
 
     const handleCancelOrder = async (orderId: string) => {
@@ -378,7 +393,6 @@ export default function StudentOrdersPage() {
                                             width={24} 
                                             height={24} 
                                             className="rounded-full object-cover border-2 border-background h-6 w-6" 
-                                            data-ai-hint={item.image.imageHint}
                                             title={item.productName}
                                         />
                                     ))}
@@ -427,7 +441,6 @@ export default function StudentOrdersPage() {
                                     width={32} 
                                     height={32} 
                                     className="rounded-full object-cover border-2 border-background h-8 w-8" 
-                                    data-ai-hint={item.image.imageHint}
                                     title={item.productName}
                                 />
                             ))}

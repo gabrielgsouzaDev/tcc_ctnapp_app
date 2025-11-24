@@ -187,10 +187,10 @@ export const removeFavorite = async (userId: string, productId: string): Promise
 };
 
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
+  if (!userId) return [];
   try {
-    const response = await apiGet<{ data: any[] }>(`pedidos`);
-    const allOrders = response.data.map(mapOrder);
-    return allOrders.filter((o) => o.userId === userId || o.studentId === userId);
+    const response = await apiGet<{ data: any[] }>(`pedidos/usuario/${userId}`);
+    return response.data.map(mapOrder);
   } catch (e) {
     console.error(`Failed to fetch orders for user ${userId}:`, e);
     return [];
@@ -202,10 +202,10 @@ export const postOrder = async (orderData: any): Promise<Order> => {
     id_comprador: orderData.userId,
     id_destinatario: orderData.studentId,
     id_cantina: orderData.canteenId,
-    produtos: orderData.items.map((item: any) => ({
-      id_produto: item.product.id,
-      quantidade: item.quantity,
-      preco_unitario: item.product.price,
+    items: orderData.items.map((item: any) => ({
+      productId: item.product.id,
+      quantity: item.quantity,
+      unitPrice: item.product.price,
     })),
     valor_total: orderData.total,
     status: 'pendente',
@@ -216,9 +216,10 @@ export const postOrder = async (orderData: any): Promise<Order> => {
 
 export const updateOrderStatus = async (orderId: string, status: string): Promise<Order> => {
   const payload = { status };
-  const response = await apiPatch<{ data: any }>(`pedidos/${orderId}`, payload);
+  const response = await apiPatch<{ data: any }>(`pedidos/${orderId}/status`, payload);
   return mapOrder(response.data);
 };
+
 
 // ===============================
 // GUARDIAN PROFILE
@@ -276,18 +277,17 @@ export const getWalletByUserId = async (userId: string): Promise<Wallet | null> 
   }
 };
 
+// ✅ ATUALIZADO: Função agora usa o endpoint específico e eficiente
 export const getTransactionsByUser = async (userId: string): Promise<Transaction[]> => {
+  if (!userId) return [];
   try {
-    const response = await apiGet<{ data: any[] }>('transacoes');
-    const allTransactions = response.data.map(mapTransaction);
-    return allTransactions.filter(t => t.userId === userId);
+    const response = await apiGet<{ data: any[] }>(`transacoes/usuario/${userId}`);
+    return response.data.map(mapTransaction);
   } catch (e) {
     console.error(`Failed to fetch transactions for user ${userId}:`, e);
     return [];
   }
 };
-
-// ... restante parecido com o arquivo anterior; exporte o que precisar
 
 
 export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<Transaction[]> => {
@@ -357,5 +357,3 @@ export const linkStudentToGuardian = async (guardianId: string, studentCode: str
         throw error; // Re-lança o erro para o componente lidar com a UI (ex: toast)
     }
 };
-
-// #endregion

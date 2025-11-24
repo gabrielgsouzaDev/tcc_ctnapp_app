@@ -51,7 +51,8 @@ const CartItemCard = ({ item }: { item: any }) => {
 };
 
 export const CartSheet = () => {
-  const { user } = useAuth();
+  // ✅ 1. Importar a função refreshUser do hook
+  const { user, refreshUser } = useAuth();
   const { cartItems, cartCount, totalPrice, clearCart } = useCart();
   const { toast } = useToast();
   const router = useRouter();
@@ -78,6 +79,9 @@ export const CartSheet = () => {
         items: cartItems,
         total: totalPrice,
       });
+
+      // ✅ 2. Chamar a função para atualizar os dados do usuário (e o saldo) após a compra
+      await refreshUser();
 
       toast({ variant: 'success', title: 'Pedido realizado com sucesso!', description: 'Você pode acompanhar o status na página de pedidos.' });
       clearCart();
