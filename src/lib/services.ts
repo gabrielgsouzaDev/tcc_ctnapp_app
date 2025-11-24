@@ -207,18 +207,16 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
   }
 };
 
+// ✅ OTIMIZADO: Payload simplificado para alinhar com a nova lógica de backend.
+// O preço do produto agora é tratado pelo servidor, garantindo consistência.
 export const postOrder = async (orderData: any): Promise<Order> => {
   const payload = {
     id_comprador: orderData.userId,
     id_destinatario: orderData.studentId,
     id_cantina: orderData.canteenId,
     items: orderData.items.map((item: any) => ({
-      productId: item.product.id,
-      quantity: item.quantity,
-      unitPrice: item.product.price,
       id_produto: item.product.id,
       quantidade: item.quantity,
-      preco_unitario: item.product.price,
     })),
     valor_total: orderData.total,
     status: 'pendente',
@@ -272,7 +270,6 @@ export const getGuardianProfile = async (guardianId: string): Promise<GuardianPr
     }
   };
 
-// ✅ CORRIGIDO: Rota ajustada para corresponder ao novo endpoint do backend.
 export const getWalletByUserId = async (userId: string): Promise<Wallet | null> => {
   try {
     const response = await apiGet<{ data: any }>(`carteiras/usuario/${userId}`);
