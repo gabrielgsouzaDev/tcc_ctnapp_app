@@ -197,15 +197,16 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
   }
 };
 
+// ✅ CORRIGIDO: Payload agora usa snake_case, correspondendo ao backend.
 export const postOrder = async (orderData: any): Promise<Order> => {
   const payload = {
     id_comprador: orderData.userId,
     id_destinatario: orderData.studentId,
     id_cantina: orderData.canteenId,
     items: orderData.items.map((item: any) => ({
-      productId: item.product.id,
-      quantity: item.quantity,
-      unitPrice: item.product.price,
+      id_produto: item.product.id,       // <-- Alterado de productId
+      quantidade: item.quantity,        // <-- Alterado de quantity
+      preco_unitario: item.product.price, // <-- Alterado de unitPrice
     })),
     valor_total: orderData.total,
     status: 'pendente',

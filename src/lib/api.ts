@@ -27,7 +27,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 // ✅ CORREÇÃO: Re-adicionado o prefixo '/api' que foi removido incorretamente.
 // O backend Laravel espera as chamadas neste formato.
-
+// ✅ CORREÇÃO: Adicionada política de cache 'no-store' para sempre buscar dados frescos.
 export async function apiGet<T>(path: string): Promise<T> {
     const token = localStorage.getItem('authToken');
     const response = await fetch(`${API_BASE_URL}/api/${path}`, {
@@ -37,6 +37,7 @@ export async function apiGet<T>(path: string): Promise<T> {
             'Accept': 'application/json',
             ...(token && { 'Authorization': `Bearer ${token}` }),
         },
+        cache: 'no-store', // <<< ADICIONADO
     });
     return handleResponse<T>(response);
 }
