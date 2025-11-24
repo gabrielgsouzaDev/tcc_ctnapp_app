@@ -197,16 +197,17 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
   }
 };
 
-// ✅ CORRIGIDO: Payload agora usa snake_case, correspondendo ao backend.
+// ✅ CORREÇÃO FINAL: O payload agora respeita a validação (productId) e a camada de persistência (snake_case).
 export const postOrder = async (orderData: any): Promise<Order> => {
   const payload = {
     id_comprador: orderData.userId,
     id_destinatario: orderData.studentId,
     id_cantina: orderData.canteenId,
     items: orderData.items.map((item: any) => ({
-      id_produto: item.product.id,       // <-- Alterado de productId
-      quantidade: item.quantity,        // <-- Alterado de quantity
-      preco_unitario: item.product.price, // <-- Alterado de unitPrice
+      productId: item.product.id,      // Para a validação do Laravel
+      id_produto: item.product.id,    // Garantia para a camada de persistência
+      quantidade: item.quantity,
+      preco_unitario: item.product.price,
     })),
     valor_total: orderData.total,
     status: 'pendente',
