@@ -3,18 +3,14 @@ import { type School, type StudentProfile, type GuardianProfile, type Canteen, t
 import { apiGet, apiPost, apiDelete, apiPatch } from './api';
 import { PlaceHolderImages } from './placeholder-images';
 
-// ✅ NOVO: Helper para corrigir as URLs de imagem da API.
 const createLocalImageUrl = (remoteUrl: string | null | undefined): string => {
     if (!remoteUrl) {
-      return PlaceHolderImages[0].imageUrl; // Retorna um placeholder se não houver URL
+      return PlaceHolderImages[0].imageUrl;
     }
-    // Extrai o nome do arquivo da URL completa (ex: "http://.../imagem.jpg" -> "imagem.jpg")
     const fileName = remoteUrl.split('/').pop();
-    // Monta a URL local correta (ex: "/images/imagem.jpg")
     return fileName ? `/images/${fileName}` : PlaceHolderImages[0].imageUrl;
 };
 
-// MapRole robusto
 const mapRole = (roleName: string | undefined | null): User['role'] => {
   if (!roleName) return 'Aluno';
   const normalized = String(roleName).trim().toLowerCase();
@@ -50,7 +46,6 @@ const mapSchool = (school: any): School => ({
   qtd_alunos: school.qtd_alunos,
 });
 
-// ✅ CORRIGIDO: Usa o helper createLocalImageUrl para tratar a URL da imagem.
 const mapProduct = (product: any): Product => ({
   id: product.id_produto?.toString() ?? '',
   canteenId: product.id_cantina?.toString() ?? '',
@@ -60,7 +55,7 @@ const mapProduct = (product: any): Product => ({
   category: product.categoria ?? 'Salgado',
   image: {
     id: product.id_produto?.toString() ?? '',
-    imageUrl: createLocalImageUrl(product.url_imagem), // <-- CORREÇÃO APLICADA
+    imageUrl: createLocalImageUrl(product.url_imagem),
     imageHint: `Image of ${product.nome}`,
     description: `Image for the product ${product.nome}`,
   },
@@ -83,7 +78,6 @@ const mapFavorite = (favorite: any): Favorite => ({
   product: favorite.produto ? mapProduct(favorite.produto) : undefined,
 });
 
-// ✅ CORRIGIDO: Usa o helper createLocalImageUrl também nos itens do pedido.
 const mapOrder = (order: any): Order => ({
   id: order.id_pedido?.toString() ?? '',
   studentId: order.id_destinatario?.toString() ?? '',
@@ -99,7 +93,7 @@ const mapOrder = (order: any): Order => ({
       unitPrice: parseFloat(p.preco_unitario ?? 0),
       image: {
           id: p.id_produto?.toString() ?? '',
-          imageUrl: createLocalImageUrl(p.produto?.url_imagem), // <-- CORREÇÃO APLICADA
+          imageUrl: createLocalImageUrl(p.produto?.url_imagem),
           imageHint: '-',
           description: '-'
       },
@@ -220,6 +214,8 @@ export const postOrder = async (orderData: any): Promise<Order> => {
     id_cantina: orderData.canteenId,
     items: orderData.items.map((item: any) => ({
       productId: item.product.id,
+      quantity: item.quantity,
+      unitPrice: item.product.price,
       id_produto: item.product.id,
       quantidade: item.quantity,
       preco_unitario: item.product.price,

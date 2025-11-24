@@ -1,11 +1,8 @@
-// src/components/cart/cart-sheet.tsx
 'use client';
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-    Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/lib/auth-provider";
@@ -15,10 +12,7 @@ import Image from 'next/image';
 import { Loader2, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const CartItemCard = ({ item }: { item: any }) => {
   const { updateItemQuantity } = useCart();
@@ -79,21 +73,16 @@ export const CartSheet = () => {
         total: totalPrice,
       });
 
-      await refreshUser();
+      if (refreshUser) await refreshUser();
 
       toast({ variant: 'success', title: 'Pedido realizado com sucesso!', description: 'Você pode acompanhar o status na página de pedidos.' });
       clearCart();
       setIsSheetOpen(false);
       router.push('/student/orders');
     } catch (error: any) {
-        console.error('Falha ao finalizar pedido:', error);
-        // ✅ ATUALIZADO: Exibe a mensagem de erro específica vinda do backend
-        const errorMessage = error?.response?.data?.message || 'Não foi possível completar seu pedido. Tente novamente mais tarde.';
-        toast({ 
-            variant: 'destructive', 
-            title: 'Erro ao criar pedido', 
-            description: errorMessage 
-        });
+      console.error('Falha ao finalizar pedido:', error);
+      const errorMessage = error?.response?.data?.message || 'Não foi possível completar seu pedido. Tente novamente mais tarde.';
+      toast({ variant: 'destructive', title: 'Erro ao criar pedido', description: errorMessage });
     } finally {
       setIsCheckingOut(false);
     }
@@ -169,5 +158,3 @@ export const CartSheet = () => {
     </Sheet>
   );
 };
-
-
