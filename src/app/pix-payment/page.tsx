@@ -77,9 +77,9 @@ function PixPaymentContent() {
         router.push(redirectPath);
         router.refresh(); // Força a atualização dos dados na página de destino
       }, 3000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Payment confirmation error:", error);
-      toast({ variant: 'destructive', title: 'Erro na Confirmação', description: 'Não foi possível atualizar o saldo.' });
+      toast({ variant: 'destructive', title: 'Erro na Confirmação', description: error.data?.message || 'Não foi possível atualizar o saldo.' });
       setPaymentStatus('pending');
     }
   };

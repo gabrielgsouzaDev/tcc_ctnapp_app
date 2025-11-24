@@ -185,7 +185,7 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     }
 };
 
-export const postOrder = async (orderData: { id_comprador: string; id_destinatario: string; id_cantina: string; valor_total: number; items: { id_produto: string; quantidade: number, preco_unitario: number }[] }): Promise<Order> => {
+export const postOrder = async (orderData: { id_comprador: string; id_destinatario: string; id_cantina: string; valor_total: number; status: string, items: { productId: string; quantity: number, unitPrice: number }[] }): Promise<Order> => {
   const response = await apiPost<{ data: any }>('pedidos', orderData);
   return mapOrder(response.data);
 };

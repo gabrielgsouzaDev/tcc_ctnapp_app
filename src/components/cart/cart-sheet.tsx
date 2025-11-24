@@ -24,7 +24,7 @@ const CartItemCard = ({ item }: { item: any }) => {
     <div className="flex items-start justify-between gap-4 py-4">
       <div className="flex items-start gap-4">
         <div className="h-16 w-16 overflow-hidden rounded-md border bg-muted">
-          <Image src={item.product.image.imageUrl} alt={item.product.name} width={64} height={64} className="object-cover" />
+          <Image src={item.product.image.imageUrl || '/images/default.png'} alt={item.product.name} width={64} height={64} className="object-cover" />
         </div>
         <div>
           <h3 className="font-semibold text-base">{item.product.name}</h3>
@@ -73,10 +73,11 @@ export const CartSheet = () => {
         id_destinatario: user.id, 
         id_cantina: cartItems[0].product.canteenId,
         valor_total: totalPrice,
+        status: 'pendente', // <<< CORRIGIDO
         items: cartItems.map(item => ({
-          id_produto: item.product.id,
-          quantidade: item.quantity,
-          preco_unitario: item.product.price,
+          productId: item.product.id,
+          quantity: item.quantity,
+          unitPrice: item.product.price,
         })),
       };
 

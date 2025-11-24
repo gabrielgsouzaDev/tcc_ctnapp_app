@@ -240,10 +240,11 @@ const handleCheckout = async () => {
       id_destinatario: student.id,
       id_cantina: selectedCanteen,
       valor_total: cartTotal,
+      status: 'pendente', // <<< ADICIONADO
       items: cart.map((item) => ({
-        id_produto: item.product.id,
-        quantidade: item.quantity,
-        preco_unitario: item.product.price
+        productId: item.product.id,
+        quantity: item.quantity,
+        unitPrice: item.product.price
       })),
     };
 
@@ -264,11 +265,12 @@ const handleCheckout = async () => {
       title: "Pedido realizado!",
       description: "Acompanhe no seu dashboard.",
     });
-  } catch (e) {
+  } catch (e: any) {
     console.error("Checkout error:", e);
     toast({
       variant: "destructive",
       title: "Erro ao finalizar pedido",
+      description: e.data?.message || e.message || 'Ocorreu um erro.'
     });
   }
 };
