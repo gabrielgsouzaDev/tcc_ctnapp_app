@@ -4,7 +4,7 @@
 import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { v4 as uuidv4 } from 'uuid'; // ✅ IMPORTADO
+import { v4 as uuidv4 } from 'uuid';
 import { CheckCircle, Clock, Copy, Loader2, QrCode } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ function PixPaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth(); // ✅ OBTIDO O refreshUser
 
   const amount = searchParams.get('amount') || '0';
   const targetId = searchParams.get('targetId');
@@ -67,9 +67,12 @@ function PixPaymentContent() {
     });
 
     try {
-        const transactionUuid = uuidv4(); // ✅ GERADO
-        // Use the real service function to post the transaction
-        await rechargeBalance(walletId, user.id, Number(amount), transactionUuid); // ✅ ENVIADO
+        const transactionUuid = uuidv4();
+        await rechargeBalance(walletId, user.id, Number(amount), transactionUuid);
+
+        if (refreshUser) {
+          await refreshUser(); // ✅ CHAMADO PARA ATUALIZAR O SALDO
+        }
 
         setPaymentStatus('confirmed');
         toast({
