@@ -1,9 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-// ✅ 1. Importar usePathname para verificar a rota atual
 import { useRouter, usePathname } from 'next/navigation';
-import { apiPost, apiGet } from './api';
+import { apiPost } from './api';
 import { type User } from './data';
 import { getUser, mapUser } from './services';
 
@@ -23,19 +22,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname(); // ✅ Obter o pathname atual
+  const pathname = usePathname();
 
-  // A função de logout foi movida para cima para ser usada no useEffect
   const logout = async () => {
     try {
-        await apiPost('logout', {});
+      await apiPost('logout', {});
     } catch (error) {
-        console.error("Logout via API falhou, procedendo com logout local.", error);
+      console.error("Logout via API falhou, procedendo com logout local.", error);
     } finally {
-        localStorage.clear();
-        setToken(null);
-        setUser(null);
-        router.push('/');
+      localStorage.clear();
+      setToken(null);
+      setUser(null);
+      router.push('/');
     }
   };
 
@@ -46,38 +44,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (storedToken && storedUserId) {
         setToken(storedToken);
+
         try {
-           const userData = await getUser(storedUserId);
+          const userData = await getUser(storedUserId);
 
-           if (userData) {
-            // ✅ 2. Lógica de verificação de consistência da sessão
-            const isStudentRoute = pathname.startsWith('/student');
-            const isGuardianRoute = pathname.startsWith('/guardian');
-            const userIsStudent = userData.role === 'Aluno';
-            const userIsGuardian = userData.role === 'Responsavel';
+          if (!userData) {
+            console.error("Falha ao carregar dados do usuário, limpando sessão.");
+            logout();
+            return;
+          }
 
-            // Se o tipo de usuário na sessão for inconsistente com a rota, força o logout
-            if ((isStudentRoute && !userIsStudent) || (isGuardianRoute && !userIsGuardian)) {
-                console.warn("Inconsistência de sessão detectada (rota vs. papel de usuário). Limpando a sessão.");
-                logout(); // Força o logout para limpar dados corrompidos
-                return; // Interrompe a execução
-            }
+          // 📌 CORREÇÃO REAL:
+          // O backend manda "Aluno" e "Responsavel".
+          const isStudentRoute = pathname.startsWith('/student');
+          const isGuardianRoute = pathname.startsWith('/guardian');
 
-            setUser(userData);
+          const userIsStudent = userData.role === 'Aluno';
+          const userIsGuardian = userData.role === 'Responsavel';
 
-           } else {
-             throw new Error('Usuário não encontrado com o ID armazenado');
-           }
+          // 📌 Só valida SE já tiver user carregado
+          if ((isStudentRoute && !userIsStudent) || (isGuardianRoute && !userIsGuardian)) {
+            console.warn(`Inconsistência detectada (rota: ${pathname}, role: ${userData.role}). Limpando sessão.`);
+            logout();
+            return;
+          }
+
+          setUser(userData);
+
         } catch (error) {
-          console.error("Falha ao buscar usuário, limpando sessão.", error);
-          logout(); // Usa a função de logout para limpar tudo
+          console.error("Falha crítica ao inicializar autenticação, limpando sessão.", error);
+          logout();
         }
       }
+
       setIsLoading(false);
     };
+
     initializeAuth();
-  // A dependência de `pathname` garante que a verificação ocorra em mudanças de rota, se necessário
-  }, [pathname]); 
+  }, [pathname]);
 
   const handleAuthSuccess = (rawUser: any, token: string) => {
     const mappedUser = mapUser(rawUser);
@@ -85,12 +89,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('userId', mappedUser.id.toString());
     setToken(token);
     setUser(mappedUser);
-  }
+  };
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await apiPost<{ data: { user: any; token: string } }>('login', { email, senha: password, device_name: 'browser' });
+      const response = await apiPost<{ data: { user: any; token: string } }>('login', {
+        email,
+        senha: password,
+        device_name: 'browser'
+      });
+
       handleAuthSuccess(response.data.user, response.data.token);
+
     } catch (error: any) {
       console.error("Falha no login:", error);
       throw new Error(error.message || 'E-mail ou senha incorretos. Tente novamente.');
@@ -98,28 +108,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (data: Record<string, any>) => {
-    const { password, ...restOfData } = data;
-    const payload = { ...restOfData, senha: password };
+    const { password, ...rest } = data;
+    const payload = { ...rest, senha: password };
     await apiPost<{ data: any }>('users', payload);
     await login(data.email, password);
   };
 
-  const value = {
-    user,
-    token,
-    isLoading,
-    login,
-    register,
-    logout, // Expõe a função de logout já definida
-  };
+  const value = { user, token, isLoading, login, register, logout };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
-  }
+  if (!context) throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   return context;
 }
