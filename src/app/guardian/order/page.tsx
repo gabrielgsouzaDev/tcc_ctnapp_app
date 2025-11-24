@@ -240,11 +240,11 @@ const handleCheckout = async () => {
       id_destinatario: student.id,
       id_cantina: selectedCanteen,
       valor_total: cartTotal,
-      status: 'pendente', // <<< ADICIONADO
+      status: 'pendente',
       items: cart.map((item) => ({
-        productId: item.product.id,
-        quantity: item.quantity,
-        unitPrice: item.product.price
+        id_produto: item.product.id,
+        quantidade: item.quantity,
+        preco_unitario: item.product.price
       })),
     };
 

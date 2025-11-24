@@ -1,6 +1,6 @@
 
+
 // This would be in something like src/lib/config.ts
-// ✅ CORREÇÃO: Removida a barra (/) do final para evitar barras duplas (//) nas URLs de requisição.
 export const API_BASE_URL = 'https://cantappbackendlaravel-production.up.railway.app';
 
 // This is a simplified error type, you might want to expand it
@@ -10,23 +10,35 @@ type ApiError = {
 };
 
 async function handleResponse<T>(response: Response): Promise<T> {
-    if (response.status === 204) {
-        return { success: true } as unknown as T;
+  const text = await response.text();
+  
+  if (!response.ok) {
+    let errorData;
+    try {
+      errorData = JSON.parse(text);
+    } catch (e) {
+      errorData = { message: text || 'Ocorreu um erro na API.' };
     }
-    
-    const data = await response.json();
+    const error: Error & { data?: any } = new Error(errorData.message || 'Ocorreu um erro na API.');
+    error.data = errorData;
+    throw error;
+  }
 
-    if (!response.ok) {
-        const error: Error & { data?: any } = new Error(data.message || 'Ocorreu um erro na API.');
-        error.data = data;
-        throw error;
-    }
-    
-    return data as T;
+  // Handle empty successful responses (e.g., 200 OK or 204 No Content with no body)
+  if (!text) {
+    return { success: true } as unknown as T;
+  }
+
+  try {
+    const data = JSON.parse(text);
+    // Assumes successful responses are wrapped in a 'data' object.
+    return data.data as T;
+  } catch (e) {
+    console.error("JSON parsing error:", e);
+    throw new Error("Falha ao analisar a resposta do servidor.");
+  }
 }
 
-// ✅ CORREÇÃO: Re-adicionado o prefixo '/api' que foi removido incorretamente.
-// O backend Laravel espera as chamadas neste formato.
 // ✅ CORREÇÃO: Adicionada política de cache 'no-store' para sempre buscar dados frescos.
 export async function apiGet<T>(path: string): Promise<T> {
     const token = localStorage.getItem('authToken');
