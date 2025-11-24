@@ -23,7 +23,8 @@ interface NavLinkType { href: string; label: string; icon: React.ElementType; }
 const STUDENT_LINKS: NavLinkType[] = [
   { href: '/student/dashboard', label: 'Início', icon: Home },
   { href: '/student/orders', label: 'Pedidos', icon: Package },
-  { href: '/student/wallet', label: 'Saldo', icon: Wallet },
+  // ✅ CORRIGIDO: A rota foi ajustada de /wallet para /balance
+  { href: '/student/balance', label: 'Saldo', icon: Wallet },
 ];
 
 const GUARDIAN_LINKS: NavLinkType[] = [
