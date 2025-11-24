@@ -271,11 +271,11 @@ export const getGuardianProfile = async (guardianId: string): Promise<GuardianPr
       return null;
     }
   };
-  
 
+// ✅ CORRIGIDO: Rota ajustada para corresponder ao novo endpoint do backend.
 export const getWalletByUserId = async (userId: string): Promise<Wallet | null> => {
   try {
-    const response = await apiGet<{ data: any }>(`carteiras/${userId}`);
+    const response = await apiGet<{ data: any }>(`carteiras/usuario/${userId}`);
     return mapWallet(response.data);
   } catch (e) {
     console.error(`Failed to fetch wallet for user ${userId}:`, e);

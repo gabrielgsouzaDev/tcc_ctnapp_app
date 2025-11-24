@@ -14,6 +14,9 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/auth-provider';
 import { rechargeBalance } from '@/lib/services';
 
+// ✅ NOVO: Função helper para criar um atraso.
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 function PixPaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,10 +66,12 @@ function PixPaymentContent() {
       const transactionUuid = uuidv4();
       await rechargeBalance(walletId, user.id, Number(amount), transactionUuid);
 
-      if (refreshUser) await refreshUser();
-
       setPaymentStatus('confirmed');
       toast({ variant: 'success', title: 'Pagamento Confirmado!', description: 'O saldo foi atualizado com sucesso.' });
+
+      // ✅ CORRIGIDO: Adicionado atraso para evitar condição de corrida antes de atualizar os dados do usuário.
+      await delay(1500);
+      if (refreshUser) await refreshUser();
 
       setTimeout(() => {
         const redirectPath = user?.role === 'Aluno' ? '/student/dashboard' : '/guardian/dashboard';
@@ -169,7 +174,7 @@ export default function PixPaymentPage() {
       <Card>
         <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
           <PixPaymentContent />
-        </Suspense>
+reca        </Suspense>
       </Card>
     </div>
   );

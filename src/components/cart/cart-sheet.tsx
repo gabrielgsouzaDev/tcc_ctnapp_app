@@ -14,6 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
+// ✅ NOVO: Função helper para criar um atraso.
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const CartItemCard = ({ item }: { item: any }) => {
   const { updateItemQuantity } = useCart();
 
@@ -67,21 +70,26 @@ export const CartSheet = () => {
     try {
       await postOrder({
         userId: user.id,
-        studentId: user.id,
+        studentId: user.id, // Em um cenário de responsável, este seria o ID do aluno selecionado
         canteenId: cartItems[0].product.canteenId,
         items: cartItems,
         total: totalPrice,
       });
 
-      if (refreshUser) await refreshUser();
-
       toast({ variant: 'success', title: 'Pedido realizado com sucesso!', description: 'Você pode acompanhar o status na página de pedidos.' });
+      
+      // ✅ CORRIGIDO: Adicionado atraso para evitar condição de corrida antes de atualizar os dados do usuário.
+      await delay(1500);
+      if (refreshUser) await refreshUser();
+      
       clearCart();
       setIsSheetOpen(false);
       router.push('/student/orders');
+
     } catch (error: any) {
       console.error('Falha ao finalizar pedido:', error);
-      const errorMessage = error?.response?.data?.message || 'Não foi possível completar seu pedido. Tente novamente mais tarde.';
+      const apiErrorMessage = error.data?.message || error.message
+      const errorMessage = apiErrorMessage || 'Não foi possível completar seu pedido. Tente novamente mais tarde.';
       toast({ variant: 'destructive', title: 'Erro ao criar pedido', description: errorMessage });
     } finally {
       setIsCheckingOut(false);
@@ -124,36 +132,40 @@ export const CartSheet = () => {
           </div>
         )}
 
-        <Separator className="-mx-6 mt-auto" />
-        <SheetFooter className="pt-6 space-y-4">
-          <div className="flex justify-between items-center text-lg font-semibold gap-4">
-            <p>Total</p>
-            <p className="whitespace-nowrap">R$ {totalPrice.toFixed(2)}</p>
-          </div>
+        {cartItems.length > 0 && (
+          <>
+            <Separator className="-mx-6 mt-auto" />
+            <SheetFooter className="pt-6 space-y-4">
+              <div className="flex justify-between items-center text-lg font-semibold gap-4">
+                <p>Total</p>
+                <p className="whitespace-nowrap">R$ {totalPrice.toFixed(2)}</p>
+              </div>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button disabled={cartItems.length === 0 || isCheckingOut} className="w-full">
-                {isCheckingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Finalizar Pedido
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirmar Pedido</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Você está prestes a finalizar seu pedido no valor de R$ {totalPrice.toFixed(2)}. O valor será debitado do seu saldo. Você confirma?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={isCheckingOut}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleCheckout} disabled={isCheckingOut}>
-                  {isCheckingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Confirmar'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </SheetFooter>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button disabled={isCheckingOut} className="w-full">
+                    {isCheckingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Finalizar Pedido
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar Pedido</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Você está prestes a finalizar seu pedido no valor de R$ {totalPrice.toFixed(2)}. O valor será debitado do seu saldo. Você confirma?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isCheckingOut}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCheckout} disabled={isCheckingOut}>
+                      {isCheckingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Confirmar'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </SheetFooter>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );
