@@ -3,7 +3,7 @@
 import { type School, type StudentProfile, type GuardianProfile, type Canteen, type Product, type Transaction, type Order, type User, type Wallet, type Favorite } from '@/lib/data';
 import { apiGet, apiPost, apiDelete, apiPatch } from './api';
 
-const mapUser = (user: any): User => ({
+export const mapUser = (user: any): User => ({
   id: user.id?.toString() ?? '',
   name: user.nome ?? user.name ?? '',
   email: user.email ?? '',
@@ -242,13 +242,14 @@ export const getStudentProfile = async (studentId: string): Promise<StudentProfi
 };
 
 export const getWalletByUserId = async (userId: string): Promise<Wallet | null> => {
-  try {
-    const response = await apiGet<{ data: any }>(`carteiras/usuario/${userId}`);
-    return mapWallet(response.data);
-  } catch (e) {
-    console.error(`Failed to fetch wallet for user ${userId}:`, e);
-    return null;
-  }
+    if (!userId) return null;
+    try {
+      const response = await apiGet<{ data: any }>(`carteiras/usuario/${userId}`);
+      return mapWallet(response.data);
+    } catch (e) {
+      console.error(`Failed to fetch wallet for user ${userId}:`, e);
+      return null;
+    }
 };
 
 export const getTransactionsByUser = async (userId: string): Promise<Transaction[]> => {
@@ -265,14 +266,9 @@ export const getTransactionsByUser = async (userId: string): Promise<Transaction
 export const rechargeBalance = async (userId: string, amount: number): Promise<{ success: boolean }> => {
     const payload = {
         id_user: userId,
-        valor: amount,
-        tipo: 'PIX', // ou o tipo apropriado
-        descricao: `Recarga via PIX no valor de R$ ${amount.toFixed(2)}`,
-        status: 'confirmada',
-        uuid: uuidv4()
+        valor: amount
     };
-    // Chamada para a rota de transação genérica, se a de recarga não existir
-    await apiPost('transacoes', payload); 
+    await apiPost('carteiras/recarregar', payload); 
     return { success: true };
 }
 
@@ -281,8 +277,6 @@ export const linkStudentToGuardian = async (guardianId: string, studentCode: str
         codigo_aluno: studentCode
     };
     try {
-        // A rota espera o id do responsável no corpo ou na URL. Ajuste conforme necessário.
-        // Assumindo que o id do responsável (usuário logado) é adicionado pelo backend ou middleware.
         await apiPost(`responsavel/vincular-aluno`, payload);
     } catch (error) {
         console.error(`Failed to link student with code ${studentCode} to guardian ${guardianId}:`, error);
@@ -290,9 +284,4 @@ export const linkStudentToGuardian = async (guardianId: string, studentCode: str
     }
 };
 
-function uuidv4(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-}
+    
