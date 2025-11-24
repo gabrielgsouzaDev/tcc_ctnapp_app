@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 // ✅ 1. Trocar Star por Heart e importar o novo ícone
 import { Search, Heart, Check } from 'lucide-react';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 type Category = 'Todos' | 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
 type AddToCartState = {
@@ -142,6 +143,7 @@ export default function StudentDashboardPage() {
   };
 
   const categories: Category[] = ['Todos', 'Salgado', 'Doce', 'Bebida', 'Almoço'];
+  const defaultImage = PlaceHolderImages.find(p => p.id === 'default-product')?.imageUrl || '/images/default.png';
 
   if (isLoading || isUserLoading) {
     return (
@@ -220,7 +222,7 @@ export default function StudentDashboardPage() {
                     <Heart className={`h-5 w-5 transition-colors ${isFavorite ? 'text-red-500 fill-red-500' : 'text-gray-400'}`} />
                 </button>
               <Image
-                src={product.image.imageUrl}
+                src={product.image?.imageUrl || defaultImage}
                 alt={product.name}
                 width={400}
                 height={200}
