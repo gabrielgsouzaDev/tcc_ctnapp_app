@@ -1,7 +1,6 @@
-
 "use client";
 
-import { UserProfile } from "@/lib/data";
+import { StudentProfile } from "@/lib/data";
 import {
   Select,
   SelectContent,
@@ -11,7 +10,7 @@ import {
 } from '@/components/ui/select';
 
 type StudentFilterProps = {
-    students: UserProfile[];
+    students: StudentProfile[];
     selectedStudentId: string;
     onSelectionChange: (id: string) => void;
 };
