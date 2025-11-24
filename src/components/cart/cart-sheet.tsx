@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from "react";
@@ -14,7 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
-// ✅ NOVO: Função helper para criar um atraso.
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const CartItemCard = ({ item }: { item: any }) => {
@@ -68,17 +68,22 @@ export const CartSheet = () => {
 
     setIsCheckingOut(true);
     try {
-      await postOrder({
-        userId: user.id,
-        studentId: user.id, // Em um cenário de responsável, este seria o ID do aluno selecionado
-        canteenId: cartItems[0].product.canteenId,
-        items: cartItems,
-        total: totalPrice,
-      });
+      const orderPayload = {
+        id_comprador: user.id,
+        id_destinatario: user.id, 
+        id_cantina: cartItems[0].product.canteenId,
+        valor_total: totalPrice,
+        items: cartItems.map(item => ({
+          id_produto: item.product.id,
+          quantidade: item.quantity,
+          preco_unitario: item.product.price,
+        })),
+      };
+
+      await postOrder(orderPayload);
 
       toast({ variant: 'success', title: 'Pedido realizado com sucesso!', description: 'Você pode acompanhar o status na página de pedidos.' });
       
-      // ✅ CORRIGIDO: Adicionado atraso para evitar condição de corrida antes de atualizar os dados do usuário.
       await delay(1500);
       if (refreshUser) await refreshUser();
       

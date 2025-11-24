@@ -58,7 +58,6 @@ export default function GuardianOrderPage() {
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
 
-  // alunos vindo da rota /users/{id}
   const [studentsLite, setStudentsLite] = useState<StudentLite[]>([]);
   const [studentsFull, setStudentsFull] = useState<StudentProfile[]>([]);
 
@@ -75,9 +74,6 @@ export default function GuardianOrderPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("Todos");
   const [addToCartState, setAddToCartState] = useState<AddToCartState>({});
 
-  // ============================================
-// 1) CARREGAR PERFIL DO RESPONSÁVEL + STUDENTS (Lite)
-// ============================================
 useEffect(() => {
   const loadGuardian = async () => {
     if (!user?.id) return;
@@ -90,10 +86,8 @@ useEffect(() => {
       return;
     }
 
-    // Students LITE vindos do user
     setStudentsLite(profile.students);
 
-    // Selecionar primeiro aluno por padrão
     if (profile.students.length > 0) {
       setSelectedStudent(profile.students[0].id);
     }
@@ -104,9 +98,6 @@ useEffect(() => {
   if (!authLoading) loadGuardian();
 }, [authLoading, user]);
 
-// ====================================================
-// 2) CARREGAR StudentProfile REAL de cada aluno
-// ====================================================
 useEffect(() => {
   const loadStudentsFull = async () => {
     if (studentsLite.length === 0) return;
@@ -120,18 +111,14 @@ useEffect(() => {
 
     setStudentsFull(fullProfiles);
 
-    // Se já temos aluno selecionado, manter
     if (!selectedStudent && fullProfiles.length > 0) {
       setSelectedStudent(fullProfiles[0].id);
     }
   };
 
   loadStudentsFull();
-}, [studentsLite, selectedStudent]);
+}, [studentsLite]);
 
-// ====================================================
-// 3) Carregar cantinas baseado no schoolId REAL
-// ====================================================
 useEffect(() => {
   const loadCanteens = async () => {
     if (!selectedStudent) return;
@@ -150,9 +137,6 @@ useEffect(() => {
   loadCanteens();
 }, [selectedStudent, studentsFull]);
 
-// ====================================================
-// 4) Carregar produtos da cantina selecionada
-// ====================================================
 useEffect(() => {
   const loadProducts = async () => {
     if (!selectedCanteen) return;
@@ -168,12 +152,10 @@ useEffect(() => {
   loadProducts();
 }, [selectedCanteen]);
 
-// Quantidade no carrinho
 const getCartItemQuantity = (productId: string) => {
   return cart.find((item) => item.product.id === productId)?.quantity || 0;
 };
 
-// Total
 const cartTotal = cart.reduce(
   (sum, item) => sum + item.product.price * item.quantity,
   0
@@ -219,10 +201,10 @@ const handleCheckout = async () => {
 
   const student = studentsFull.find((s) => s.id === selectedStudent);
 
-  if (!student) {
+  if (!student || !user) {
     toast({
       variant: "destructive",
-      title: "Aluno inválido",
+      title: "Usuário ou aluno inválido",
     });
     return;
   }
@@ -254,7 +236,7 @@ const handleCheckout = async () => {
 
   try {
     const orderPayload = {
-      id_comprador: user!.id,
+      id_comprador: user.id,
       id_destinatario: student.id,
       id_cantina: selectedCanteen,
       valor_total: cartTotal,
@@ -267,7 +249,6 @@ const handleCheckout = async () => {
 
     await postOrder(orderPayload);
 
-    // Atualizar saldo na UI sem recarregar
     setStudentsFull((prev) =>
       prev.map((s) =>
         s.id === student.id
@@ -319,7 +300,6 @@ const handleAddToCartVisuals = (product: Product) => {
 return (
   <div className="space-y-6">
 
-    {/* ---------------------- HEADER ---------------------- */}
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
         <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
@@ -333,7 +313,6 @@ return (
 
       <div className="flex items-center gap-2">
 
-        {/* Selecionar cantina */}
         <Select value={selectedCanteen} onValueChange={setSelectedCanteen}>
           <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="Cantina" />
@@ -347,7 +326,6 @@ return (
           </SelectContent>
         </Select>
 
-        {/* Carrinho */}
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="outline" size="icon" className="relative shrink-0">
@@ -363,7 +341,6 @@ return (
             </Button>
           </SheetTrigger>
 
-          {/* ---------------------- CARRINHO SIDEBAR ---------------------- */}
           <SheetContent className="flex flex-col">
             <SheetHeader>
               <SheetTitle>Carrinho</SheetTitle>
@@ -432,7 +409,6 @@ return (
               )}
             </div>
 
-            {/* FOOTER DO CARRINHO */}
             <SheetFooter>
               <div className="w-full space-y-4 border-t pt-4">
                 <div className="flex justify-between font-bold text-lg">
@@ -440,7 +416,6 @@ return (
                   <span>R$ {cartTotal.toFixed(2)}</span>
                 </div>
 
-                {/* CONFIRMAR PEDIDO */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button disabled={cart.length === 0} className="w-full">
@@ -457,7 +432,6 @@ return (
                     </AlertDialogHeader>
 
                     <div className="my-4 space-y-4">
-                      {/* Selecionar aluno */}
                       <div className="space-y-2">
                         <Label>Pedido para o aluno:</Label>
                         <Select
@@ -518,7 +492,6 @@ return (
       </div>
     </div>
 
-    {/* ---------------------- FILTROS ---------------------- */}
     <div className="space-y-4">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -543,7 +516,6 @@ return (
       </div>
     </div>
 
-    {/* ---------------------- LISTA DE PRODUTOS ---------------------- */}
     {isLoadingProducts ? (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-pulse">
         {[...Array(8)].map((_, i) => (

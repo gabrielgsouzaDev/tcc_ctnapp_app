@@ -6,22 +6,10 @@ import { PlaceHolderImages } from './placeholder-images';
 
 const createLocalImageUrl = (remoteUrl: string | null | undefined): string => {
     if (!remoteUrl) {
-      // Retorna uma imagem padrão se a URL for nula
-      return PlaceHolderImages[0].imageUrl;
+      return PlaceHolderImages.find(p => p.id === 'prod_sandwich')?.imageUrl || PlaceHolderImages[0].imageUrl;
     }
     const fileName = remoteUrl.split('/').pop();
     return fileName ? `/images/${fileName}` : PlaceHolderImages[0].imageUrl;
-};
-
-const mapRole = (role: any): User['role'] => {
-  if (!role) return 'Aluno';
-  const roleName = String(role.nome_role || role).trim().toLowerCase();
-  if (['student', 'aluno', 'estudante'].includes(roleName)) return 'Aluno';
-  if (['guardian', 'responsavel', 'responsável'].includes(roleName)) return 'Responsavel';
-  if (['admin', 'administrator'].includes(roleName)) return 'Admin';
-  if (['cantina', 'canteen'].includes(roleName)) return 'Cantina';
-  if (['escola', 'school'].includes(roleName)) return 'Escola';
-  return 'Aluno';
 };
 
 export const mapUser = (user: any): User => ({
@@ -34,7 +22,7 @@ export const mapUser = (user: any): User => ({
   ativo: Boolean(user.ativo),
   schoolId: user.id_escola?.toString() ?? null,
   canteenId: user.id_cantina?.toString() ?? null,
-  role: mapRole(user.roles?.[0]),
+  role: user.roles?.[0]?.nome_role ?? 'Aluno',
   balance: parseFloat(user.carteira?.saldo ?? 0),
   students: (user.dependentes || []).map((d: any) => mapUser(d)),
   student_code: user.codigo_aluno ?? null,
@@ -146,7 +134,6 @@ export const getSchools = async (): Promise<School[]> => {
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
   if (!schoolId) return [];
   try {
-    // Agora usa a rota otimizada do backend
     const response = await apiGet<{ data: any[] }>(`cantinas/escola/${schoolId}`);
     return response.data.map(mapCanteen);
   } catch (e) {
@@ -158,7 +145,6 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
   if (!canteenId) return [];
   try {
-    // Rota otimizada para buscar produtos de uma cantina específica
     const response = await apiGet<{ data: any[] }>(`cantinas/${canteenId}/produtos`);
     return response.data.map(mapProduct);
   } catch (e) {
@@ -200,8 +186,7 @@ export const removeFavorite = async (userId: string, productId: string): Promise
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     if (!userId) return [];
     try {
-        const response = await apiGet<{ data: any[] }>(`pedidos`); // Busca todos os pedidos
-        // Filtra no frontend para mostrar apenas os pedidos relevantes para o usuário
+        const response = await apiGet<{ data: any[] }>(`pedidos`);
         return response.data
             .filter(order => order.id_comprador?.toString() === userId || order.id_destinatario?.toString() === userId)
             .map(mapOrder);
@@ -233,7 +218,7 @@ export const getGuardianProfile = async (guardianId: string): Promise<GuardianPr
         name: user.name,
         walletId: user.walletId,
         balance: user.balance,
-        students: user.students, // Assumindo que a API /users/{id} retorna os dependentes
+        students: user.students,
       };
     } catch (e) {
       console.error(`Failed to fetch guardian profile ${guardianId}:`, e);
