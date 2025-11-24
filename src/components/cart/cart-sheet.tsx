@@ -1,24 +1,13 @@
-
+// src/components/cart/cart-sheet.tsx
 'use client';
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger
+    Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
-import { useCart, CartItem } from "@/hooks/use-cart";
+import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/lib/auth-provider";
 import { postOrder } from "@/lib/services";
 import { useToast } from "@/hooks/use-toast";
@@ -26,26 +15,26 @@ import Image from 'next/image';
 import { Loader2, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
-const CartItemCard = ({ item }: { item: CartItem }) => {
+const CartItemCard = ({ item }: { item: any }) => {
   const { updateItemQuantity } = useCart();
 
   return (
     <div className="flex items-start justify-between gap-4 py-4">
       <div className="flex items-start gap-4">
-        <Image
-          src={item.product.image.imageUrl}
-          alt={item.product.name}
-          width={64}
-          height={64}
-          className="rounded-md object-cover h-16 w-16 border"
-        />
+        <div className="h-16 w-16 overflow-hidden rounded-md border bg-muted">
+          <Image src={item.product.image.imageUrl} alt={item.product.name} width={64} height={64} className="object-cover" />
+        </div>
         <div>
           <h3 className="font-semibold text-base">{item.product.name}</h3>
           <p className="text-sm text-muted-foreground">R$ {item.product.price.toFixed(2)}</p>
-           <Button variant="ghost" size="icon" className="-ml-2 mt-1 h-8 w-8" onClick={() => updateItemQuantity(item.product.id, 0)}>
-              <Trash2 className="h-4 w-4 text-red-500" />
-            </Button>
+          <Button variant="ghost" size="icon" className="-ml-2 mt-1 h-8 w-8" onClick={() => updateItemQuantity(item.product.id, 0)}>
+            <Trash2 className="h-4 w-4 text-red-500" />
+          </Button>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -71,35 +60,34 @@ export const CartSheet = () => {
 
   const handleCheckout = async () => {
     if (!user || !user.id || !cartItems[0]?.product.canteenId) {
-        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível identificar o usuário ou a cantina. Tente novamente.' });
-        return;
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível identificar o usuário ou a cantina. Tente novamente.' });
+      return;
     }
 
     if (user.balance < totalPrice) {
-        toast({ variant: 'destructive', title: 'Saldo insuficiente', description: 'Por favor, recarregue sua carteira para continuar.' });
-        return;
+      toast({ variant: 'destructive', title: 'Saldo insuficiente', description: 'Por favor, recarregue sua carteira para continuar.' });
+      return;
     }
 
     setIsCheckingOut(true);
     try {
-        await postOrder({
-            userId: user.id,
-            studentId: user.id,
-            canteenId: cartItems[0].product.canteenId,
-            items: cartItems,
-            total: totalPrice,
-        });
+      await postOrder({
+        userId: user.id,
+        studentId: user.id,
+        canteenId: cartItems[0].product.canteenId,
+        items: cartItems,
+        total: totalPrice,
+      });
 
-        toast({ variant: 'success', title: 'Pedido realizado com sucesso!', description: 'Você pode acompanhar o status na página de pedidos.' });
-        clearCart();
-        setIsSheetOpen(false); // Fechar o carrinho
-        router.push('/student/orders');
-
+      toast({ variant: 'success', title: 'Pedido realizado com sucesso!', description: 'Você pode acompanhar o status na página de pedidos.' });
+      clearCart();
+      setIsSheetOpen(false);
+      router.push('/student/orders');
     } catch (error) {
-        console.error("Falha ao finalizar pedido:", error);
-        toast({ variant: 'destructive', title: 'Erro ao criar pedido', description: 'Não foi possível completar seu pedido. Tente novamente mais tarde.' });
+      console.error('Falha ao finalizar pedido:', error);
+      toast({ variant: 'destructive', title: 'Erro ao criar pedido', description: 'Não foi possível completar seu pedido. Tente novamente mais tarde.' });
     } finally {
-        setIsCheckingOut(false);
+      setIsCheckingOut(false);
     }
   };
 
@@ -108,68 +96,66 @@ export const CartSheet = () => {
       <SheetTrigger asChild>
         <Button variant="outline" size="icon" className="relative">
           {cartCount > 0 && (
-             <Badge className="absolute -right-2 -top-2 h-5 w-5 justify-center p-0" variant="destructive">
+            <Badge className="absolute -right-2 -top-2 h-5 w-5 justify-center p-0" variant="destructive">
               {cartCount}
             </Badge>
           )}
           <ShoppingCart className="h-5 w-5" />
         </Button>
       </SheetTrigger>
+
       <SheetContent className="flex w-full flex-col sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>Carrinho de Compras</SheetTitle>
-          <SheetDescription>
-            Revise seus itens e finalize seu pedido aqui. 
-          </SheetDescription>
         </SheetHeader>
+
         <Separator className="-mx-6" />
-        
+
         {cartItems.length > 0 ? (
           <div className="flex-1 overflow-y-auto -mx-6 px-6 divide-y">
-            {cartItems.map(item => (
+            {cartItems.map((item) => (
               <CartItemCard key={item.product.id} item={item} />
             ))}
           </div>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-            <ShoppingCart className="h-20 w-20 text-muted-foreground/30" strokeWidth={1}/>
+            <ShoppingCart className="h-20 w-20 text-muted-foreground/30" strokeWidth={1} />
             <div className="space-y-1">
-                <h3 className="text-lg font-medium">Seu carrinho está vazio</h3>
-                <p className="text-sm text-muted-foreground">Adicione itens para começar um pedido.</p>
+              <h3 className="text-lg font-medium">Seu carrinho está vazio</h3>
+              <p className="text-sm text-muted-foreground">Adicione itens para começar um pedido.</p>
             </div>
           </div>
         )}
 
         <Separator className="-mx-6 mt-auto" />
         <SheetFooter className="pt-6 space-y-4">
-            {/* ✅ CORREÇÃO: Adicionado 'gap-4' para criar um espaçamento suave */}
-            <div className="flex justify-between items-center text-lg font-semibold gap-4">
-                <p>Total</p>
-                <p className="whitespace-nowrap">R$ {totalPrice.toFixed(2)}</p>
-            </div>
+          <div className="flex justify-between items-center text-lg font-semibold gap-4">
+            <p>Total</p>
+            <p className="whitespace-nowrap">R$ {totalPrice.toFixed(2)}</p>
+          </div>
 
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button disabled={cartItems.length === 0 || isCheckingOut} className="w-full">
-                        {isCheckingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                        Finalizar Pedido
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar Pedido</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Você está prestes a finalizar seu pedido no valor de R$ {totalPrice.toFixed(2)}. O valor será debitado do seu saldo. Você confirma?
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isCheckingOut}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleCheckout} disabled={isCheckingOut}>
-                            {isCheckingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : "Confirmar"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button disabled={cartItems.length === 0 || isCheckingOut} className="w-full">
+                {isCheckingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Finalizar Pedido
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Pedido</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Você está prestes a finalizar seu pedido no valor de R$ {totalPrice.toFixed(2)}. O valor será debitado do seu saldo. Você confirma?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isCheckingOut}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleCheckout} disabled={isCheckingOut}>
+                  {isCheckingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Confirmar'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </SheetFooter>
       </SheetContent>
     </Sheet>

@@ -1,7 +1,8 @@
+// src/lib/auth-provider.tsx
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { apiPost } from './api';
 import { type User } from './data';
 import { getUser, mapUser } from './services';
@@ -22,13 +23,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname();
 
   const logout = async () => {
     try {
       await apiPost('logout', {});
     } catch (error) {
-      console.error("Logout via API falhou, procedendo com logout local.", error);
+      console.error('Logout via API falhou, procedendo com logout local.', error);
     } finally {
       localStorage.clear();
       setToken(null);
@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let mounted = true;
     const initializeAuth = async () => {
       const storedToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
       const storedUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
@@ -48,40 +49,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const userData = await getUser(storedUserId);
 
+          if (!mounted) return;
           if (!userData) {
-            console.error("Falha ao carregar dados do usuário, limpando sessão.");
-            logout();
-            return;
-          }
-
-          // 📌 CORREÇÃO REAL:
-          // O backend manda "Aluno" e "Responsavel".
-          const isStudentRoute = pathname.startsWith('/student');
-          const isGuardianRoute = pathname.startsWith('/guardian');
-
-          const userIsStudent = userData.role === 'Aluno';
-          const userIsGuardian = userData.role === 'Responsavel';
-
-          // 📌 Só valida SE já tiver user carregado
-          if ((isStudentRoute && !userIsStudent) || (isGuardianRoute && !userIsGuardian)) {
-            console.warn(`Inconsistência detectada (rota: ${pathname}, role: ${userData.role}). Limpando sessão.`);
+            console.error('Falha ao carregar dados do usuário, limpando sessão.');
             logout();
             return;
           }
 
           setUser(userData);
-
         } catch (error) {
-          console.error("Falha crítica ao inicializar autenticação, limpando sessão.", error);
+          console.error('Falha crítica ao inicializar autenticação, limpando sessão.', error);
           logout();
         }
       }
-
-      setIsLoading(false);
+      if (mounted) setIsLoading(false);
     };
 
     initializeAuth();
-  }, [pathname]);
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // roda só uma vez — evita re-fetches que removiam conteúdo
 
   const handleAuthSuccess = (rawUser: any, token: string) => {
     const mappedUser = mapUser(rawUser);
@@ -96,13 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiPost<{ data: { user: any; token: string } }>('login', {
         email,
         senha: password,
-        device_name: 'browser'
+        device_name: 'browser',
       });
 
       handleAuthSuccess(response.data.user, response.data.token);
-
     } catch (error: any) {
-      console.error("Falha no login:", error);
+      console.error('Falha no login:', error);
       throw new Error(error.message || 'E-mail ou senha incorretos. Tente novamente.');
     }
   };

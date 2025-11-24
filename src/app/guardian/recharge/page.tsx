@@ -66,21 +66,22 @@ export default function GuardianRechargePage() {
   }, [user, isUserLoading]);
 
   const allTargets: RechargeTarget[] = guardianProfile ? [
-      { 
-        id: guardianProfile.id, 
-        name: guardianProfile.name, 
-        balance: guardianProfile.balance,
-        walletId: guardianProfile.walletId, 
-        isGuardian: true 
-      },
-      ...guardianProfile.students.map((s: UserProfile) => ({
-          id: s.id,
-          name: s.name,
-          balance: s.balance,
-          walletId: s.walletId, 
-          isGuardian: false
-      }))
-  ] : [];
+    { 
+      id: guardianProfile.id, 
+      name: guardianProfile.name, 
+      balance: guardianProfile.balance,
+      walletId: guardianProfile.walletId, 
+      isGuardian: true 
+    },
+    ...guardianProfile.students.map((s) => ({
+        id: s.id,
+        name: s.name,
+        balance: s.balance,
+        walletId: s.walletId, 
+        isGuardian: false
+    }))
+] : [];
+
 
   const handleAmountSelect = (amount: number) => {
     setRechargeAmount(amount.toString());

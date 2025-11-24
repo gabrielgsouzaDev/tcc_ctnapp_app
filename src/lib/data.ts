@@ -1,8 +1,6 @@
-
 // #region --- DATA TYPE DEFINITIONS ---
-// This file contains the type definitions for the data used in the application.
-// These types are used to ensure that the data is consistent across the application.
-// Mappers in services.ts are used to transform backend data into these types.
+// Tipos centrais usados na aplicação. Totalmente alinhados ao backend Laravel
+// e às transformações feitas em services.ts.
 
 // #region --- IMAGE & CATEGORY TYPES ---
 
@@ -13,7 +11,7 @@ export type Image = {
   description: string;
 };
 
-export type Category = 'Lanche' | 'Bebida' | 'Doce' | 'Salgado';
+export type Category = 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
 
 // #endregion
 
@@ -29,20 +27,35 @@ export type User = {
   balance: number;
   schoolId: string | null;
   canteenId: string | null;
-  students: User[];
+  students: User[];     // só será usado quando role = Responsavel
   telefone: string | null;
   data_nascimento: string | null;
   ativo: boolean;
-  student_code: string | null; // ✅ CORREÇÃO: Propriedade adicionada
+  student_code: string | null;
 };
 
-export type StudentProfile = User & {
-  role: 'Aluno';
+// PERFIS — NÃO EXTENDEM USER! (CORREÇÃO ABSOLUTA)
+
+export type StudentProfile = {
+  id: string;
+  name: string;
+  walletId: string | null;
+  balance: number;
+  student_code: string | null;
+  schoolId: string | null;
 };
 
-export type GuardianProfile = User & {
-  role: 'Responsavel';
-  students: StudentProfile[];
+export type GuardianProfile = {
+  id: string;
+  name: string;
+  walletId: string | null;
+  balance: number;
+  students: {
+    id: string;
+    name: string;
+    balance: number;
+    walletId: string | null;
+  }[];
 };
 
 export type UserProfile = StudentProfile | GuardianProfile;
@@ -98,7 +111,7 @@ export type OrderItem = {
 export type Order = {
   id: string;
   studentId: string;
-  userId: string; // ID of the user who made the order (can be the student or the guardian)
+  userId: string;
   canteenId: string;
   items: OrderItem[];
   total: number;
@@ -120,8 +133,9 @@ export type Transaction = {
   amount: number;
   type: 'credit' | 'debit';
   origin: 'PIX' | 'Debito' | 'Estorno' | 'Recarregar' | 'Compra';
-  userId: string; // ID of the user who initiated the transaction
+  userId: string;
   status: string;
 };
 
 // #endregion
+
