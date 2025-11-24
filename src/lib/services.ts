@@ -1,3 +1,4 @@
+
 // src/lib/services.ts
 import { type School, type StudentProfile, type GuardianProfile, type Canteen, type Product, type Transaction, type Order, type User, type Wallet, type Favorite } from '@/lib/data';
 import { apiGet, apiPost, apiDelete, apiPatch } from './api';
@@ -5,20 +6,21 @@ import { PlaceHolderImages } from './placeholder-images';
 
 const createLocalImageUrl = (remoteUrl: string | null | undefined): string => {
     if (!remoteUrl) {
+      // Retorna uma imagem padrão se a URL for nula
       return PlaceHolderImages[0].imageUrl;
     }
     const fileName = remoteUrl.split('/').pop();
     return fileName ? `/images/${fileName}` : PlaceHolderImages[0].imageUrl;
 };
 
-const mapRole = (roleName: string | undefined | null): User['role'] => {
-  if (!roleName) return 'Aluno';
-  const normalized = String(roleName).trim().toLowerCase();
-  if (['student', 'aluno', 'estudante'].includes(normalized)) return 'Aluno';
-  if (['guardian', 'responsavel', 'responsável'].includes(normalized)) return 'Responsavel';
-  if (['admin', 'administrator'].includes(normalized)) return 'Admin';
-  if (['cantina', 'canteen'].includes(normalized)) return 'Cantina';
-  if (['escola', 'school'].includes(normalized)) return 'Escola';
+const mapRole = (role: any): User['role'] => {
+  if (!role) return 'Aluno';
+  const roleName = String(role.nome_role || role).trim().toLowerCase();
+  if (['student', 'aluno', 'estudante'].includes(roleName)) return 'Aluno';
+  if (['guardian', 'responsavel', 'responsável'].includes(roleName)) return 'Responsavel';
+  if (['admin', 'administrator'].includes(roleName)) return 'Admin';
+  if (['cantina', 'canteen'].includes(roleName)) return 'Cantina';
+  if (['escola', 'school'].includes(roleName)) return 'Escola';
   return 'Aluno';
 };
 
@@ -32,9 +34,9 @@ export const mapUser = (user: any): User => ({
   ativo: Boolean(user.ativo),
   schoolId: user.id_escola?.toString() ?? null,
   canteenId: user.id_cantina?.toString() ?? null,
-  role: mapRole(user.roles?.[0]?.nome_role ?? user.role),
+  role: mapRole(user.roles?.[0]),
   balance: parseFloat(user.carteira?.saldo ?? 0),
-  students: user.dependentes?.map((d: any) => mapUser(d)) || [],
+  students: (user.dependentes || []).map((d: any) => mapUser(d)),
   student_code: user.codigo_aluno ?? null,
 });
 
@@ -88,7 +90,7 @@ const mapOrder = (order: any): Order => ({
   items:
     order.item_pedidos?.map((p: any) => ({
       productId: p.id_produto?.toString() ?? '',
-      productName: p.produto?.nome ?? '',
+      productName: p.produto?.nome ?? 'Produto desconhecido',
       quantity: p.quantidade,
       unitPrice: parseFloat(p.preco_unitario ?? 0),
       image: {
@@ -133,11 +135,8 @@ export const getUser = async (userId: string): Promise<User | null> => {
 
 export const getSchools = async (): Promise<School[]> => {
   try {
-    const response = await apiGet<any>('escolas');
-    if (response && Array.isArray(response.data)) return response.data.map(mapSchool);
-    if (Array.isArray(response)) return response.map(mapSchool);
-    console.error('Unexpected response format for schools:', response);
-    return [];
+    const response = await apiGet<{ data: any[] }>('escolas');
+    return response.data.map(mapSchool);
   } catch (e) {
     console.error('Failed to fetch schools:', e);
     return [];
@@ -147,6 +146,7 @@ export const getSchools = async (): Promise<School[]> => {
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
   if (!schoolId) return [];
   try {
+    // Agora usa a rota otimizada do backend
     const response = await apiGet<{ data: any[] }>(`cantinas/escola/${schoolId}`);
     return response.data.map(mapCanteen);
   } catch (e) {
@@ -158,6 +158,7 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
   if (!canteenId) return [];
   try {
+    // Rota otimizada para buscar produtos de uma cantina específica
     const response = await apiGet<{ data: any[] }>(`cantinas/${canteenId}/produtos`);
     return response.data.map(mapProduct);
   } catch (e) {
@@ -197,31 +198,21 @@ export const removeFavorite = async (userId: string, productId: string): Promise
 };
 
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
-  if (!userId) return [];
-  try {
-    const response = await apiGet<{ data: any[] }>(`pedidos/usuario/${userId}`);
-    return response.data.map(mapOrder);
-  } catch (e) {
-    console.error(`Failed to fetch orders for user ${userId}:`, e);
-    return [];
-  }
+    if (!userId) return [];
+    try {
+        const response = await apiGet<{ data: any[] }>(`pedidos`); // Busca todos os pedidos
+        // Filtra no frontend para mostrar apenas os pedidos relevantes para o usuário
+        return response.data
+            .filter(order => order.id_comprador?.toString() === userId || order.id_destinatario?.toString() === userId)
+            .map(mapOrder);
+    } catch (e) {
+        console.error(`Failed to fetch orders for user ${userId}:`, e);
+        return [];
+    }
 };
 
-// ✅ OTIMIZADO: Payload simplificado para alinhar com a nova lógica de backend.
-// O preço do produto agora é tratado pelo servidor, garantindo consistência.
-export const postOrder = async (orderData: any): Promise<Order> => {
-  const payload = {
-    id_comprador: orderData.userId,
-    id_destinatario: orderData.studentId,
-    id_cantina: orderData.canteenId,
-    items: orderData.items.map((item: any) => ({
-      id_produto: item.product.id,
-      quantidade: item.quantity,
-    })),
-    valor_total: orderData.total,
-    status: 'pendente',
-  };
-  const response = await apiPost<{ data: any }>('pedidos', payload);
+export const postOrder = async (orderData: { id_comprador: string; id_destinatario: string; id_cantina: string; valor_total: number; items: { id_produto: string; quantidade: number, preco_unitario: number }[] }): Promise<Order> => {
+  const response = await apiPost<{ data: any }>('pedidos', orderData);
   return mapOrder(response.data);
 };
 
@@ -234,41 +225,41 @@ export const updateOrderStatus = async (orderId: string, status: string): Promis
 export const getGuardianProfile = async (guardianId: string): Promise<GuardianProfile | null> => {
     if (!guardianId) return null;
     try {
-      const response = await apiGet<{ data: any }>(`users/${guardianId}`);
-      const user = mapUser(response.data);
+      const user = await getUser(guardianId);
+      if (!user) return null;
   
       return {
         id: user.id,
         name: user.name,
         walletId: user.walletId,
         balance: user.balance,
-        students: user.students,
+        students: user.students, // Assumindo que a API /users/{id} retorna os dependentes
       };
     } catch (e) {
       console.error(`Failed to fetch guardian profile ${guardianId}:`, e);
       return null;
     }
-  };
+};
   
-  export const getStudentProfile = async (studentId: string): Promise<StudentProfile | null> => {
-    if (!studentId) return null;
-    try {
-      const response = await apiGet<{ data: any }>(`users/${studentId}`);
-      const user = mapUser(response.data);
-  
-      return {
-        id: user.id,
-        name: user.name,
-        walletId: user.walletId,
-        balance: user.balance,
-        student_code: user.student_code,
-        schoolId: user.schoolId,
-      };
-    } catch (e) {
-      console.error(`Failed to fetch student profile ${studentId}:`, e);
-      return null;
-    }
-  };
+export const getStudentProfile = async (studentId: string): Promise<StudentProfile | null> => {
+  if (!studentId) return null;
+  try {
+    const user = await getUser(studentId);
+    if (!user) return null;
+
+    return {
+      id: user.id,
+      name: user.name,
+      walletId: user.walletId,
+      balance: user.balance,
+      student_code: user.student_code,
+      schoolId: user.schoolId,
+    };
+  } catch (e) {
+    console.error(`Failed to fetch student profile ${studentId}:`, e);
+    return null;
+  }
+};
 
 export const getWalletByUserId = async (userId: string): Promise<Wallet | null> => {
   try {
@@ -290,7 +281,6 @@ export const getTransactionsByUser = async (userId: string): Promise<Transaction
     return [];
   }
 };
-
 
 export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<Transaction[]> => {
      if (!allUserIds || allUserIds.length === 0) return Promise.resolve([]);
@@ -355,7 +345,7 @@ export const linkStudentToGuardian = async (guardianId: string, studentCode: str
         codigo_aluno: studentCode
     };
     try {
-        await apiPost('responsavel/vincular-aluno', payload);
+        await apiPost('user-dependencia', payload);
     } catch (error) {
         console.error(`Failed to link student with code ${studentCode} to guardian ${guardianId}:`, error);
         throw error;

@@ -105,7 +105,7 @@ const OrderDetailsDialog = ({ order, onRepeatOrder, onCancelOrder }: { order: Or
           <div key={index} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
                <Image 
-                src={item.image.imageUrl} 
+                src={item.image?.imageUrl || '/images/default.png'} 
                 alt={item.productName} 
                 width={40} 
                 height={40} 
@@ -225,10 +225,8 @@ export default function StudentOrdersPage() {
         return processedOrders;
     }, [sortKey, searchTerm, orderHistory]);
 
-    // ✅ ATUALIZADO: Função agora é robusta, segura e fornece feedback claro.
     const handleRepeatOrder = async (order: Order) => {
         try {
-            // 1. Busca os produtos atuais da cantina para garantir dados frescos
             const currentProducts = await getProductsByCanteen(order.canteenId);
             const productsMap = new Map(currentProducts.map(p => [p.id, p]));
 
@@ -237,7 +235,6 @@ export default function StudentOrdersPage() {
 
             for (const orderItem of order.items) {
                 const product = productsMap.get(orderItem.productId);
-                // 2. Valida se o produto ainda existe e está ativo
                 if (product && product.ativo) {
                     addItem(product, orderItem.quantity);
                     itemsAdded++;
@@ -246,7 +243,6 @@ export default function StudentOrdersPage() {
                 }
             }
 
-            // 3. Fornece feedback claro ao usuário
             if (itemsAdded > 0) {
                 toast({
                     title: "Itens adicionados!",
@@ -388,7 +384,7 @@ export default function StudentOrdersPage() {
                                     {order.items.slice(0, 3).map((item, index) => (
                                         <Image 
                                             key={index}
-                                            src={item.image.imageUrl} 
+                                            src={item.image?.imageUrl || '/images/default.png'} 
                                             alt={item.productName} 
                                             width={24} 
                                             height={24} 
@@ -436,7 +432,7 @@ export default function StudentOrdersPage() {
                             {order.items.slice(0, 3).map((item, index) => (
                                 <Image 
                                     key={index}
-                                    src={item.image.imageUrl} 
+                                    src={item.image?.imageUrl || '/images/default.png'} 
                                     alt={item.productName} 
                                     width={32} 
                                     height={32} 

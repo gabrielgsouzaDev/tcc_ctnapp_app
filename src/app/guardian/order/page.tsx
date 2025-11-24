@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -126,7 +127,7 @@ useEffect(() => {
   };
 
   loadStudentsFull();
-}, [studentsLite]);
+}, [studentsLite, selectedStudent]);
 
 // ====================================================
 // 3) Carregar cantinas baseado no schoolId REAL
@@ -253,13 +254,14 @@ const handleCheckout = async () => {
 
   try {
     const orderPayload = {
-      studentId: student.id,
-      userId: user!.id,
-      canteenId: selectedCanteen,
-      total: cartTotal,
+      id_comprador: user!.id,
+      id_destinatario: student.id,
+      id_cantina: selectedCanteen,
+      valor_total: cartTotal,
       items: cart.map((item) => ({
-        product: item.product,
-        quantity: item.quantity,
+        id_produto: item.product.id,
+        quantidade: item.quantity,
+        preco_unitario: item.product.price
       })),
     };
 
@@ -567,7 +569,7 @@ return (
 
               <CardHeader className="p-0">
                 <Image
-                  src={product.image.imageUrl}
+                  src={product.image?.imageUrl || '/images/default.png'}
                   alt={product.name}
                   width={400}
                   height={200}
