@@ -1,8 +1,10 @@
-// #region --- DATA TYPE DEFINITIONS ---
-// Tipos centrais usados na aplicação. Totalmente alinhados ao backend Laravel
-// e às transformações feitas em services.ts.
+// ======================================================
+// DATA TYPES — Alinhados com Laravel e services.ts
+// ======================================================
 
-// #region --- IMAGE & CATEGORY TYPES ---
+// -------------------------
+// IMAGE & CATEGORY
+// -------------------------
 
 export type Image = {
   id: string;
@@ -13,10 +15,9 @@ export type Image = {
 
 export type Category = 'Salgado' | 'Doce' | 'Bebida' | 'Almoço';
 
-// #endregion
-
-
-// #region --- USER & AUTH TYPES ---
+// -------------------------
+// USER — Modelo COMPLETO
+// -------------------------
 
 export type User = {
   id: string;
@@ -27,14 +28,16 @@ export type User = {
   balance: number;
   schoolId: string | null;
   canteenId: string | null;
-  students: User[];     // só será usado quando role = Responsavel
+  students: User[];
   telefone: string | null;
   data_nascimento: string | null;
   ativo: boolean;
   student_code: string | null;
 };
 
-// PERFIS — NÃO EXTENDEM USER! (CORREÇÃO ABSOLUTA)
+// -------------------------
+// PERFIS — Dados reduzidos
+// -------------------------
 
 export type StudentProfile = {
   id: string;
@@ -45,25 +48,20 @@ export type StudentProfile = {
   schoolId: string | null;
 };
 
+// PERFIL COMPLETO DO RESPONSÁVEL
 export type GuardianProfile = {
   id: string;
   name: string;
   walletId: string | null;
   balance: number;
-  students: {
-    id: string;
-    name: string;
-    balance: number;
-    walletId: string | null;
-  }[];
+
+  // O BACKEND RETORNA SÓ ISSO PARA STUDENTS
+  students: StudentLite[];
 };
 
-export type UserProfile = StudentProfile | GuardianProfile;
-
-// #endregion
-
-
-// #region --- CORE ENTITY TYPES ---
+// -------------------------
+// SCHOOL / CANTEEN
+// -------------------------
 
 export type School = {
   id: string;
@@ -82,6 +80,10 @@ export type Canteen = {
   produtos: Product[];
 };
 
+// -------------------------
+// PRODUCTS + FAVORITES
+// -------------------------
+
 export type Product = {
   id: string;
   canteenId: string;
@@ -99,6 +101,10 @@ export type Favorite = {
   productId: string;
   product?: Product;
 };
+
+// -------------------------
+// ORDERS
+// -------------------------
 
 export type OrderItem = {
   productId: string;
@@ -119,6 +125,10 @@ export type Order = {
   status: 'pendente' | 'confirmado' | 'entregue' | 'cancelado';
 };
 
+// -------------------------
+// WALLET & TRANSACTIONS
+// -------------------------
+
 export type Wallet = {
   id: string;
   userId: string;
@@ -137,5 +147,16 @@ export type Transaction = {
   status: string;
 };
 
-// #endregion
+// -------------------------
+// STUDENT LITE (Retorno real da API)
+// -------------------------
 
+export type StudentLite = {
+  id: string;
+  name: string;
+  balance: number;
+  walletId: string | null;
+  school?: {
+    name: string;
+  } | null;
+};
