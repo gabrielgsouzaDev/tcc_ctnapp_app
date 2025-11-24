@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -74,10 +75,8 @@ const DependentCard = ({ student }: { student: StudentLite }) => {
 // -------------------------
 
 const AddDependentDialog = ({
-  guardianId,
   onDependentAdded
 }: {
-  guardianId: string;
   onDependentAdded: () => void;
 }) => {
   const { toast } = useToast();
@@ -98,7 +97,7 @@ const AddDependentDialog = ({
     setIsLinking(true);
 
     try {
-      await linkStudentToGuardian(guardianId, studentCode);
+      await linkStudentToGuardian(studentCode);
 
       toast({
         variant: 'success',
@@ -216,7 +215,7 @@ export default function GuardianDependentsPage() {
         </div>
 
         {user && (
-          <AddDependentDialog guardianId={user.id} onDependentAdded={() => setKey((v) => v + 1)} />
+          <AddDependentDialog onDependentAdded={() => setKey((v) => v + 1)} />
         )}
       </div>
 

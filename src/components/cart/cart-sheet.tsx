@@ -14,14 +14,14 @@ import { Loader2, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { placeholderImages } from "@/lib/placeholder-images";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const CartItemCard = ({ item }: { item: any }) => {
   const { updateItemQuantity } = useCart();
 
-  const imageUrl = item.product.url_imagem || placeholderImages.find(p => p.id === 'default-product')?.imageUrl || '/images/default.png';
+  const imageUrl = item.product.url_imagem || PlaceHolderImages.find(p => p.id === 'default-product')?.imageUrl || '/images/default.png';
 
   return (
     <div className="flex items-start justify-between gap-4 py-4">
@@ -73,7 +73,7 @@ export const CartSheet = () => {
     try {
       const orderPayload = {
         id_comprador: user.id,
-        id_destinatario: user.id, 
+        id_destinatario: user.id,
         id_cantina: cartItems[0].product.id_cantina,
         valor_total: totalPrice,
         status: 'pendente',
