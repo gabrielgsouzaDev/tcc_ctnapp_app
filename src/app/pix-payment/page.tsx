@@ -4,6 +4,7 @@
 import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid'; // ✅ IMPORTADO
 import { CheckCircle, Clock, Copy, Loader2, QrCode } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -42,7 +43,7 @@ function PixPaymentContent() {
         setTimeout(() => {
              setPixDetails({
                 qrCode: `pix-qrcode-for-${Number(amount).toFixed(2)}`,
-                code: `00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540${Number(amount).toFixed(2).replace('.','')}5802BR5913user-${targetId}6009SAO PAULO62070503***6304E7DF`
+                code: `00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540${Number(amount).toFixed(2).replace('.', '')}5802BR5913user-${targetId}6009SAO PAULO62070503***6304E7DF`
             });
             setIsLoading(false);
         }, 1500)
@@ -66,8 +67,9 @@ function PixPaymentContent() {
     });
 
     try {
+        const transactionUuid = uuidv4(); // ✅ GERADO
         // Use the real service function to post the transaction
-        await rechargeBalance(walletId, user.id, Number(amount));
+        await rechargeBalance(walletId, user.id, Number(amount), transactionUuid); // ✅ ENVIADO
 
         setPaymentStatus('confirmed');
         toast({
@@ -77,7 +79,6 @@ function PixPaymentContent() {
         });
 
         setTimeout(() => {
-          // ✅ CORREÇÃO BUILD: Comparar com 'Aluno' (em português) em vez de 'student'.
           const redirectPath = user?.role === 'Aluno' ? '/student/dashboard' : '/guardian/dashboard';
           router.push(redirectPath);
         }, 3000);

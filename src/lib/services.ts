@@ -303,10 +303,12 @@ export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<T
     }
 }
 
+// ✅ CORRIGIDO: Adicionado campo uuid ao payload
 export const postTransaction = async (transactionData: any) : Promise<Transaction> => {
     const payload = {
         id_carteira: transactionData.walletId,
         id_user_autor: transactionData.userId,
+        uuid: transactionData.uuid, // <<< ADICIONADO
         descricao: transactionData.description,
         valor: transactionData.amount,
         tipo: transactionData.origin,
@@ -316,10 +318,12 @@ export const postTransaction = async (transactionData: any) : Promise<Transactio
     return mapTransaction(response.data);
 }
 
-export const rechargeBalance = async (walletId: string, userId: string, amount: number): Promise<{success: boolean}> => {
+// ✅ CORRIGIDO: Adicionado parâmetro uuid e passado para postTransaction
+export const rechargeBalance = async (walletId: string, userId: string, amount: number, uuid: string): Promise<{success: boolean}> => {
     await postTransaction({
         walletId: walletId,
         userId: userId,
+        uuid: uuid, // <<< ADICIONADO
         description: `Recarga PIX no valor de R$ ${amount.toFixed(2)}`,
         amount: amount,
         origin: 'PIX',
