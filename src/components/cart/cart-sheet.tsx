@@ -21,28 +21,28 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const CartItemCard = ({ item }: { item: any }) => {
   const { updateItemQuantity } = useCart();
 
-  const imageUrl = item.product.url_imagem || PlaceHolderImages.find(p => p.id === 'default-product')?.imageUrl || '/images/default.png';
+  const imageUrl = item.product.image?.imageUrl || PlaceHolderImages.find(p => p.id === 'default-product')?.imageUrl || '/images/default.png';
 
   return (
     <div className="flex items-start justify-between gap-4 py-4">
       <div className="flex items-start gap-4">
         <div className="h-16 w-16 overflow-hidden rounded-md border bg-muted">
-          <Image src={imageUrl} alt={item.product.nome} width={64} height={64} className="object-cover" />
+          <Image src={imageUrl} alt={item.product.name} width={64} height={64} className="object-cover" />
         </div>
         <div>
-          <h3 className="font-semibold text-base">{item.product.nome}</h3>
-          <p className="text-sm text-muted-foreground">R$ {Number(item.product.preco).toFixed(2)}</p>
-          <Button variant="ghost" size="icon" className="-ml-2 mt-1 h-8 w-8" onClick={() => updateItemQuantity(item.product.id_produto, 0)}>
+          <h3 className="font-semibold text-base">{item.product.name}</h3>
+          <p className="text-sm text-muted-foreground">R$ {Number(item.product.price).toFixed(2)}</p>
+          <Button variant="ghost" size="icon" className="-ml-2 mt-1 h-8 w-8" onClick={() => updateItemQuantity(item.product.id, 0)}>
             <Trash2 className="h-4 w-4 text-red-500" />
           </Button>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateItemQuantity(item.product.id_produto, item.quantity - 1)}>
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateItemQuantity(item.product.id, item.quantity - 1)}>
           <Minus className="h-4 w-4" />
         </Button>
         <span className="w-10 text-center font-medium">{item.quantity}</span>
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateItemQuantity(item.product.id_produto, item.quantity + 1)}>
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateItemQuantity(item.product.id, item.quantity + 1)}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -59,7 +59,7 @@ export const CartSheet = () => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const handleCheckout = async () => {
-    if (!user || !user.id || !cartItems[0]?.product.id_cantina) {
+    if (!user || !user.id || !cartItems[0]?.product.canteenId) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível identificar o usuário ou a cantina. Tente novamente.' });
       return;
     }
@@ -74,13 +74,13 @@ export const CartSheet = () => {
       const orderPayload = {
         id_comprador: user.id,
         id_destinatario: user.id,
-        id_cantina: cartItems[0].product.id_cantina,
+        id_cantina: cartItems[0].product.canteenId,
         valor_total: totalPrice,
         status: 'pendente',
         items: cartItems.map(item => ({
-          id_produto: item.product.id_produto,
+          id_produto: item.product.id,
           quantidade: item.quantity,
-          preco_unitario: item.product.preco,
+          preco_unitario: item.product.price,
         })),
       };
 
@@ -128,7 +128,7 @@ export const CartSheet = () => {
         {cartItems.length > 0 ? (
           <div className="flex-1 overflow-y-auto -mx-6 px-6 divide-y">
             {cartItems.map((item) => (
-              <CartItemCard key={item.product.id_produto} item={item} />
+              <CartItemCard key={item.product.id} item={item} />
             ))}
           </div>
         ) : (
