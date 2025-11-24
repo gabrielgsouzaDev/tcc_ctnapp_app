@@ -44,6 +44,7 @@ import {
 
 import { getGuardianProfile, getStudentProfile, getCanteensBySchool, getProductsByCanteen, postOrder } from "@/lib/services";
 import { useAuth } from "@/lib/auth-provider";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 type Category = "Todos" | "Salgado" | "Doce" | "Bebida" | "Almoço";
 
@@ -56,7 +57,7 @@ type AddToCartState = Record<string, "idle" | "added">;
 
 export default function GuardianOrderPage() {
   const { toast } = useToast();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, refreshUser } = useAuth();
 
   const [studentsLite, setStudentsLite] = useState<StudentLite[]>([]);
   const [studentsFull, setStudentsFull] = useState<StudentProfile[]>([]);
@@ -117,6 +118,7 @@ useEffect(() => {
   };
 
   loadStudentsFull();
+// eslint-disable-next-line react-hooks/exhaustive-deps
 }, [studentsLite]);
 
 useEffect(() => {
@@ -242,21 +244,15 @@ const handleCheckout = async () => {
       valor_total: cartTotal,
       status: 'pendente',
       items: cart.map((item) => ({
-        id_produto: item.product.id,
-        quantidade: item.quantity,
-        preco_unitario: item.product.price
+        productId: item.product.id,
+        quantity: item.quantity,
+        unitPrice: item.product.price
       })),
     };
 
     await postOrder(orderPayload);
-
-    setStudentsFull((prev) =>
-      prev.map((s) =>
-        s.id === student.id
-          ? { ...s, balance: s.balance - cartTotal }
-          : s
-      )
-    );
+    
+    if(refreshUser) await refreshUser();
 
     setCart([]);
 
@@ -297,6 +293,8 @@ const handleAddToCartVisuals = (product: Product) => {
     setAddToCartState((prev) => ({ ...prev, [product.id]: "idle" }));
   }, 800);
 };
+
+const defaultImage = PlaceHolderImages.find(p => p.id === 'default-product')?.imageUrl || '/images/default.png';
 
 
 return (
@@ -362,7 +360,7 @@ return (
                   {cart.map((item) => (
                     <div key={item.product.id} className="flex items-center gap-4">
                       <Image
-                        src={item.product.image.imageUrl}
+                        src={item.product.image?.imageUrl || defaultImage}
                         alt={item.product.name}
                         width={64}
                         height={64}
@@ -543,7 +541,7 @@ return (
 
               <CardHeader className="p-0">
                 <Image
-                  src={product.image?.imageUrl || '/images/default.png'}
+                  src={product.image?.imageUrl || defaultImage}
                   alt={product.name}
                   width={400}
                   height={200}

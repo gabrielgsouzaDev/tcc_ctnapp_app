@@ -208,7 +208,7 @@ export const postOrder = async (orderData: {
   id_destinatario: string;
   id_cantina: string;
   valor_total: number;
-  status: string,
+  status: string;
   items: {
     productId: string;
     quantity: number;
@@ -217,7 +217,11 @@ export const postOrder = async (orderData: {
 }): Promise<Order> => {
   // Mapeamento de camelCase para snake_case antes de enviar para a API
   const payload = {
-    ...orderData,
+    id_comprador: orderData.id_comprador,
+    id_destinatario: orderData.id_destinatario,
+    id_cantina: orderData.id_cantina,
+    valor_total: orderData.valor_total,
+    status: orderData.status,
     items: orderData.items.map(item => ({
       id_produto: item.productId,
       quantidade: item.quantity,
@@ -297,7 +301,7 @@ export const getTransactionsByUser = async (userId: string): Promise<Transaction
 
 export const rechargeBalance = async (userId: string, amount: number): Promise<{ success: boolean }> => {
     const payload = {
-        id_user: userId,
+        user_id: userId,
         valor: amount
     };
     await apiPost('carteiras/recarregar', payload); 
@@ -315,5 +319,3 @@ export const linkStudentToGuardian = async (studentCode: string): Promise<void> 
         throw error;
     }
 };
-
-    
