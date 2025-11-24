@@ -2,19 +2,9 @@
 // src/lib/services.ts
 import { type School, type StudentProfile, type GuardianProfile, type Canteen, type Product, type Transaction, type Order, type User, type Wallet, type Favorite } from '@/lib/data';
 import { apiGet, apiPost, apiDelete, apiPatch } from './api';
-import { PlaceHolderImages } from './placeholder-images';
 
-const createLocalImageUrl = (remoteUrl: string | null | undefined): string => {
-    if (!remoteUrl) {
-      return PlaceHolderImages.find(p => p.id === 'prod_sandwich')?.imageUrl || PlaceHolderImages[0].imageUrl;
-    }
-    const fileName = remoteUrl.split('/').pop();
-    return fileName ? `/images/${fileName}` : PlaceHolderImages[0].imageUrl;
-};
-
-export const mapUser = (user: any): User => ({
+const mapUser = (user: any): User => ({
   id: user.id?.toString() ?? '',
-  walletId: user.carteira?.id_carteira?.toString() || null,
   name: user.nome ?? user.name ?? '',
   email: user.email ?? '',
   telefone: user.telefone ?? null,
@@ -26,6 +16,7 @@ export const mapUser = (user: any): User => ({
   balance: parseFloat(user.carteira?.saldo ?? 0),
   students: (user.dependentes || []).map((d: any) => mapUser(d)),
   student_code: user.codigo_aluno ?? null,
+  walletId: user.carteira?.id_carteira?.toString() || null,
 });
 
 const mapSchool = (school: any): School => ({
@@ -45,7 +36,7 @@ const mapProduct = (product: any): Product => ({
   category: product.categoria ?? 'Salgado',
   image: {
     id: product.id_produto?.toString() ?? '',
-    imageUrl: createLocalImageUrl(product.url_imagem),
+    imageUrl: product.url_imagem || '/images/default-product.png',
     imageHint: `Image of ${product.nome}`,
     description: `Image for the product ${product.nome}`,
   },
@@ -83,7 +74,7 @@ const mapOrder = (order: any): Order => ({
       unitPrice: parseFloat(p.preco_unitario ?? 0),
       image: {
           id: p.id_produto?.toString() ?? '',
-          imageUrl: createLocalImageUrl(p.produto?.url_imagem),
+          imageUrl: p.produto?.url_imagem || '/images/default-product.png',
           imageHint: '-',
           description: '-'
       },
@@ -97,7 +88,7 @@ const mapTransaction = (transaction: any): Transaction => ({
   date: transaction.created_at,
   description: transaction.descricao ?? 'Transação sem descrição',
   amount: parseFloat(transaction.valor ?? 0),
-  type: ['PIX', 'Recarregar', 'Estorno'].includes(transaction.tipo) ? 'credit' : 'debit',
+  type: transaction.valor > 0 ? 'credit' : 'debit',
   origin: transaction.tipo,
   userId: transaction.id_user_autor?.toString() ?? '',
   status: transaction.status,
@@ -186,10 +177,8 @@ export const removeFavorite = async (userId: string, productId: string): Promise
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     if (!userId) return [];
     try {
-        const response = await apiGet<{ data: any[] }>(`pedidos`);
-        return response.data
-            .filter(order => order.id_comprador?.toString() === userId || order.id_destinatario?.toString() === userId)
-            .map(mapOrder);
+        const response = await apiGet<{ data: any[] }>(`pedidos/usuario/${userId}`);
+        return response.data.map(mapOrder);
     } catch (e) {
         console.error(`Failed to fetch orders for user ${userId}:`, e);
         return [];
@@ -218,7 +207,13 @@ export const getGuardianProfile = async (guardianId: string): Promise<GuardianPr
         name: user.name,
         walletId: user.walletId,
         balance: user.balance,
-        students: user.students,
+        students: user.students.map(s => ({
+            id: s.id,
+            name: s.name,
+            balance: s.balance,
+            walletId: s.walletId,
+            school: { name: 'Escola não informada' } // Mock, precisa de lógica real
+        })),
       };
     } catch (e) {
       console.error(`Failed to fetch guardian profile ${guardianId}:`, e);
@@ -267,72 +262,37 @@ export const getTransactionsByUser = async (userId: string): Promise<Transaction
   }
 };
 
-export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<Transaction[]> => {
-     if (!allUserIds || allUserIds.length === 0) return Promise.resolve([]);
-    try {
-        const response = await apiGet<{ data: any[] }>('transacoes');
-        const allTransactions = response.data.map(mapTransaction);
-        const userIdSet = new Set(allUserIds.map(String));
-        return allTransactions.filter(t => t.userId && userIdSet.has(t.userId));
-    } catch (e) {
-        console.error(`Failed to fetch transactions for users:`, e);
-        return [];
-    }
-}
-
-export const postTransaction = async (transactionData: any) : Promise<Transaction> => {
+export const rechargeBalance = async (userId: string, amount: number): Promise<{ success: boolean }> => {
     const payload = {
-        id_carteira: transactionData.walletId,
-        id_user_autor: transactionData.userId,
-        uuid: transactionData.uuid,
-        descricao: transactionData.description,
-        valor: transactionData.amount,
-        tipo: transactionData.origin,
+        id_user: userId,
+        valor: amount,
+        tipo: 'PIX', // ou o tipo apropriado
+        descricao: `Recarga via PIX no valor de R$ ${amount.toFixed(2)}`,
         status: 'confirmada',
+        uuid: uuidv4()
     };
-    const response = await apiPost<{data: any}>('transacoes', payload);
-    return mapTransaction(response.data);
-}
-
-export const rechargeBalance = async (walletId: string, userId: string, amount: number, uuid: string): Promise<{success: boolean}> => {
-    await postTransaction({
-        walletId: walletId,
-        userId: userId,
-        uuid: uuid,
-        description: `Recarga PIX no valor de R$ ${amount.toFixed(2)}`,
-        amount: amount,
-        origin: 'PIX',
-    });
-    return { success: true };
-}
-
-export const internalTransfer = async (fromWalletId: string, fromUserId: string, toWalletId: string, toUserId: string, amount: number): Promise<{success:boolean}> => {
-    await postTransaction({
-        walletId: fromWalletId,
-        userId: fromUserId,
-        description: `Transferência enviada para usuário ${toUserId}`,
-        amount: -amount,
-        origin: 'Debito',
-    });
-    await postTransaction({
-        walletId: toWalletId,
-        userId: fromUserId, 
-        description: `Transferência recebida de usuário ${fromUserId}`,
-        amount: amount,
-        origin: 'Recarregar',
-    });
+    // Chamada para a rota de transação genérica, se a de recarga não existir
+    await apiPost('transacoes', payload); 
     return { success: true };
 }
 
 export const linkStudentToGuardian = async (guardianId: string, studentCode: string): Promise<void> => {
     const payload = {
-        id_responsavel: guardianId,
         codigo_aluno: studentCode
     };
     try {
-        await apiPost('user-dependencia', payload);
+        // A rota espera o id do responsável no corpo ou na URL. Ajuste conforme necessário.
+        // Assumindo que o id do responsável (usuário logado) é adicionado pelo backend ou middleware.
+        await apiPost(`responsavel/vincular-aluno`, payload);
     } catch (error) {
         console.error(`Failed to link student with code ${studentCode} to guardian ${guardianId}:`, error);
         throw error;
     }
 };
+
+function uuidv4(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}

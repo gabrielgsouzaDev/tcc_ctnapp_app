@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
@@ -14,7 +15,6 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/auth-provider';
 import { rechargeBalance } from '@/lib/services';
 
-// ✅ NOVO: Função helper para criar um atraso.
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 function PixPaymentContent() {
@@ -25,7 +25,6 @@ function PixPaymentContent() {
 
   const amount = searchParams.get('amount') || '0';
   const targetId = searchParams.get('targetId');
-  const walletId = searchParams.get('walletId');
 
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'confirmed'>('pending');
   const [pixDetails, setPixDetails] = useState<{ qrCode: string; code: string } | null>(null);
@@ -33,17 +32,18 @@ function PixPaymentContent() {
 
   useEffect(() => {
     const generatePix = async () => {
-      if (!amount || Number(amount) <= 0 || !targetId || !walletId) {
+      if (!amount || Number(amount) <= 0 || !targetId) {
         toast({ variant: 'destructive', title: 'Dados inválidos para gerar PIX.' });
         router.back();
         return;
       }
       try {
         setIsLoading(true);
+        // Simula a geração de um código PIX
         setTimeout(() => {
           setPixDetails({
             qrCode: `pix-qrcode-for-${Number(amount).toFixed(2)}`,
-            code: `00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540${Number(amount).toFixed(2).replace('.', '')}5802BR5913user-${targetId}6009SAO PAULO62070503***6304E7DF`
+            code: `00020126580014br.gov.bcb.pix0136${uuidv4()}520400005303986540${Number(amount).toFixed(2).replace('.', '')}5802BR5913user-${targetId}6009SAO PAULO62070503***6304E7DF`
           });
           setIsLoading(false);
         }, 1500);
@@ -54,28 +54,28 @@ function PixPaymentContent() {
       }
     };
     generatePix();
-  }, [amount, targetId, walletId, router, toast]);
+  }, [amount, targetId, router, toast]);
 
   const handleConfirmPayment = async () => {
-    if (!amount || Number(amount) <= 0 || !targetId || !walletId || !user?.id) return;
+    if (!amount || Number(amount) <= 0 || !targetId || !user?.id) return;
 
     setPaymentStatus('processing');
     toast({ title: 'Confirmando Pagamento...', description: 'Estamos atualizando o saldo. Isso pode levar um instante.' });
 
     try {
-      const transactionUuid = uuidv4();
-      await rechargeBalance(walletId, user.id, Number(amount), transactionUuid);
+      // Usa a nova rota de recarga
+      await rechargeBalance(targetId, Number(amount));
 
       setPaymentStatus('confirmed');
       toast({ variant: 'success', title: 'Pagamento Confirmado!', description: 'O saldo foi atualizado com sucesso.' });
 
-      // ✅ CORRIGIDO: Adicionado atraso para evitar condição de corrida antes de atualizar os dados do usuário.
       await delay(1500);
       if (refreshUser) await refreshUser();
 
       setTimeout(() => {
-        const redirectPath = user?.role === 'Aluno' ? '/student/dashboard' : '/guardian/dashboard';
+        const redirectPath = user?.role === 'Aluno' ? '/student/balance' : '/guardian/recharge';
         router.push(redirectPath);
+        router.refresh(); // Força a atualização dos dados na página de destino
       }, 3000);
     } catch (error) {
       console.error("Payment confirmation error:", error);

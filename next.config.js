@@ -1,6 +1,26 @@
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // O bloco 'images' foi intencionalmente removido para corrigir o carregamento de imagens locais.
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'placehold.co',
+            },
+            {
+                protocol: 'https',
+                hostname: 'images.unsplash.com',
+            },
+            {
+                protocol: 'https',
+                hostname: 'picsum.photos',
+            },
+            {
+                protocol: 'https',
+                hostname: 'api.qrserver.com',
+            },
+        ],
+    },
 };
 
 module.exports = nextConfig;
