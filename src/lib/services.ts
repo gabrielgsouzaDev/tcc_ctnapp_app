@@ -3,6 +3,17 @@ import { type School, type StudentProfile, type GuardianProfile, type Canteen, t
 import { apiGet, apiPost, apiDelete, apiPatch } from './api';
 import { PlaceHolderImages } from './placeholder-images';
 
+// ✅ NOVO: Helper para corrigir as URLs de imagem da API.
+const createLocalImageUrl = (remoteUrl: string | null | undefined): string => {
+    if (!remoteUrl) {
+      return PlaceHolderImages[0].imageUrl; // Retorna um placeholder se não houver URL
+    }
+    // Extrai o nome do arquivo da URL completa (ex: "http://.../imagem.jpg" -> "imagem.jpg")
+    const fileName = remoteUrl.split('/').pop();
+    // Monta a URL local correta (ex: "/images/imagem.jpg")
+    return fileName ? `/images/${fileName}` : PlaceHolderImages[0].imageUrl;
+};
+
 // MapRole robusto
 const mapRole = (roleName: string | undefined | null): User['role'] => {
   if (!roleName) return 'Aluno';
@@ -39,6 +50,7 @@ const mapSchool = (school: any): School => ({
   qtd_alunos: school.qtd_alunos,
 });
 
+// ✅ CORRIGIDO: Usa o helper createLocalImageUrl para tratar a URL da imagem.
 const mapProduct = (product: any): Product => ({
   id: product.id_produto?.toString() ?? '',
   canteenId: product.id_cantina?.toString() ?? '',
@@ -46,14 +58,12 @@ const mapProduct = (product: any): Product => ({
   price: parseFloat(product.preco ?? 0),
   ativo: Boolean(product.ativo),
   category: product.categoria ?? 'Salgado',
-  image: product.url_imagem
-    ? {
-        id: product.id_produto?.toString() ?? '',
-        imageUrl: product.url_imagem,
-        imageHint: `Image of ${product.nome}`,
-        description: `Image for the product ${product.nome}`,
-      }
-    : PlaceHolderImages[0],
+  image: {
+    id: product.id_produto?.toString() ?? '',
+    imageUrl: createLocalImageUrl(product.url_imagem), // <-- CORREÇÃO APLICADA
+    imageHint: `Image of ${product.nome}`,
+    description: `Image for the product ${product.nome}`,
+  },
   popular: false,
 });
 
@@ -73,6 +83,7 @@ const mapFavorite = (favorite: any): Favorite => ({
   product: favorite.produto ? mapProduct(favorite.produto) : undefined,
 });
 
+// ✅ CORRIGIDO: Usa o helper createLocalImageUrl também nos itens do pedido.
 const mapOrder = (order: any): Order => ({
   id: order.id_pedido?.toString() ?? '',
   studentId: order.id_destinatario?.toString() ?? '',
@@ -86,7 +97,12 @@ const mapOrder = (order: any): Order => ({
       productName: p.produto?.nome ?? '',
       quantity: p.quantidade,
       unitPrice: parseFloat(p.preco_unitario ?? 0),
-      image: p.produto?.url_imagem ? { id: p.id_produto?.toString() ?? '', imageUrl: p.produto.url_imagem, imageHint: '-', description: '-' } : PlaceHolderImages[0],
+      image: {
+          id: p.id_produto?.toString() ?? '',
+          imageUrl: createLocalImageUrl(p.produto?.url_imagem), // <-- CORREÇÃO APLICADA
+          imageHint: '-',
+          description: '-'
+      },
     })) || [],
   status: order.status ?? 'pendente',
 });
@@ -197,15 +213,14 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
   }
 };
 
-// ✅ CORREÇÃO FINAL: O payload agora respeita a validação (productId) e a camada de persistência (snake_case).
 export const postOrder = async (orderData: any): Promise<Order> => {
   const payload = {
     id_comprador: orderData.userId,
     id_destinatario: orderData.studentId,
     id_cantina: orderData.canteenId,
     items: orderData.items.map((item: any) => ({
-      productId: item.product.id,      // Para a validação do Laravel
-      id_produto: item.product.id,    // Garantia para a camada de persistência
+      productId: item.product.id,
+      id_produto: item.product.id,
       quantidade: item.quantity,
       preco_unitario: item.product.price,
     })),
@@ -222,10 +237,6 @@ export const updateOrderStatus = async (orderId: string, status: string): Promis
   return mapOrder(response.data);
 };
 
-
-// ===============================
-// GUARDIAN PROFILE
-// ===============================
 export const getGuardianProfile = async (guardianId: string): Promise<GuardianProfile | null> => {
     if (!guardianId) return null;
     try {
@@ -245,9 +256,6 @@ export const getGuardianProfile = async (guardianId: string): Promise<GuardianPr
     }
   };
   
-  // ===============================
-  // STUDENT PROFILE
-  // ===============================
   export const getStudentProfile = async (studentId: string): Promise<StudentProfile | null> => {
     if (!studentId) return null;
     try {
@@ -279,7 +287,6 @@ export const getWalletByUserId = async (userId: string): Promise<Wallet | null> 
   }
 };
 
-// ✅ ATUALIZADO: Função agora usa o endpoint específico e eficiente
 export const getTransactionsByUser = async (userId: string): Promise<Transaction[]> => {
   if (!userId) return [];
   try {
@@ -305,12 +312,11 @@ export const getTransactionsByGuardian = async (allUserIds: string[]): Promise<T
     }
 }
 
-// ✅ CORRIGIDO: Adicionado campo uuid ao payload
 export const postTransaction = async (transactionData: any) : Promise<Transaction> => {
     const payload = {
         id_carteira: transactionData.walletId,
         id_user_autor: transactionData.userId,
-        uuid: transactionData.uuid, // <<< ADICIONADO
+        uuid: transactionData.uuid,
         descricao: transactionData.description,
         valor: transactionData.amount,
         tipo: transactionData.origin,
@@ -320,12 +326,11 @@ export const postTransaction = async (transactionData: any) : Promise<Transactio
     return mapTransaction(response.data);
 }
 
-// ✅ CORRIGIDO: Adicionado parâmetro uuid e passado para postTransaction
 export const rechargeBalance = async (walletId: string, userId: string, amount: number, uuid: string): Promise<{success: boolean}> => {
     await postTransaction({
         walletId: walletId,
         userId: userId,
-        uuid: uuid, // <<< ADICIONADO
+        uuid: uuid,
         description: `Recarga PIX no valor de R$ ${amount.toFixed(2)}`,
         amount: amount,
         origin: 'PIX',
@@ -360,6 +365,6 @@ export const linkStudentToGuardian = async (guardianId: string, studentCode: str
         await apiPost('responsavel/vincular-aluno', payload);
     } catch (error) {
         console.error(`Failed to link student with code ${studentCode} to guardian ${guardianId}:`, error);
-        throw error; // Re-lança o erro para o componente lidar com a UI (ex: toast)
+        throw error;
     }
 };
