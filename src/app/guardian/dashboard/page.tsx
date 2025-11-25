@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -158,7 +159,7 @@ const OrderDetailsDialog = ({
               <AlertDialogHeader>
                 <AlertDialogTitle>Confirmar Cancelamento</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tem certeza? Isso estorna o valor automaticamente.
+                  Tem certeza que deseja cancelar este pedido? O valor será estornado automaticamente para a carteira do aluno.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
