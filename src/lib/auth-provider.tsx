@@ -1,3 +1,4 @@
+
 // src/lib/auth-provider.tsx
 'use client';
 
@@ -14,7 +15,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (data: Record<string, any>) => Promise<void>;
   logout: () => void;
-  refreshUser: () => Promise<void>; // ✅ 1. Adicionada a função ao tipo do contexto
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,8 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(token);
     setUser(mappedUser);
   };
-
-  // ✅ 2. Implementada a função para atualizar os dados do usuário
+  
   const refreshUser = useCallback(async () => {
     if (!user?.id) {
         console.warn("Tentativa de atualizar usuário sem um usuário logado.");
@@ -97,13 +97,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await apiPost<{ data: { user: any; token: string } }>('login', {
+      // ✅ CORREÇÃO: A resposta da API não tem a camada "data", então a buscamos diretamente.
+      const response = await apiPost<{ user: any; token: string }>('login', {
         email,
         senha: password,
         device_name: 'browser',
       });
+      
+      // ✅ CORREÇÃO: Usamos `response.user` e `response.token` diretamente.
+      handleAuthSuccess(response.user, response.token);
 
-      handleAuthSuccess(response.data.user, response.data.token);
     } catch (error: any) {
       console.error('Falha no login:', error);
       throw new Error(error.message || 'E-mail ou senha incorretos. Tente novamente.');
@@ -117,7 +120,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await login(data.email, password);
   };
 
-  // ✅ 3. Exposta a nova função para os componentes filhos
   const value = { user, token, isLoading, login, register, logout, refreshUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
