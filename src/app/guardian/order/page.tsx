@@ -427,7 +427,7 @@ return (
                     <AlertDialogHeader>
                       <AlertDialogTitle>Confirmar Pedido</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Escolha o aluno e confirme os itens.
+                        Escolha o aluno e confirme os itens. O valor será debitado do saldo do aluno selecionado.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
 
