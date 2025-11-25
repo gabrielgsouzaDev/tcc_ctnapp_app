@@ -210,13 +210,10 @@ export const postOrder = async (orderData: {
   status: string;
   items: { productId: string; quantity: number; unitPrice: number; }[];
 }): Promise<Order> => {
+  // A API espera o payload de itens com as chaves em camelCase, conforme o erro 422 indica.
+  // Não é necessária nenhuma conversão para snake_case aqui.
   const payload = {
-    ...orderData,
-    items: orderData.items.map(item => ({
-      id_produto: item.productId,
-      quantidade: item.quantity,
-      preco_unitario: item.unitPrice,
-    }))
+    ...orderData
   };
   const response = await apiPost<any>('pedidos', payload);
   return mapOrder(response);
