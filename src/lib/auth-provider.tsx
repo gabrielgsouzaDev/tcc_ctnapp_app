@@ -96,27 +96,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   const login = async (email: string, password: string) => {
-    try {
-      // ✅ CORREÇÃO: A resposta da API não tem a camada "data", então a buscamos diretamente.
-      const response = await apiPost<{ user: any; token: string }>('login', {
-        email,
-        senha: password,
-        device_name: 'browser',
-      });
-      
-      // ✅ CORREÇÃO: Usamos `response.user` e `response.token` diretamente.
-      handleAuthSuccess(response.user, response.token);
-
-    } catch (error: any) {
-      console.error('Falha no login:', error);
-      throw new Error(error.message || 'E-mail ou senha incorretos. Tente novamente.');
-    }
+    const response = await apiPost<{ user: any; token: string }>('login', {
+      email,
+      senha: password,
+      device_name: 'browser',
+    });
+    handleAuthSuccess(response.user, response.token);
   };
 
   const register = async (data: Record<string, any>) => {
     const { password, ...rest } = data;
     const payload = { ...rest, senha: password };
-    await apiPost<{ data: any }>('users', payload);
+    await apiPost('users', payload);
     await login(data.email, password);
   };
 
