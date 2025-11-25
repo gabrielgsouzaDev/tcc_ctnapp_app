@@ -71,7 +71,6 @@ export const CartSheet = () => {
 
     setIsCheckingOut(true);
     try {
-      // CORREÇÃO: Converte o payload para o formato snake_case esperado pelo backend.
       const orderPayload = {
         id_comprador: user.id,
         id_destinatario: user.id,
@@ -79,9 +78,9 @@ export const CartSheet = () => {
         valor_total: totalPrice,
         status: 'pendente',
         items: cartItems.map(item => ({
-          id_produto: item.product.id, // snake_case
-          quantidade: item.quantity,    // snake_case
-          preco_unitario: item.product.price, // snake_case
+          productId: item.product.id,
+          quantity: item.quantity,
+          unitPrice: item.product.price,
         })),
       };
 
@@ -89,7 +88,6 @@ export const CartSheet = () => {
 
       toast({ variant: 'success', title: 'Pedido realizado com sucesso!', description: 'Você pode acompanhar o status na página de pedidos.' });
       
-      await delay(1500);
       if (refreshUser) await refreshUser();
       
       clearCart();
