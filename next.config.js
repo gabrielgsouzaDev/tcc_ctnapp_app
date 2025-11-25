@@ -23,6 +23,10 @@ const nextConfig = {
                 protocol: 'https',
                 hostname: 'cantappbackendlaravel-production.up.railway.app',
             },
+            {
+                protocol: 'https',
+                hostname: 'meuservidor.com',
+            },
         ],
     },
 };

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from "react";
@@ -70,6 +71,7 @@ export const CartSheet = () => {
 
     setIsCheckingOut(true);
     try {
+      // ✅ CORREÇÃO: Payload formatado com camelCase (productId, unitPrice) para corresponder à validação do backend.
       const orderPayload = {
         id_comprador: user.id,
         id_destinatario: user.id,
