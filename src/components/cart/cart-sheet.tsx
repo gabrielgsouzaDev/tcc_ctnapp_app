@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from "react";
@@ -88,9 +87,10 @@ export const CartSheet = () => {
 
       toast({ variant: 'success', title: 'Pedido realizado com sucesso!', description: 'Você pode acompanhar o status na página de pedidos.' });
       
+      clearCart();
+      
       if (refreshUser) await refreshUser();
       
-      clearCart();
       setIsSheetOpen(false);
       router.push('/student/orders');
 

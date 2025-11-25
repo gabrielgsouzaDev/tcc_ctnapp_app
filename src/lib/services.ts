@@ -1,5 +1,3 @@
-
-
 import { 
     type School, 
     type StudentProfile, 
@@ -157,6 +155,7 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
     const response = await apiGet<any[]>(`cantinas/${canteenId}/produtos`);
     return response.map(mapProduct);
   } catch (e) {
+    // Adicionado tratamento de erro para não quebrar a UI se a API falhar
     console.error(`Failed to fetch products for canteen ${canteenId}:`, e);
     return [];
   }
