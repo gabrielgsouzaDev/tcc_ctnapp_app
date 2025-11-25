@@ -71,7 +71,6 @@ export const CartSheet = () => {
 
     setIsCheckingOut(true);
     try {
-      // ✅ CORREÇÃO: Payload formatado com camelCase (productId, unitPrice) para corresponder à validação do backend.
       const orderPayload = {
         id_comprador: user.id,
         id_destinatario: user.id,
@@ -79,9 +78,9 @@ export const CartSheet = () => {
         valor_total: totalPrice,
         status: 'pendente',
         items: cartItems.map(item => ({
-          productId: item.product.id, // Correção: camelCase
+          productId: item.product.id,
           quantity: item.quantity,
-          unitPrice: item.product.price, // Correção: camelCase
+          unitPrice: item.product.price,
         })),
       };
 

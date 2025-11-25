@@ -53,7 +53,7 @@ const mapProduct = (product: any): Product => ({
     category: product.categoria ?? 'Salgado',
     image: {
       id: product.id_produto?.toString(),
-      imageUrl: product.url_imagem || 'https://picsum.photos/seed/placeholder/400/200',
+      imageUrl: product.url_imagem || 'https://images.unsplash.com/photo-1582169505937-b9992bd01ed9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxmb29kfGVufDB8fHx8MTc2MTE2Njc4Nnww&ixlib=rb-4.1.0&q=80&w=1080',
       imageHint: 'product image',
       description: product.nome
     },
@@ -90,7 +90,7 @@ const mapOrder = (order: any): Order => ({
         unitPrice: parseFloat(p.preco_unitario ?? 0),
         image: {
             id: p.id_produto?.toString(),
-            imageUrl: p.produto?.url_imagem || 'https://picsum.photos/seed/placeholder/400/200',
+            imageUrl: p.produto?.url_imagem || 'https://images.unsplash.com/photo-1582169505937-b9992bd01ed9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxmb29kfGVufDB8fHx8MTc2MTE2Njc4Nnww&ixlib=rb-4.1.0&q=80&w=1080',
             imageHint: 'order item',
             description: p.produto?.nome,
         }
@@ -155,7 +155,6 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
     const response = await apiGet<any[]>(`cantinas/${canteenId}/produtos`);
     return response.map(mapProduct);
   } catch (e) {
-    // Adicionado tratamento de erro para não quebrar a UI se a API falhar
     console.error(`Failed to fetch products for canteen ${canteenId}:`, e);
     return [];
   }
