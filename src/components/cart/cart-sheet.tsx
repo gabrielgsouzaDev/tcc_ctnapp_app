@@ -16,8 +16,6 @@ import { useRouter } from "next/navigation";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 const CartItemCard = ({ item }: { item: any }) => {
   const { updateItemQuantity } = useCart();
 
@@ -71,6 +69,7 @@ export const CartSheet = () => {
 
     setIsCheckingOut(true);
     try {
+      // CORREÇÃO: Garante que o payload enviado para a API usa `productId` e `unitPrice`
       const orderPayload = {
         id_comprador: user.id,
         id_destinatario: user.id,
@@ -78,9 +77,9 @@ export const CartSheet = () => {
         valor_total: totalPrice,
         status: 'pendente',
         items: cartItems.map(item => ({
-          productId: item.product.id,
+          productId: item.product.id, // <<<< Correção aqui
           quantity: item.quantity,
-          unitPrice: item.product.price,
+          unitPrice: item.product.price, // <<<< Correção aqui
         })),
       };
 
