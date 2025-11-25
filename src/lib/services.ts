@@ -1,4 +1,5 @@
 
+
 import { 
     type School, 
     type StudentProfile, 
@@ -121,8 +122,8 @@ const mapWallet = (wallet: any): Wallet => ({
 
 export const getUser = async (userId: string): Promise<User | null> => {
   try {
-    const response = await apiGet<{ data: any }>(`users/${userId}`);
-    return mapUser(response.data);
+    const response = await apiGet<any>(`users/${userId}`);
+    return mapUser(response);
   } catch (e) {
     console.error(`Failed to fetch user ${userId}:`, e);
     return null;
@@ -131,9 +132,7 @@ export const getUser = async (userId: string): Promise<User | null> => {
 
 export const getSchools = async (): Promise<School[]> => {
   try {
-    // CORREÇÃO: A API de escolas retorna um array direto, não um objeto { data: [...] }
     const response = await apiGet<any[]>('escolas');
-    // Aplica o .map diretamente na resposta
     return response.map(mapSchool);
   } catch (e) {
     console.error('Failed to fetch schools:', e);
@@ -144,8 +143,8 @@ export const getSchools = async (): Promise<School[]> => {
 export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> => {
   if (!schoolId) return [];
   try {
-    const response = await apiGet<{ data: any[] }>(`cantinas/escola/${schoolId}`);
-    return response.data.map(mapCanteen);
+    const response = await apiGet<any[]>(`cantinas/escola/${schoolId}`);
+    return response.map(mapCanteen);
   } catch (e) {
     console.error(`Failed to fetch canteens for school ${schoolId}:`, e);
     return [];
@@ -155,8 +154,8 @@ export const getCanteensBySchool = async (schoolId: string): Promise<Canteen[]> 
 export const getProductsByCanteen = async (canteenId: string): Promise<Product[]> => {
   if (!canteenId) return [];
   try {
-    const response = await apiGet<{ data: any[] }>(`cantinas/${canteenId}/produtos`);
-    return response.data.map(mapProduct);
+    const response = await apiGet<any[]>(`cantinas/${canteenId}/produtos`);
+    return response.map(mapProduct);
   } catch (e) {
     console.error(`Failed to fetch products for canteen ${canteenId}:`, e);
     return [];
@@ -166,8 +165,8 @@ export const getProductsByCanteen = async (canteenId: string): Promise<Product[]
 export const getFavoritesByUser = async (userId: string): Promise<Favorite[]> => {
   if (!userId) return [];
   try {
-    const response = await apiGet<{ data: any[] }>(`favoritos/${userId}`);
-    return response.data.map(mapFavorite);
+    const response = await apiGet<any[]>(`favoritos/${userId}`);
+    return response.map(mapFavorite);
   } catch (e) {
     console.error(`Failed to fetch favorites for user ${userId}:`, e);
     return [];
@@ -177,8 +176,8 @@ export const getFavoritesByUser = async (userId: string): Promise<Favorite[]> =>
 export const addFavorite = async (userId: string, productId: string): Promise<Favorite | null> => {
   try {
     const payload = { id_user: userId, id_produto: productId };
-    const response = await apiPost<{ data: any }>('favoritos', payload);
-    return mapFavorite(response.data);
+    const response = await apiPost<any>('favoritos', payload);
+    return mapFavorite(response);
   } catch (e) {
     console.error('Failed to add favorite:', e);
     return null;
@@ -197,8 +196,8 @@ export const removeFavorite = async (userId: string, productId: string): Promise
 export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     if (!userId) return [];
     try {
-        const response = await apiGet<{ data: any[] }>(`pedidos/usuario/${userId}`);
-        return response.data.map(mapOrder);
+        const response = await apiGet<any[]>(`pedidos/usuario/${userId}`);
+        return response.map(mapOrder);
     } catch (e) {
         console.error(`Failed to fetch orders for user ${userId}:`, e);
         return [];
@@ -221,14 +220,14 @@ export const postOrder = async (orderData: {
       preco_unitario: item.unitPrice,
     }))
   };
-  const response = await apiPost<{ data: any }>('pedidos', payload);
-  return mapOrder(response.data);
+  const response = await apiPost<any>('pedidos', payload);
+  return mapOrder(response);
 };
 
 export const updateOrderStatus = async (orderId: string, status: string): Promise<Order> => {
   const payload = { status };
-  const response = await apiPatch<{ data: any }>(`pedidos/${orderId}/status`, payload);
-  return mapOrder(response.data);
+  const response = await apiPatch<any>(`pedidos/${orderId}/status`, payload);
+  return mapOrder(response);
 };
 
 export const getGuardianProfile = async (guardianId: string): Promise<GuardianProfile | null> => {
@@ -273,8 +272,8 @@ export const getStudentProfile = async (studentId: string): Promise<StudentProfi
 export const getWalletByUserId = async (userId: string): Promise<Wallet | null> => {
     if (!userId) return null;
     try {
-      const response = await apiGet<{ data: any }>(`carteiras/usuario/${userId}`);
-      return mapWallet(response.data);
+      const response = await apiGet<any>(`carteiras/usuario/${userId}`);
+      return mapWallet(response);
     } catch (e) {
       console.error(`Failed to fetch wallet for user ${userId}:`, e);
       return null;
@@ -284,8 +283,8 @@ export const getWalletByUserId = async (userId: string): Promise<Wallet | null> 
 export const getTransactionsByUser = async (userId: string): Promise<Transaction[]> => {
   if (!userId) return [];
   try {
-    const response = await apiGet<{ data: any[] }>(`transacoes/usuario/${userId}`);
-    return response.data.map(mapTransaction);
+    const response = await apiGet<any[]>(`transacoes/usuario/${userId}`);
+    return response.map(mapTransaction);
   } catch (e) {
     console.error(`Failed to fetch transactions for user ${userId}:`, e);
     return [];
@@ -312,3 +311,4 @@ export const linkStudentToGuardian = async (studentCode: string): Promise<void> 
         throw error;
     }
 };
+
