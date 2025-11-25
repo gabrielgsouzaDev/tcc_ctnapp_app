@@ -31,8 +31,8 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
   try {
     const data = JSON.parse(text);
-    // Assumes successful responses are wrapped in a 'data' object.
-    return data.data as T;
+    // Flexible data extraction: if response has a `data` key, use it. Otherwise, use the whole object.
+    return data.data !== undefined ? data.data : data;
   } catch (e) {
     console.error("JSON parsing error:", e);
     throw new Error("Falha ao analisar a resposta do servidor.");
