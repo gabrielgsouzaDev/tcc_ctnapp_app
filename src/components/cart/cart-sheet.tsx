@@ -79,9 +79,9 @@ export const CartSheet = () => {
         valor_total: totalPrice,
         status: 'pendente',
         items: cartItems.map(item => ({
-          productId: item.product.id,
+          productId: item.product.id, // Correção: camelCase
           quantity: item.quantity,
-          unitPrice: item.product.price,
+          unitPrice: item.product.price, // Correção: camelCase
         })),
       };
 
