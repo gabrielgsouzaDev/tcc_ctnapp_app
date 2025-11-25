@@ -1,4 +1,5 @@
 
+
 import { 
     type School, 
     type StudentProfile, 
@@ -214,9 +215,9 @@ export const postOrder = async (orderData: {
   const payload = {
     ...orderData,
     items: orderData.items.map(item => ({
-      productId: item.productId, // Mantém camelCase para o backend, conforme log de erro 422
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
+      id_produto: item.productId,
+      quantidade: item.quantity,
+      preco_unitario: item.unitPrice,
     }))
   };
   const response = await apiPost<any>('pedidos', payload);
@@ -290,14 +291,13 @@ export const getTransactionsByUser = async (userId: string): Promise<Transaction
   }
 };
 
-export const rechargeBalance = async (userId: string, amount: number): Promise<{ success: boolean }> => {
+export const rechargeBalance = async (userId: string, amount: number): Promise<any> => {
     const payload = {
-        user_id: userId,
+        id_user: userId,
         valor: amount
     };
-    // A resposta é tratada como "fire-and-forget", então não precisamos mapear o retorno.
-    await apiPost('carteiras/recarregar', payload); 
-    return { success: true };
+    const response = await apiPost('carteiras/recarregar', payload); 
+    return response;
 }
 
 export const linkStudentToGuardian = async (studentCode: string): Promise<void> => {
