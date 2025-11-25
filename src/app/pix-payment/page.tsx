@@ -63,26 +63,24 @@ function PixPaymentContent() {
     toast({ title: 'Confirmando Pagamento...', description: 'Estamos atualizando o saldo. Isso pode levar um instante.' });
 
     try {
-      // O backend falha ao responder, mas processa a recarga.
-      // Não usamos 'await' para que o frontend não espere pela resposta quebrada.
-      rechargeBalance(targetId, Number(amount)).catch(error => {
-        // Mesmo que a chamada falhe, o saldo provavelmente foi atualizado.
-        // Apenas registramos o erro no console para depuração.
-        console.error("Erro ignorado na resposta da recarga:", error);
-      });
+      // Agora que o backend está estável, esperamos (await) a resposta da API.
+      await rechargeBalance(targetId, Number(amount));
 
-      // Assumimos que a recarga funcionou e atualizamos a UI.
       setPaymentStatus('confirmed');
-      toast({ variant: 'success', title: 'Pagamento Processado!', description: 'Seu saldo será atualizado em breve.' });
+      toast({ variant: 'success', title: 'Pagamento Processado!', description: 'Seu saldo foi atualizado com sucesso.' });
 
-      await delay(1500);
-      if (refreshUser) await refreshUser();
+      // Aguarda um pouco e atualiza os dados do usuário no frontend
+      if (refreshUser) {
+        await delay(500);
+        await refreshUser();
+      }
 
+      // Redireciona o usuário após a confirmação
       setTimeout(() => {
         const redirectPath = user?.role === 'Aluno' ? '/student/balance' : '/guardian/recharge';
         router.push(redirectPath);
-        router.refresh(); // Força a atualização dos dados na página de destino
-      }, 3000);
+        router.refresh(); 
+      }, 2000);
 
     } catch (error: any) {
       console.error("Payment confirmation error:", error);
