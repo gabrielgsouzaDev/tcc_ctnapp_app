@@ -32,8 +32,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getTransactionsByUser, getStudentProfile } from '@/lib/services';
+import { getTransactionsByUser, getStudentProfile, rechargeBalance } from '@/lib/services';
 import { useAuth } from '@/lib/auth-provider';
+import { useToast } from '@/hooks/use-toast';
 
 
 type SortKey = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
@@ -97,6 +98,7 @@ const TransactionDetailsDialog = ({ transaction }: { transaction: Transaction })
 export default function StudentBalancePage() {
     const { user, isLoading: isUserLoading } = useAuth();
     const router = useRouter();
+    const { toast } = useToast();
 
     const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
     const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
@@ -163,7 +165,12 @@ export default function StudentBalancePage() {
     };
     
     const amountValue = Number(rechargeAmount);
-    const isButtonDisabled = !amountValue || amountValue <= 0 || !studentProfile?.walletId;
+    const isButtonDisabled = !amountValue || amountValue <= 0;
+
+    const handleRechargeClick = () => {
+        if (isButtonDisabled || !studentProfile?.id) return;
+        router.push(`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}`);
+    }
 
     if (isLoading || isUserLoading) {
         return (
@@ -256,14 +263,13 @@ export default function StudentBalancePage() {
                             ))}
                         </div>
                         
-                        <Link href={`/pix-payment?amount=${amountValue}&targetId=${studentProfile.id}&walletId=${studentProfile.walletId}`} passHref className={cn('block mt-4', isButtonDisabled && 'pointer-events-none opacity-50')}>
-                            <Button 
-                                className="w-full"
-                                disabled={isButtonDisabled}
-                            >
-                                Pagar com PIX
-                            </Button>
-                        </Link>
+                        <Button 
+                            className="w-full mt-4"
+                            disabled={isButtonDisabled}
+                            onClick={handleRechargeClick}
+                        >
+                            Pagar com PIX
+                        </Button>
                     </CardContent>
                 </Card>
                 ) : (

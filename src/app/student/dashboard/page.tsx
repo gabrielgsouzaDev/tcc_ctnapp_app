@@ -14,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-// ✅ 1. Trocar Star por Heart e importar o novo ícone
 import { Search, Heart, Check } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
@@ -40,37 +39,39 @@ export default function StudentDashboardPage() {
 
   const [favoriteProductIds, setFavoriteProductIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      if (user?.schoolId && user.id) {
-        setIsLoading(true);
-        try {
-          const [canteenList, userFavorites] = await Promise.all([
-            getCanteensBySchool(user.schoolId),
-            getFavoritesByUser(user.id)
-          ]);
+  const fetchInitialData = useCallback(async () => {
+    if (user?.schoolId && user.id) {
+      setIsLoading(true);
+      try {
+        const [canteenList, userFavorites] = await Promise.all([
+          getCanteensBySchool(user.schoolId),
+          getFavoritesByUser(user.id)
+        ]);
 
-          setCanteens(canteenList);
-          if (canteenList.length > 0) {
-            const defaultCanteen = canteenList[0];
-            setSelectedCanteenId(defaultCanteen.id);
-            setProducts(defaultCanteen.produtos || []); 
-          }
-          
-          setFavoriteProductIds(new Set(userFavorites.map(fav => fav.productId)));
-
-        } catch (error) {
-          console.error("Failed to fetch initial data:", error);
-          toast({ variant: 'destructive', title: 'Erro ao carregar dados', description: 'Não foi possível buscar as informações da página.' });
-        } finally {
-          setIsLoading(false);
+        setCanteens(canteenList);
+        if (canteenList.length > 0) {
+          const defaultCanteen = canteenList[0];
+          setSelectedCanteenId(defaultCanteen.id);
+          setProducts(defaultCanteen.produtos || []); 
         }
+        
+        setFavoriteProductIds(new Set(userFavorites.map(fav => fav.productId)));
+
+      } catch (error) {
+        console.error("Failed to fetch initial data:", error);
+        toast({ variant: 'destructive', title: 'Erro ao carregar dados', description: 'Não foi possível buscar as informações da página.' });
+      } finally {
+        setIsLoading(false);
       }
-    };
+    }
+  }, [user, toast]);
+
+
+  useEffect(() => {
     if (user && !isUserLoading) {
       fetchInitialData();
     }
-  }, [user, isUserLoading, toast]);
+  }, [user, isUserLoading, fetchInitialData]);
 
   const handleCanteenChange = (canteenId: string) => {
     const newSelectedCanteen = canteens.find(c => c.id === canteenId);
@@ -80,14 +81,12 @@ export default function StudentDashboardPage() {
     }
   };
 
-  // ✅ 2. Lógica de favoritar corrigida para ser mais robusta
   const handleToggleFavorite = useCallback(async (productId: string) => {
     if (!user) return;
 
     const originalFavorites = new Set(favoriteProductIds);
     const isCurrentlyFavorite = originalFavorites.has(productId);
 
-    // Atualização Otimista: Mudar a UI imediatamente
     const newFavorites = new Set(originalFavorites);
     if (isCurrentlyFavorite) {
       newFavorites.delete(productId);
@@ -104,13 +103,14 @@ export default function StudentDashboardPage() {
         await addFavorite(user.id, productId);
         toast({ title: "Adicionado aos favoritos!", variant: "success" });
       }
+      // Re-fetch favorites to ensure sync, could be optimized later
+      fetchInitialData();
     } catch (error) {
       console.error("Failed to update favorites", error);
       toast({ variant: 'destructive', title: 'Erro de Rede', description: 'Não foi possível atualizar. Revertendo ação.' });
-      // Reversão: Se a API falhar, reverter a UI para o estado original
       setFavoriteProductIds(originalFavorites);
     }
-  }, [user, favoriteProductIds, toast]);
+  }, [user, favoriteProductIds, toast, fetchInitialData]);
 
 
   const filteredProducts = useMemo(() => {
@@ -213,7 +213,6 @@ export default function StudentDashboardPage() {
           return (
           <Card key={product.id} className="relative flex flex-col overflow-hidden transition-shadow hover:shadow-lg">
             <CardHeader className="p-0 relative">
-                {/* ✅ 3. Ícone e animação atualizados */}
                 <button 
                     onClick={() => handleToggleFavorite(product.id)}
                     className="absolute top-2 right-2 z-10 p-1.5 bg-background/60 rounded-full backdrop-blur-sm transition-all duration-200 ease-in-out hover:bg-background/80 active:scale-125"
