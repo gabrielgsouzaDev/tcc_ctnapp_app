@@ -82,18 +82,21 @@ export default function StudentDashboardPage() {
   };
 
   const handleToggleFavorite = useCallback(async (productId: string) => {
-    if (!user) return;
+    if (!user?.id) return;
 
     const originalFavorites = new Set(favoriteProductIds);
     const isCurrentlyFavorite = originalFavorites.has(productId);
 
-    const newFavorites = new Set(originalFavorites);
-    if (isCurrentlyFavorite) {
-      newFavorites.delete(productId);
-    } else {
-      newFavorites.add(productId);
-    }
-    setFavoriteProductIds(newFavorites);
+    // Atualização Otimista: muda a UI imediatamente
+    setFavoriteProductIds(prev => {
+      const newFavorites = new Set(prev);
+      if (isCurrentlyFavorite) {
+        newFavorites.delete(productId);
+      } else {
+        newFavorites.add(productId);
+      }
+      return newFavorites;
+    });
 
     try {
       if (isCurrentlyFavorite) {
@@ -103,14 +106,13 @@ export default function StudentDashboardPage() {
         await addFavorite(user.id, productId);
         toast({ title: "Adicionado aos favoritos!", variant: "success" });
       }
-      // Re-fetch favorites to ensure sync, could be optimized later
-      fetchInitialData();
     } catch (error) {
       console.error("Failed to update favorites", error);
       toast({ variant: 'destructive', title: 'Erro de Rede', description: 'Não foi possível atualizar. Revertendo ação.' });
+      // Reverte a UI em caso de erro
       setFavoriteProductIds(originalFavorites);
     }
-  }, [user, favoriteProductIds, toast, fetchInitialData]);
+  }, [user?.id, favoriteProductIds, toast]);
 
 
   const filteredProducts = useMemo(() => {

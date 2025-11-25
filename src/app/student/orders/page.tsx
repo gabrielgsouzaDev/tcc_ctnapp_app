@@ -138,7 +138,7 @@ const OrderDetailsDialog = ({ order, onRepeatOrder, onCancelOrder }: { order: Or
         <DialogClose asChild>
             <Button variant="outline" className="w-full sm:w-auto">Fechar</Button>
         </DialogClose>
-        <div className="flex flex-col-reverse sm:flex-row sm:gap-2 w-full sm:w-auto">
+        <div className="flex flex-col-reverse sm:gap-2 w-full sm:w-auto">
             {order.status === 'pendente' && (
                  <AlertDialog>
                     <AlertDialogTrigger asChild>

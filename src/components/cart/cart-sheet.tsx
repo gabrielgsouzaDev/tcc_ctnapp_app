@@ -160,10 +160,10 @@ export const CartSheet = () => {
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Confirmar Pedido</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Você está prestes a finalizar seu pedido no valor de R$ {totalPrice.toFixed(2)}. O valor será debitado do seu saldo. Você confirma?
+                    </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <div className="py-4">
-                  Você está prestes a finalizar seu pedido no valor de R$ {totalPrice.toFixed(2)}. O valor será debitado do seu saldo. Você confirma?
-                  </div>
                   <AlertDialogFooter>
                     <AlertDialogCancel disabled={isCheckingOut}>Cancelar</AlertDialogCancel>
                     <AlertDialogAction onClick={handleCheckout} disabled={isCheckingOut}>
