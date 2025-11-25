@@ -131,8 +131,10 @@ export const getUser = async (userId: string): Promise<User | null> => {
 
 export const getSchools = async (): Promise<School[]> => {
   try {
-    const response = await apiGet<{ data: any[] }>('escolas');
-    return response.data.map(mapSchool);
+    // CORREÇÃO: A API de escolas retorna um array direto, não um objeto { data: [...] }
+    const response = await apiGet<any[]>('escolas');
+    // Aplica o .map diretamente na resposta
+    return response.map(mapSchool);
   } catch (e) {
     console.error('Failed to fetch schools:', e);
     return [];
@@ -209,19 +211,10 @@ export const postOrder = async (orderData: {
   id_cantina: string;
   valor_total: number;
   status: string;
-  items: {
-    productId: string;
-    quantity: number;
-    unitPrice: number;
-  }[];
+  items: { productId: string; quantity: number; unitPrice: number; }[];
 }): Promise<Order> => {
-  // Mapeamento de camelCase para snake_case antes de enviar para a API
   const payload = {
-    id_comprador: orderData.id_comprador,
-    id_destinatario: orderData.id_destinatario,
-    id_cantina: orderData.id_cantina,
-    valor_total: orderData.valor_total,
-    status: orderData.status,
+    ...orderData,
     items: orderData.items.map(item => ({
       id_produto: item.productId,
       quantidade: item.quantity,
